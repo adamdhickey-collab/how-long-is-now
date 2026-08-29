@@ -1,0 +1,87 @@
+/* HOW LONG IS NOW? — starter styles.
+   The piece is a fixed full-screen world; scroll is a time input, not a
+   layout mechanism. Only the runway has height. */
+
+:root {
+  --ink: #e8e6e1;
+  --ink-dim: #8a877f;
+  --ground: #060708;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: auto; } /* Lenis owns scroll feel */
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+#world {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+.hud {
+  position: fixed;
+  left: clamp(1.5rem, 4vw, 4rem);
+  bottom: clamp(1.5rem, 4vw, 4rem);
+  z-index: 2;
+  user-select: none;
+}
+
+.hud__scale {
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+.hud__hint {
+  margin-top: 0.75em;
+  font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+  color: var(--ink-dim);
+  letter-spacing: 0.08em;
+  transition: opacity 1.2s ease;
+}
+
+.clock {
+  position: fixed;
+  top: clamp(1.5rem, 4vw, 4rem);
+  right: clamp(1.5rem, 4vw, 4rem);
+  z-index: 2;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
+  letter-spacing: 0.15em;
+  color: var(--ink-dim);
+  user-select: none;
+}
+
+.caption {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  max-width: 32ch;
+  text-align: center;
+  font-size: clamp(1rem, 1.8vw, 1.5rem);
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  pointer-events: none;
+  white-space: pre-line;
+}
+
+/* The runway gives the browser something to scroll. Height set in JS
+   from the manifest's total scroll length. */
+#runway { width: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__hint { transition: none; }
+}

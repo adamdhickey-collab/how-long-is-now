@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building How Long Is Now</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,400&display=swap">
+<style>
+  /* The plan wears the piece's own clothes: near-black ground, warm off-white
+     ink, letterspaced uppercase labels, one accent — the 4:17 afternoon light —
+     reserved for marking now. Single-theme by intent; the piece opens on a
+     black field and so does its plan. */
+  :root {
+    --ground: #060708;
+    --panel: #0c0d0f;
+    --line: #1c1e21;
+    --ink: #e8e6e1;
+    --ink-dim: #8a877f;
+    --ink-faint: #55534e;
+    --now: #d9a95b;
+    --sans: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--ink-faint); }
+  a:hover, a:focus-visible { text-decoration-color: var(--now); }
+  a:focus-visible { outline: 1px solid var(--now); outline-offset: 3px; }
+  code {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    line-height: 1.6;
+    margin: 1rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; color: var(--ink-dim); }
+  pre code b { color: var(--ink); font-weight: 500; }
+
+  .page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 7vw, 6rem) clamp(1.25rem, 5vw, 3rem) 6rem;
+  }
+
+  /* ---- header: the HUD, quoted ---- */
+  .masthead { border-bottom: 1px solid var(--line); padding-bottom: 2.5rem; }
+  .masthead__label {
+    font-size: 0.75rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .masthead h1 {
+    margin-top: 1.25rem;
+    font-size: clamp(1.9rem, 5vw, 3rem);
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    line-height: 1.2;
+  }
+  .masthead__sub {
+    margin-top: 1rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.2rem;
+    color: var(--ink-dim);
+    max-width: 34ch;
+  }
+  .masthead__meta {
+    margin-top: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 2.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .masthead__meta b { color: var(--ink-dim); font-weight: 500; }
+
+  /* ---- the one next step ---- */
+  .next {
+    margin-top: 3rem;
+    border: 1px solid var(--now);
+    border-radius: 4px;
+    padding: 1.5rem 1.75rem;
+  }
+  .next__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--now);
+  }
+  .next p { margin-top: 0.75rem; max-width: 60ch; }
+  .next p + p { margin-top: 0.6rem; color: var(--ink-dim); }
+
+  /* ---- sections ---- */
+  h2 {
+    margin-top: 4.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  h2 + p { margin-top: 1.25rem; }
+  .prose p { max-width: 62ch; }
+  .prose p + p { margin-top: 1rem; }
+
+  /* ---- ledger of what exists ---- */
+  .ledger { margin-top: 1.5rem; border-top: 1px solid var(--line); }
+  .ledger__row {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 1.5rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ledger__state {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding-top: 0.25rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .ledger__row--done .ledger__state { color: var(--ink-dim); }
+  .ledger__row--open .ledger__state { color: var(--now); }
+  .ledger__what { max-width: 58ch; }
+  .ledger__what small { display: block; color: var(--ink-dim); font-size: 0.9rem; margin-top: 0.15rem; }
+
+  /* ---- the phase rail ---- */
+  .phases { margin-top: 2rem; }
+  .phase {
+    position: relative;
+    padding: 0 0 3rem 2.75rem;
+    border-left: 1px solid var(--line);
+    margin-left: 0.4rem;
+  }
+  .phase:last-child { padding-bottom: 0.5rem; }
+  .phase::before {
+    content: '';
+    position: absolute;
+    left: -0.28rem;
+    top: 0.45rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--ground);
+    border: 1px solid var(--ink-faint);
+  }
+  .phase--done::before { background: var(--ink-dim); border-color: var(--ink-dim); }
+  .phase--now { border-left-color: var(--now); }
+  .phase--now::before { background: var(--now); border-color: var(--now); }
+  .phase__head {
+    display: flex;
+    align-items: baseline;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .phase__num {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .phase--now .phase__num { color: var(--now); }
+  .phase h3 {
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .phase__who {
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-left: auto;
+  }
+  .phase p { margin-top: 0.75rem; max-width: 56ch; color: var(--ink-dim); }
+  .phase p b { color: var(--ink); font-weight: 500; }
+  .phase ul { margin: 0.75rem 0 0 1.1rem; color: var(--ink-dim); max-width: 54ch; }
+  .phase li { margin-top: 0.4rem; }
+  .phase li::marker { color: var(--ink-faint); }
+  .phase .gate {
+    margin-top: 1rem;
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink);
+    border-left: 2px solid var(--now);
+    padding-left: 1rem;
+    max-width: 48ch;
+  }
+
+  /* ---- the piece's own words ---- */
+  .voice {
+    margin: 4.5rem 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.35rem;
+    line-height: 1.7;
+    color: var(--ink);
+    text-align: center;
+    text-wrap: balance;
+  }
+  .voice small {
+    display: block;
+    margin-top: 1.25rem;
+    font-family: var(--sans);
+    font-style: normal;
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---- rules footer ---- */
+  .rules { margin-top: 1.5rem; }
+  .rules div { border-top: 1px solid var(--line); padding: 1rem 0; max-width: 62ch; }
+  .rules b { display: block; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.85rem; }
+  .rules span { color: var(--ink-dim); }
+
+  footer {
+    margin-top: 5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <p class="masthead__label">Project plan · living document</p>
+    <h1>How Long Is Now?</h1>
+    <p class="masthead__sub">An interactive experiment in clock time, lived time, and remembered time.</p>
+    <div class="masthead__meta">
+      <span><b>Updated</b> 2026-08-29</span>
+      <span><b>Phase</b> 0 of 6</span>
+      <span><b>Home</b> staged in Claude-Local, branch <code>claude/how-long-is-now-concept-gtw8zk</code></span>
+    </div>
+  </header>
+
+  <section class="next">
+    <p class="next__label">The next step</p>
+    <p><b>Create the empty <code>how-long-is-now</code> repository on GitHub</b> (private, no README), then move the staged folder into it and run it locally. Five minutes, and it's the only step nobody else can do for you — everything after it is unblocked.</p>
+    <p>Then the first real decision: which of the three moments to build first. The recommendation is the park → one year transition, because it forces every pipeline question — assets, shaders, scroll choreography — at once, on the scene the whole piece opens with.</p>
+  </section>
+
+  <h2>Where we are</h2>
+  <div class="ledger">
+    <div class="ledger__row ledger__row--done">
+      <span class="ledger__state">Done</span>
+      <div class="ledger__what">The concept, written — <code>CONCEPT.md</code><small>The full arc: arrival inside a moment, the outward journey to a lifetime, the turn, the inward zoom into attention, the two-clocks reveal, memory as panes of glass, the return.</small></div>
+    </div>
+    <div class="ledger__row ledger__row--done">
+      <span class="ledger__state">Done</span>
+      <div class="ledger__what">The approach, written — <code>APPROACH.md</code><small>Stack, division of labor, workflow, performance budget. Three.js/GSAP own the experience; generative tools manufacture ingredients.</small></div>
+    </div>
+    <div class="ledger__row ledger__row--done">
+      <span class="ledger__state">Done</span>
+      <div class="ledger__what">A verified, running starter<small>Vite + TypeScript + Three.js + GSAP + Lenis. Scroll is a time input; a scene manifest drives all choreography; a placeholder particle world follows the active time scale. Typechecks, builds, screenshot-verified.</small></div>
+    </div>
+    <div class="ledger__row ledger__row--done">
+      <span class="ledger__state">Done</span>
+      <div class="ledger__what">Deploy path<small><code>.github/workflows/pages.yml</code> — main builds and publishes to GitHub Pages, same pattern as adamhickey-next.</small></div>
+    </div>
+    <div class="ledger__row ledger__row--open">
+      <span class="ledger__state">Open</span>
+      <div class="ledger__what">A repository of its own<small>The project is staged inside Claude-Local. It needs its own repo and its own clone on your machine — phase 0, below.</small></div>
+    </div>
+  </div>
+
+  <h2>The path</h2>
+  <div class="phases">
+
+    <div class="phase phase--now">
+      <div class="phase__head"><span class="phase__num">00</span><h3>Stand it up</h3><span class="phase__who">You · ~5 min</span></div>
+      <p>Create the empty repo, lift the folder out, push, run.</p>
+      <pre><code><b>— at github.com/new: how-long-is-now, private, no README —</b>
+git clone https://github.com/adamdhickey-collab/Claude-Local \
+  -b claude/how-long-is-now-concept-gtw8zk hlin-tmp
+mv hlin-tmp/how-long-is-now ~/how-long-is-now &amp;&amp; rm -rf hlin-tmp
+cd ~/how-long-is-now
+git init &amp;&amp; git add -A &amp;&amp; git commit -m "Initial concept and starter"
+git branch -M main
+git remote add origin https://github.com/adamdhickey-collab/how-long-is-now.git
+git push -u origin main
+npm install &amp;&amp; npm run dev</code></pre>
+      <p>Then flip on Settings → Pages → Source: “GitHub Actions,” and every push to main deploys.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase__head"><span class="phase__num">01</span><h3>The concept film</h3><span class="phase__who">1–2 weeks</span></div>
+      <p>A 45–60 second film of the whole arc: park → expanding time → lifetime → crash back → inward time → memory corridor → park. Crude is fine — stills, Fable motion studies, generated video, rough type. <b>This is the visual screenplay</b>; every scene in the manifest gets its look decided here, cheaply, before any of it is engineered.</p>
+      <ul>
+        <li>Decide the park: one hero location, its light, its palette.</li>
+        <li>Fable: type studies for the HUD, the scale labels, the two closing lines.</li>
+        <li>Generated plates: the park across seasons, day/night, weather.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase__head"><span class="phase__num">02</span><h3>Three finished moments</h3><span class="phase__who">3–5 weeks</span></div>
+      <p>Built one at a time, each to done — beautiful, responsive, legible with almost no copy:</p>
+      <ul>
+        <li><b>The park → one year.</b> The pipeline proof: plates + depth parallax + Three.js hero objects + scroll choreography + the fixed clock.</li>
+        <li><b>Ten identical minutes.</b> The two corridors, lived vs. remembered — the centerpiece interaction.</li>
+        <li><b>The memory corridor.</b> Thirty days as panes of glass; alignment vs. scatter.</li>
+      </ul>
+      <p class="gate">The gate: if these three moments work, the project exists. If they don’t, stop — nothing else gets built on top of them.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase__head"><span class="phase__num">03</span><h3>Connective tissue</h3><span class="phase__who">2–4 weeks</span></div>
+      <p>The remaining scenes in the manifest — 10 seconds, the day, the lifetime, the turn, the inward zoom, the return — plus the transitions between all ten. By now the pipeline is proven and each scene is bounded work an agent can be pointed at.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase__head"><span class="phase__num">04</span><h3>Sound</h3><span class="phase__who">1–2 weeks</span></div>
+      <p>One environmental soundscape, transformed as time changes: birds become textures, footsteps become pulses, years collapse into noise, the inward zoom isolates single sounds. Web Audio, driven from the same manifest. A visible on/off control from day one.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase__head"><span class="phase__num">05</span><h3>Polish and launch</h3><span class="phase__who">1–2 weeks</span></div>
+      <ul>
+        <li>Performance to budget: 60fps mid-range laptop, 30fps floor on phone, first frame under 3s.</li>
+        <li>Reduced-motion: degrades to a legible still essay, never breaks.</li>
+        <li>Playwright screenshot states across breakpoints; mobile scroll feel.</li>
+        <li>Then: Awwwards / FWA submission, and the piece linked from adamhickey.com.</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <p class="voice">The moment didn’t get longer.<br>You got closer.<small>Scene 10 · return to now</small></p>
+
+  <h2>The rules that keep it buildable</h2>
+  <div class="rules">
+    <div><b>Cheat like crazy.</b> <span>Choreography over polygon count. Video, plates, and depth maps wherever live 3-D isn’t earning its cost. The viewer must not be able to tell where video stops and 3-D begins.</span></div>
+    <div><b>The manifest owns time.</b> <span>All choreography flows from <code>src/scenes/manifest.ts</code>. Nothing outside it invents timing — which is also what lets an AI agent work one bounded scene without rebuilding the project.</span></div>
+    <div><b>Three moments before the universe.</b> <span>No connective tissue until the three hardest moments are finished and beautiful. The gate exists so three weeks aren’t spent building a universe around an idea that doesn’t land.</span></div>
+    <div><b>Tools stay in their lane.</b> <span>Three.js/GSAP own the experience. Fable is the motion sketchbook. Generative models manufacture ingredients. Nothing generative owns the website.</span></div>
+  </div>
+
+  <footer>
+    <span>How Long Is Now? · project plan</span>
+    <span>Lives at PLAN.html in the repo · update as phases close</span>
+  </footer>
+
+</div>
+</body>
+</html>

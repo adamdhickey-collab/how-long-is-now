@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="An interactive experiment in clock time, lived time, and remembered time." />
+    <title>HOW LONG IS NOW?</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- The world. Fixed; scroll drives time, not the page. -->
+    <canvas id="world" aria-hidden="true"></canvas>
+
+    <!-- The HUD: the only UI the piece allows itself. -->
+    <div class="hud">
+      <p class="hud__scale" id="scale-label">1 SECOND</p>
+      <p class="hud__hint" id="scroll-hint">Scroll to leave now.</p>
+    </div>
+
+    <!-- The fixed clock: ruthlessly regular while the world turns fluid. -->
+    <p class="clock" id="clock" aria-hidden="true">4:17</p>
+
+    <!-- Scene text, swapped by the manifest. -->
+    <p class="caption" id="caption" aria-live="polite"></p>
+
+    <!-- Scroll runway: its height is set from the manifest's total duration. -->
+    <div id="runway"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
