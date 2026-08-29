@@ -265,15 +265,17 @@
     <p class="masthead__sub">An interactive experiment in clock time, lived time, and remembered time.</p>
     <div class="masthead__meta">
       <span><b>Updated</b> 2026-08-29</span>
-      <span><b>Phase</b> 0 of 6</span>
-      <span><b>Home</b> staged in Claude-Local, branch <code>claude/how-long-is-now-concept-gtw8zk</code></span>
+      <span><b>Phase</b> 1 of 6</span>
+      <span><b>Home</b> <a href="https://github.com/adamdhickey-collab/how-long-is-now">github.com/adamdhickey-collab/how-long-is-now</a></span>
     </div>
   </header>
 
   <section class="next">
     <p class="next__label">The next step</p>
-    <p><b>Create the empty <code>how-long-is-now</code> repository on GitHub</b> (private, no README), then move the staged folder into it and run it locally. Five minutes, and it's the only step nobody else can do for you — everything after it is unblocked.</p>
-    <p>Then the first real decision: which of the three moments to build first. The recommendation is the park → one year transition, because it forces every pipeline question — assets, shaders, scroll choreography — at once, on the scene the whole piece opens with.</p>
+    <p><b>Clone it to your machine and see it run</b> — the repo is live with the full starter on <code>main</code>:</p>
+    <pre><code>git clone https://github.com/adamdhickey-collab/how-long-is-now
+cd how-long-is-now &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+    <p>One switch still to flip: Settings → Pages → Source: “GitHub Actions,” so every push to main deploys. Then phase 01 begins — the concept film — starting with the first real creative decision: the park. One hero location, its light, its palette.</p>
   </section>
 
   <h2>Where we are</h2>
@@ -294,32 +296,24 @@
       <span class="ledger__state">Done</span>
       <div class="ledger__what">Deploy path<small><code>.github/workflows/pages.yml</code> — main builds and publishes to GitHub Pages, same pattern as adamhickey-next.</small></div>
     </div>
-    <div class="ledger__row ledger__row--open">
-      <span class="ledger__state">Open</span>
-      <div class="ledger__what">A repository of its own<small>The project is staged inside Claude-Local. It needs its own repo and its own clone on your machine — phase 0, below.</small></div>
+    <div class="ledger__row ledger__row--done">
+      <span class="ledger__state">Done</span>
+      <div class="ledger__what">A repository of its own<small><code>adamdhickey-collab/how-long-is-now</code> — the full starter on main. Remaining: flip on Pages (Settings → Pages → “GitHub Actions”) and clone it locally.</small></div>
     </div>
   </div>
 
   <h2>The path</h2>
   <div class="phases">
 
-    <div class="phase phase--now">
-      <div class="phase__head"><span class="phase__num">00</span><h3>Stand it up</h3><span class="phase__who">You · ~5 min</span></div>
-      <p>Create the empty repo, lift the folder out, push, run.</p>
-      <pre><code><b>— at github.com/new: how-long-is-now, private, no README —</b>
-git clone https://github.com/adamdhickey-collab/Claude-Local \
-  -b claude/how-long-is-now-concept-gtw8zk hlin-tmp
-mv hlin-tmp/how-long-is-now ~/how-long-is-now &amp;&amp; rm -rf hlin-tmp
-cd ~/how-long-is-now
-git init &amp;&amp; git add -A &amp;&amp; git commit -m "Initial concept and starter"
-git branch -M main
-git remote add origin https://github.com/adamdhickey-collab/how-long-is-now.git
-git push -u origin main
-npm install &amp;&amp; npm run dev</code></pre>
-      <p>Then flip on Settings → Pages → Source: “GitHub Actions,” and every push to main deploys.</p>
+    <div class="phase phase--done">
+      <div class="phase__head"><span class="phase__num">00</span><h3>Stand it up</h3><span class="phase__who">Done · 2026-08-29</span></div>
+      <p>The repo exists and holds the full starter. On your machine:</p>
+      <pre><code>git clone https://github.com/adamdhickey-collab/how-long-is-now
+cd how-long-is-now &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+      <p>Still open: Settings → Pages → Source: “GitHub Actions,” and every push to main deploys.</p>
     </div>
 
-    <div class="phase">
+    <div class="phase phase--now">
       <div class="phase__head"><span class="phase__num">01</span><h3>The concept film</h3><span class="phase__who">1–2 weeks</span></div>
       <p>A 45–60 second film of the whole arc: park → expanding time → lifetime → crash back → inward time → memory corridor → park. Crude is fine — stills, Fable motion studies, generated video, rough type. <b>This is the visual screenplay</b>; every scene in the manifest gets its look decided here, cheaply, before any of it is engineered.</p>
       <ul>
