@@ -141,10 +141,21 @@ export interface Scene {
   seasons?: Season[];
   /**
    * How many day/night cycles pass while the scene runs. A literal year
-   * would strobe 365 times; twelve reads as time-lapse and stays legible.
-   * Choreography over literalism.
+   * would strobe 365 times. Choreography over literalism.
    */
   dayCycles?: number;
+  /**
+   * Local progress the day is held at the opening afternoon before it
+   * begins to turn — the same hold the first season gets, so the year
+   * and the day start moving together. The cycles run in what remains.
+   */
+  dayHold?: number;
+  /**
+   * The share of each cycle spent in daylight. The sun's arc is warped so
+   * the dark half of a real day squeezes into what is left: night as a
+   * quick pass rather than a blackout. 0.5 is a literal day.
+   */
+  dayShare?: number;
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
@@ -310,7 +321,13 @@ export const scenes: Scene[] = [
     fogDensity: 0.006,
     skyRamp: 0.13,
     seasons: lakeHarrietSeasons,
-    dayCycles: 12,
+    // One day per season. Twelve strobed: at a laptop viewport a full day
+    // passed every 150 px of scroll, so a single flick swung the sky dark
+    // and light several times. The day holds at 4:17 while August is
+    // held, then turns with the year and comes back round to 4:17.
+    dayCycles: 4,
+    dayHold: 0.12,
+    dayShare: 0.8,
     fadeIn: 0.035,
     fadeOut: 0.05,
   },

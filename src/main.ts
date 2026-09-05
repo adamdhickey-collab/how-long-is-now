@@ -76,6 +76,7 @@ scene.add(field);
 // that does so stands the placeholder field down while it runs.
 const yearDef = scenes.find((s) => s.id === 'scene-04-year')!;
 const year = createYearScene(scene, yearDef, reducedMotion);
+let yearWarm = false;
 
 function resize() {
   const { innerWidth: w, innerHeight: h } = window;
@@ -126,6 +127,10 @@ function frame(now: number) {
   const dt = Math.min((now - last) / 1000, 0.1);
   last = now;
   lenis.raf(now);
+
+  // Scene 04's imagery and shaders are readied here, behind the opening
+  // second, so its first frame costs nothing when the lake arrives.
+  if (!yearWarm) yearWarm = year.warm(renderer, camera);
 
   const { scene: active, local, index } = sceneAt(progress);
   if (index !== activeIndex) enterScene(index);
@@ -194,6 +199,7 @@ if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__hlin = {
     scene,
     camera,
+    warmed: () => yearWarm,
     step(at: number, seconds = 0) {
       stepping = true;
       progress = at;

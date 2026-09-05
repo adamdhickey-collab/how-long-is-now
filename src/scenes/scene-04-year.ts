@@ -38,6 +38,13 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
 export interface YearScene {
   /** The scene builds its world once and shows it only while it runs. */
   setActive(on: boolean): void;
+  /**
+   * Upload the imagery and compile the shaders ahead of the scene's first
+   * frame, so the work lands in a scene where nothing happens rather than
+   * mid-scroll as the lake appears. Returns true once done; call it each
+   * frame until then.
+   */
+  warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean;
   /** local: 0–1 through the scene. dt: seconds since the last frame. */
   update(local: number, dt: number): void;
 }
@@ -236,7 +243,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
   // An inert scene rather than a crash if the manifest is incomplete.
   if (!seasons || !plates || !lake || !airDef) {
-    return { setActive: () => {}, update: () => {} };
+    return { setActive: () => {}, update: () => {}, warm: () => true };
   }
 
   const plate = (id: string) => plates.find((p) => p.id === id);
@@ -245,7 +252,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const farBankDef = plate('far-bank');
   const nearBankDef = plate('near-bank');
   if (!skyDef || !canopyDef || !farBankDef || !nearBankDef) {
-    return { setActive: () => {}, update: () => {} };
+    return { setActive: () => {}, update: () => {}, warm: () => true };
   }
 
   // ---- sky: a gradient plane, with the horizon where the manifest puts it.
@@ -537,6 +544,24 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
   let elapsed = 0;
 
+  const imagePlates = [canopyImg, nearImg];
+  let warmed = false;
+  function warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean {
+    if (warmed) return true;
+    if (!imagePlates.every((p) => !p || p.ready)) return false;
+    // compile() walks visible objects only, so the world shows itself to
+    // the compiler for one call and hides again.
+    const was = group.visible;
+    group.visible = true;
+    renderer.compile(world, camera);
+    group.visible = was;
+    for (const p of imagePlates) {
+      for (const l of p?.layers ?? []) if (l.mat.map) renderer.initTexture(l.mat.map);
+    }
+    warmed = true;
+    return true;
+  }
+
   function setActive(on: boolean): void {
     if (group.visible === on) return;
     group.visible = on;
@@ -555,13 +580,32 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     const s = seasonAt(seasons!, local);
 
-    // Where the sun is. Reduced motion holds it at the opening afternoon
-    // rather than swinging the sky a dozen times on the way through.
+    // Where the sun is. The day starts at the afternoon the piece opened
+    // on, and with whole cycles ends there too. Reduced motion holds it
+    // there rather than swinging the sky on the way through.
     const cycles = reducedMotion ? 0 : def.dayCycles ?? 0;
-    const phase = cycles > 0 ? (local * cycles) % 1 : AFTERNOON;
+    const hold = def.dayHold ?? 0;
+    const turned = hold < 1 ? Math.max(0, local - hold) / (1 - hold) : 0;
+    // Scroll time runs evenly; sun time is warped so daylight takes the
+    // share of each cycle the manifest asks for and night is what is left.
+    // Sunrise is 0.25, sunset 0.75, in sun time.
+    const dayShare = Math.min(Math.max(def.dayShare ?? 0.5, 0.05), 0.95);
+    const toSun = (t: number) => {
+      const u = (t - 0.25 + 1) % 1;
+      const q = u < dayShare ? (u / dayShare) * 0.5 : 0.5 + ((u - dayShare) / (1 - dayShare)) * 0.5;
+      return (q + 0.25) % 1;
+    };
+    const toScroll = (q: number) => {
+      const v = (q - 0.25 + 1) % 1;
+      const u = v < 0.5 ? (v / 0.5) * dayShare : dayShare + ((v - 0.5) / 0.5) * (1 - dayShare);
+      return (u + 0.25) % 1;
+    };
+    const phase = cycles > 0 ? toSun((toScroll(AFTERNOON) + turned * cycles) % 1) : AFTERNOON;
     const angle = (phase - 0.25) * Math.PI * 2;
     const elev = Math.sin(angle) * s.sunHeight;
-    const sunX = -Math.cos(angle) * 96;
+    // The arc runs right to left across the western sky, so the 4:17 sun
+    // stands ahead and to the left — where the plates are lit from.
+    const sunX = Math.cos(angle) * 96;
     const daylight = smoothstep(-0.12, 0.2, elev);
 
     // Everything the season declares, dimmed toward night.
@@ -655,5 +699,5 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     attr.needsUpdate = true;
   }
 
-  return { setActive, update };
+  return { setActive, update, warm };
 }
