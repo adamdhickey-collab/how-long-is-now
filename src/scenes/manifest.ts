@@ -272,7 +272,9 @@ export const scenes: Scene[] = [
   {
     id: 'scene-04-year',
     label: '1 YEAR',
-    lengthVh: 200,
+    // Twice the runway of the scenes around it: a year should take a
+    // while, and at 200 a mouse wheel crossed a season in a few notches.
+    lengthVh: 400,
     timeRate: 31_557_600,
     // The first rise: from the bench, up over the elms, the lake opening
     // out below. The park stops being a place you sit in.
