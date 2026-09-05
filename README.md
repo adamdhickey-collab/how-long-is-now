@@ -8,6 +8,7 @@ part cinematic essay.
 | --- | --- |
 | **The concept** | [`CONCEPT.md`](CONCEPT.md) — the experience, scene by scene |
 | **The plan** | [`APPROACH.md`](APPROACH.md) — stack, workflow, order of work |
+| **The imagery** | [`ASSETS.md`](ASSETS.md) — style bible, shot list, the generation loop |
 | **The contract** | [`src/scenes/manifest.ts`](src/scenes/manifest.ts) — every scene's declaration |
 
 ## Run it
@@ -35,6 +36,7 @@ npm run preview    # serve the production build
 PLAN.html                the living plan — where we are, what is next
 CONCEPT.md               the piece, in words
 APPROACH.md              how it gets made
+ASSETS.md                how the imagery gets made — shot list and pipeline
 index.html               the only page — world canvas, HUD, clock, runway
 src/main.ts              scroll → time, the render loop, the HUD
 src/scenes/manifest.ts   the scene manifest (the only source of choreography)

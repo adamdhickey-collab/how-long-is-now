@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { mixHex, seasonAt, type Scene, type Season } from './manifest';
+import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } from './manifest';
 
 /** 4:17pm as a fraction of the day — where the piece begins, and where
  *  reduced motion parks the sun instead of cycling it. */
@@ -362,6 +362,76 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   nearBank.name = 'near-bank';
   group.add(farBank, nearBank);
 
+  // ---- real imagery, where the manifest has it. A plate's images load
+  // behind the first frame; the procedural stand-in holds until every one
+  // of them is in, then hands over. One layer per image, stacked in the
+  // order the manifest declares them.
+  interface ImageLayer {
+    key: string;
+    mat: THREE.MeshBasicMaterial;
+    mesh: THREE.Mesh;
+  }
+  interface ImagePlate {
+    layers: ImageLayer[];
+    ready: boolean;
+  }
+  function imagePlate(
+    p: Plate,
+    geo: THREE.PlaneGeometry,
+    y: number,
+    renderOrder: number,
+    standIns: THREE.Object3D[],
+  ): ImagePlate | null {
+    if (!p.images) return null;
+    const loader = new THREE.TextureLoader();
+    const layers: ImageLayer[] = [];
+    const plate: ImagePlate = { layers, ready: false };
+    Object.keys(p.images).forEach((key, i) => {
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(0, y, p.z + i * 0.05);
+      mesh.renderOrder = renderOrder + i * 0.01;
+      mesh.visible = false;
+      mesh.name = `${p.id}:${key}`;
+      group.add(mesh);
+      layers.push({ key, mat, mesh });
+    });
+    Promise.all(
+      layers.map((l) =>
+        loader.loadAsync(`${import.meta.env.BASE_URL}${p.images![l.key]}`).then((tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          if (p.imageRepeat) {
+            tex.wrapS = THREE.MirroredRepeatWrapping;
+            tex.repeat.x = p.imageRepeat;
+            // Half a tile over, so no mirror seam sits on the centre line
+            // where the eye would read the symmetry.
+            tex.offset.x = 0.5;
+          }
+          l.mat.map = tex;
+          l.mat.needsUpdate = true;
+        }),
+      ),
+    )
+      .then(() => {
+        plate.ready = true;
+        for (const o of standIns) o.visible = false;
+        for (const l of layers) l.mesh.visible = true;
+      })
+      .catch((err) => {
+        console.warn(`[scene-04] ${p.id}: imagery failed to load, stand-in stays`, err);
+      });
+    return plate;
+  }
+
+  const canopyImg = imagePlate(canopyDef, canopyGeo, canopyY, -7, [leafy, bare]);
+  const nearImg = imagePlate(
+    nearBankDef,
+    nearBank.geometry as THREE.PlaneGeometry,
+    nearBank.position.y,
+    -3,
+    [nearBank],
+  );
+
   // ---- the lake: haze toward the far shore, and the sun's path on it.
   const waterFarZ = lake.z - lake.depth / 2;
   const waterMat = new THREE.ShaderMaterial({
@@ -537,6 +607,27 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uSunElev.value = elev;
     waterMat.uniforms.uOpacity.value = alpha;
     if (!reducedMotion) waterMat.uniforms.uTime.value = elapsed;
+
+    // Image plates carry their own colour; only night dims them. Every
+    // active layer is opaque except the frontmost, which carries the
+    // blend — so a cross-fade never lets the sky through the trunks.
+    const nightTint = mixHex(NIGHT_LAND, 0xffffff, 0.14 + 0.86 * daylight);
+    const weights = seasonWeights(seasons!, local);
+    const weightOf = (key: string) => (key === '*' ? 1 : weights[key] ?? 0);
+    const setImage = (plate: ImagePlate | null, shade: number) => {
+      if (!plate?.ready) return;
+      let front = -1;
+      plate.layers.forEach((l, i) => {
+        if (weightOf(l.key) > 0) front = i;
+      });
+      plate.layers.forEach((l, i) => {
+        const w = weightOf(l.key);
+        setTint(l.mat, nightTint, shade);
+        l.mat.opacity = alpha * (w <= 0 ? 0 : i === front ? w : 1);
+      });
+    };
+    setImage(canopyImg, canopyDef!.shade ?? 0);
+    setImage(nearImg, nearBankDef!.shade ?? 0);
 
     setTint(airMat, airCol, 0);
     airMat.opacity = alpha * s.airCount;

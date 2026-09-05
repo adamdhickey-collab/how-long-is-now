@@ -35,6 +35,21 @@ export interface Plate {
    * from under the frame once the camera is looking down on it.
    */
   lip?: number;
+  /**
+   * Real imagery, when the plate has it: WebP with alpha, under
+   * public/plates/, keyed by the season `name` it belongs to. A plate that
+   * looks the same all year keys its one image `'*'`. Until every image a
+   * plate declares has loaded, the procedural stand-in holds the frame.
+   * An image plate carries its own colour: the season palette no longer
+   * tints it, only night does.
+   */
+  images?: Record<string, string>;
+  /**
+   * How many times the image tiles across the plate's width, mirrored at
+   * each seam so the join is invisible. For plates the camera stands
+   * close to, where one frame of imagery is only a slice of the plate.
+   */
+  imageRepeat?: number;
 }
 
 /**
@@ -256,9 +271,39 @@ export const scenes: Scene[] = [
     },
     plates: [
       { id: 'sky', z: -170, width: 620, height: 340, baseY: -90 },
-      { id: 'canopy', z: -46, width: 220, height: 22, baseY: -1, shade: 0.16 },
+      // 2918 × 480 strip: one generated panel per season, its own flanks
+      // mirrored outward. The shoreline sits 15 px above the strip's foot.
+      {
+        id: 'canopy',
+        z: -46,
+        width: 171,
+        height: 28,
+        baseY: -1.9,
+        shade: 0.16,
+        images: {
+          'LATE SUMMER': 'plates/scene-04/canopy-late-summer.webp',
+          AUTUMN: 'plates/scene-04/canopy-autumn.webp',
+          WINTER: 'plates/scene-04/canopy-winter.webp',
+          SPRING: 'plates/scene-04/canopy-spring.webp',
+        },
+      },
       { id: 'far-bank', z: -40, width: 240, height: 6, baseY: -2.2, shade: 0.08, lip: 0.42 },
-      { id: 'near-bank', z: 0, width: 110, height: 26, baseY: -25, shade: 0.42, lip: 0.16 },
+      // 1536 × 844, grass tips at the top edge, ground the rest of the way.
+      // One frame of it is a quarter of the plate: mirrored four times
+      // across, which puts the grass at about four units tall, and deep
+      // enough that ground is still under the frame once the camera has
+      // risen and looks down.
+      {
+        id: 'near-bank',
+        z: 0,
+        width: 110,
+        height: 15,
+        baseY: -14,
+        shade: 0.25,
+        lip: 0.16,
+        images: { '*': 'plates/scene-04/near-bank-late-summer.webp' },
+        imageRepeat: 4,
+      },
     ],
     water: { width: 420, depth: 140, z: 28 },
     air: { count: 2600, spread: 90, height: 30, depth: 55, z: -18, fall: 3.2 },
@@ -342,6 +387,25 @@ export function sceneAt(progress: number): { scene: Scene; local: number; index:
     passed += s.lengthVh;
   }
   return { scene: scenes[0], local: 0, index: 0 };
+}
+
+/**
+ * How much of each named season is present at one point in the year, as
+ * weights that sum to 1. This is what lets a plate with one image per
+ * season cross-fade them by the same blend the palette already uses.
+ */
+export function seasonWeights(seasons: Season[], local: number): Record<string, number> {
+  const t = clamp01(local);
+  let i = 0;
+  while (i < seasons.length - 2 && t > seasons[i + 1].at) i++;
+  const a = seasons[i];
+  const b = seasons[i + 1] ?? a;
+  const span = b.at - a.at;
+  const k = span > 0 ? smoothstep(clamp01((t - a.at) / span)) : 0;
+  const weights: Record<string, number> = {};
+  weights[a.name] = (weights[a.name] ?? 0) + (1 - k);
+  weights[b.name] = (weights[b.name] ?? 0) + k;
+  return weights;
 }
 
 /**
