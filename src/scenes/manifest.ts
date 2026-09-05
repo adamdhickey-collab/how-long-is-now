@@ -366,7 +366,26 @@ export const scenes: Scene[] = [
           SPRING: 'plates/scene-04/canopy-spring.webp',
         },
       },
-      { id: 'far-bank', z: -40, width: 240, height: 6, baseY: -2.2, shade: 0.08, lip: 0.42 },
+      // 1536 × 320, the waterline as a thin strip: riprap and reeds, one
+      // frame mirrored six times across. The rocks' foot sits a little
+      // above the strip's bottom edge, so the plate reaches just below
+      // the waterline.
+      {
+        id: 'far-bank',
+        z: -40,
+        width: 240,
+        height: 8.3,
+        baseY: -1,
+        shade: 0.08,
+        lip: 0.42,
+        images: {
+          'LATE SUMMER': 'plates/scene-04/far-bank-late-summer.webp',
+          AUTUMN: 'plates/scene-04/far-bank-autumn.webp',
+          WINTER: 'plates/scene-04/far-bank-winter.webp',
+          SPRING: 'plates/scene-04/far-bank-spring.webp',
+        },
+        imageRepeat: 6,
+      },
       // 1536 × 844, grass tips at the top edge, ground the rest of the way.
       // One frame of it is a quarter of the plate: mirrored four times
       // across, which puts the grass at about four units tall, and deep

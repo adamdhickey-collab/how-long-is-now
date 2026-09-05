@@ -43,6 +43,15 @@ const NEAR_BANK = {
   crop: { top: 180, height: 844 },
 };
 
+/**
+ * Scene 04's far bank: the far shore's waterline as a thin strip — riprap
+ * and reeds, transparent above and below. One band for all four seasons
+ * so they align; the manifest mirrors it across the plate.
+ */
+const FAR_BANK = {
+  crop: { top: 340, height: 320 },
+};
+
 const SCENES = {
   'scene-04': [
     { id: 'canopy', variant: 'late-summer', raw: 'canopy-august-v4.png', recipe: 'canopy' },
@@ -50,6 +59,10 @@ const SCENES = {
     { id: 'canopy', variant: 'winter', raw: 'canopy-january-v3.png', recipe: 'canopy' },
     { id: 'canopy', variant: 'spring', raw: 'canopy-april-v3.png', recipe: 'canopy' },
     { id: 'near-bank', variant: 'late-summer', raw: 'near-bank-august-v1.png', recipe: 'near-bank' },
+    { id: 'far-bank', variant: 'late-summer', raw: 'far-bank-august-v1.png', recipe: 'far-bank' },
+    { id: 'far-bank', variant: 'autumn', raw: 'far-bank-october-v1.png', recipe: 'far-bank' },
+    { id: 'far-bank', variant: 'winter', raw: 'far-bank-january-v1.png', recipe: 'far-bank' },
+    { id: 'far-bank', variant: 'spring', raw: 'far-bank-april-v1.png', recipe: 'far-bank' },
   ],
 };
 
@@ -82,7 +95,13 @@ async function nearBank(file) {
   return sharp(file).extract({ left: 0, top, width: meta.width, height });
 }
 
-const RECIPES = { canopy: canopyStrip, 'near-bank': nearBank };
+async function farBank(file) {
+  const meta = await sharp(file).metadata();
+  const { top, height } = FAR_BANK.crop;
+  return sharp(file).extract({ left: 0, top, width: meta.width, height });
+}
+
+const RECIPES = { canopy: canopyStrip, 'near-bank': nearBank, 'far-bank': farBank };
 
 async function encode(pipeline, out) {
   // Step quality down until the file fits the budget.

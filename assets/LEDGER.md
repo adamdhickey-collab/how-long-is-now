@@ -95,3 +95,21 @@ were then re-run from it a third time.
 | 6d | `scene-04/canopy-october-v3.png` | **Accept.** Band rows 245–707. |
 | 6e | `scene-04/canopy-january-v3.png` | **Accept.** Band rows 259–712. |
 | 6f | `scene-04/canopy-april-v3.png` | **Accept.** Band rows 273–708. |
+
+## Session 3 · the far bank · 2026-09-05
+
+Same conversation. The far shore's waterline as a thin strip, so the
+canopy's own shoreline shows through and this plate adds only the
+near-water fringe for parallax: riprap boulders, reeds, low shrubs, a
+first strip of bank. Transparent above and below. One frame is mirrored
+six times across the plate.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 7a | `scene-04/far-bank-august-v1.png` | "The far shore's waterline only … one thin horizontal strip running the full width … riprap boulders and rocks with reeds, grasses and low shrubs … a consistent height, roughly one eighth of the frame, centred … transparent above the reeds and below the waterline" | **Accept.** Rows 427–625, solid 508–623, 86 % transparent. Took about four minutes. |
+| 7b | `scene-04/far-bank-october-v1.png` | Same strip, "reeds and grasses tan and rust, shrubs red-brown and thinning, fallen leaves among the rocks" | **Accept.** Rows 416–626. |
+| 7c | `scene-04/far-bank-january-v1.png` | "Snow on the tops of the boulders, reeds dead and pale, dusted with snow, shrubs bare, a thin shelf of ice at the waterline" | **Accept.** Rows 387–650: the ice shelf reaches lower. |
+| 7d | `scene-04/far-bank-april-v1.png` | "Snow gone, rocks dark and wet, last year's reeds flattened with green shoots, shrubs budding" | **Accept.** Rows 354–637. |
+
+Shared crop rows 340–660 so all four align.
+

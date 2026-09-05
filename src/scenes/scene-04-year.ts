@@ -682,6 +682,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     -3,
     [nearBank],
   );
+  const farImg = imagePlate(
+    farBankDef,
+    farBank.geometry as THREE.PlaneGeometry,
+    farBank.position.y,
+    -6,
+    [farBank],
+  );
 
   // ---- the lake: haze toward the far shore, and the sun's path on it.
   const waterFarZ = lake.z - lake.depth / 2;
@@ -788,7 +795,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
   let elapsed = 0;
 
-  const imagePlates = [canopyImg, nearImg];
+  const imagePlates = [canopyImg, farImg, nearImg];
   let warmed = false;
   function warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean {
     if (warmed) return true;
@@ -913,6 +920,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       });
     };
     setImage(canopyImg, canopyDef!.shade ?? 0);
+    setImage(farImg, farBankDef!.shade ?? 0);
     setImage(nearImg, nearBankDef!.shade ?? 0);
 
     setTint(airMat, airCol, 0);
