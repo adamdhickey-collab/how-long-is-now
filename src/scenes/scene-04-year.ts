@@ -16,20 +16,27 @@
 
 import * as THREE from 'three';
 import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } from './manifest';
+import { sunPosition } from './solar';
 
-/** 4:17pm as a fraction of the day — where the piece begins, and where
- *  reduced motion parks the sun instead of cycling it. */
-const AFTERNOON = 0.678;
+/** The sun's record is drawn this far in front of the sky plate; the sun
+ *  itself a little behind that, so the cloud deck between them can pass
+ *  in front of the sun and never in front of the record. */
+const TRAIL_AHEAD = 18;
+const SUN_AHEAD = 8;
+/** The record samples the sun once a day. */
+const DAYS = 365;
+/** Half the width of the ribbon the record is drawn on, world units. */
+const TRAIL_HALF = 3.5;
+/** The sun's glow is drawn on a quad this wide. */
+const GLOW = 110;
+/** The eye the sky is projected from, if the manifest declares no camera:
+ *  the bench, where the piece opens. */
+const DEFAULT_EYE = { y: 1.6, z: 16 };
+/** A long exposure browns: the record is the sun's colour with its blue
+ *  taken out. */
+const AMBER = new THREE.Color(1.0, 0.8, 0.55);
 
-/** The sun's arc across the western sky: a half-ellipse this wide, this
- *  high at full summer height, standing this far above the waterline,
- *  drawn this far in front of the sky plate. */
-const SUN_RX = 96;
-const SUN_ARC_H = 104;
-const SUN_BASE_Y = 5;
-const SUN_AHEAD = 18;
-/** Where 4:17 sits along a day's arc, 0 sunrise to 1 sunset. */
-const AFTERNOON_ALONG = (AFTERNOON - 0.25) / 0.5;
+const D2R = Math.PI / 180;
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 
@@ -234,13 +241,15 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const plates = def.plates;
   const lake = def.water;
   const airDef = def.air;
+  const sunDef = def.sun;
+  const cloudDef = def.clouds;
 
   const group = new THREE.Group();
   group.visible = false;
   world.add(group);
 
   // An inert scene rather than a crash if the manifest is incomplete.
-  if (!seasons || !plates || !lake || !airDef) {
+  if (!seasons || !plates || !lake || !airDef || !sunDef || !cloudDef) {
     return { setActive: () => {}, update: () => {}, warm: () => true };
   }
 
@@ -287,93 +296,266 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   sky.name = 'sky';
   group.add(sky);
 
-  // ---- the solargraph. The sky records the sun's arc, one per week, as
-  // the year advances: a fan of arcs that rises through spring and sinks
-  // through autumn. Nothing flips. The sky holds its season's light and
-  // the record accumulates; the tip of the newest arc is now.
-  const ARCS = Math.max(0, Math.min(def.dayCycles ?? 0, 63));
-  const hold = def.dayHold ?? 0;
-  const arcHeights: number[] = [];
-  const arcColors: THREE.Color[] = [];
-  for (let j = 0; j < 64; j++) {
-    const along = ARCS > 0 ? Math.min(j + 0.5, ARCS) / ARCS : 0;
-    const sj = seasonAt(seasons, clamp01(hold + along * (1 - hold)));
-    arcHeights.push(sj.sunHeight * SUN_ARC_H);
-    arcColors.push(new THREE.Color(sj.sun));
+  // ---- the sun, at 4:17 every day for a year. The manifest says where
+  // and when; the solar arithmetic says where in the sky that puts it;
+  // the lens brings the figure into the band of sky the frame allows.
+  // Everything is projected from one fixed eye — the bench — onto planes
+  // just ahead of the sky plate, so the record is painted on the sky and
+  // stays put while the camera rises.
+  const hold = sunDef.hold;
+  const eye = new THREE.Vector3(
+    0,
+    def.camera?.from.y ?? DEFAULT_EYE.y,
+    def.camera?.from.z ?? DEFAULT_EYE.z,
+  );
+  const trailZ = skyDef.z + TRAIL_AHEAD;
+  const sunZ = skyDef.z + SUN_AHEAD;
+
+  // The apparent direction of the sun on each day of the record.
+  const [openY, openM, openD] = sunDef.opens.split('-').map(Number);
+  const [clockH, clockM] = sunDef.clock.split(':').map(Number);
+  const opensMs = Date.UTC(openY, openM - 1, openD, clockH - sunDef.utcOffset, clockM);
+  const firstSun = sunPosition(opensMs, sunDef.lat, sunDef.lon);
+  const lens = sunDef.lens;
+  const apparent: THREE.Vector3[] = [];
+  for (let i = 0; i <= DAYS; i++) {
+    const real = sunPosition(opensMs + i * 86_400_000, sunDef.lat, sunDef.lon);
+    const alt = (lens.altitude + lens.scale * (real.altitude - firstSun.altitude)) * D2R;
+    const az = (270 - lens.west + lens.scale * (real.azimuth - firstSun.azimuth)) * D2R;
+    // The camera faces west: −z is west and +x is north, so the
+    // afternoon sun, in the south-west, stands ahead and to the left.
+    apparent.push(
+      new THREE.Vector3(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az)),
+    );
   }
-  const trailW = (SUN_RX + 12) * 2;
-  const trailH = SUN_ARC_H + 16;
-  const trailY = SUN_BASE_Y - 6 + trailH / 2;
+
+  /** Where a direction from the eye meets the plane at world z. */
+  const onPlane = (dir: THREE.Vector3, z: number, out: THREE.Vector2): THREE.Vector2 => {
+    const t = (z - eye.z) / dir.z;
+    return out.set(eye.x + t * dir.x, eye.y + t * dir.y);
+  };
+
+  // The record: a ribbon along the figure, revealed as far as today. Each
+  // day's vertex carries its season's sun colour, browned.
+  const trailPts = apparent.map((d) => onPlane(d, trailZ, new THREE.Vector2()));
+  const nPts = trailPts.length;
+  const tPos = new Float32Array(nPts * 2 * 3);
+  const tSide = new Float32Array(nPts * 2);
+  const tT = new Float32Array(nPts * 2);
+  const tCol = new Float32Array(nPts * 2 * 3);
+  const tIdx: number[] = [];
+  const tangent = new THREE.Vector2();
+  const dayCol = new THREE.Color();
+  for (let i = 0; i < nPts; i++) {
+    tangent.subVectors(trailPts[Math.min(i + 1, nPts - 1)], trailPts[Math.max(i - 1, 0)]).normalize();
+    const nx = -tangent.y;
+    const ny = tangent.x;
+    const t = i / (nPts - 1);
+    dayCol.setHex(seasonAt(seasons, clamp01(hold + t * (1 - hold))).sun).multiply(AMBER);
+    for (let k = 0; k < 2; k++) {
+      const side = k === 0 ? -1 : 1;
+      const v = i * 2 + k;
+      tPos[v * 3] = trailPts[i].x + nx * side * TRAIL_HALF;
+      tPos[v * 3 + 1] = trailPts[i].y + ny * side * TRAIL_HALF;
+      tPos[v * 3 + 2] = 0;
+      tSide[v] = side;
+      tT[v] = t;
+      tCol[v * 3] = dayCol.r;
+      tCol[v * 3 + 1] = dayCol.g;
+      tCol[v * 3 + 2] = dayCol.b;
+    }
+    if (i < nPts - 1) {
+      const a = i * 2;
+      tIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
+  trailGeo.setAttribute('aSide', new THREE.BufferAttribute(tSide, 1));
+  trailGeo.setAttribute('aT', new THREE.BufferAttribute(tT, 1));
+  trailGeo.setAttribute('aColor', new THREE.BufferAttribute(tCol, 3));
+  trailGeo.setIndex(tIdx);
   const trailMat = new THREE.ShaderMaterial({
     uniforms: {
-      uArcH: { value: arcHeights },
-      uArcColor: { value: arcColors },
-      uArcs: { value: 0 },
-      uAlong: { value: 0 },
-      uFirst: { value: AFTERNOON_ALONG },
-      uTip: { value: new THREE.Vector2() },
-      uTipColor: { value: new THREE.Color() },
-      uOffsetY: { value: trailY },
+      uNow: { value: 0 },
       uOpacity: { value: 1 },
     },
     vertexShader: `
-      uniform float uOffsetY;
-      varying vec2 vPos;
+      attribute float aSide;
+      attribute float aT;
+      attribute vec3 aColor;
+      varying float vSide, vT;
+      varying vec3 vColor;
       void main() {
-        vPos = position.xy + vec2(0.0, uOffsetY);
+        vSide = aSide;
+        vT = aT;
+        vColor = aColor;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: `
-      #define PI 3.14159265
-      uniform float uArcH[64];
-      uniform vec3 uArcColor[64];
-      uniform int uArcs;
-      uniform float uAlong, uFirst, uOpacity;
-      uniform vec2 uTip;
-      uniform vec3 uTipColor;
-      varying vec2 vPos;
+      uniform float uNow, uOpacity;
+      varying float vSide, vT;
+      varying vec3 vColor;
       void main() {
-        // The record is a wash, not a glow: each week's arc is a soft warm
-        // line, and where weeks overlap the band deepens. Amber is the
-        // season's sun colour with its blue taken out, the way a long
-        // exposure browns.
-        vec3 sum = vec3(0.0);
-        float weight = 0.0;
-        for (int j = 0; j < 64; j++) {
-          if (j > uArcs) break;
-          float H = uArcH[j];
-          vec2 p = vec2(vPos.x / ${SUN_RX.toFixed(1)}, (vPos.y - ${SUN_BASE_Y.toFixed(1)}) / H);
-          if (p.y < 0.0) continue;
-          // Distance to the arc, roughly, in world units; the arc is a
-          // half-ellipse and this is close enough for a soft line.
-          float d = abs(length(p) - 1.0) * min(${SUN_RX.toFixed(1)}, H);
-          float line = exp(-(d * d) / 1.6);
-          // How far along its arc this day has been exposed: whole days
-          // end to end, the first from 4:17, the newest up to now.
-          float a = atan(p.y, p.x) / PI;
-          float from = j == 0 ? uFirst : 0.0;
-          float to = j == uArcs ? uAlong : 1.0;
-          float w = line * smoothstep(-0.006, 0.006, a - from) * smoothstep(0.006, -0.006, a - to);
-          sum += uArcColor[j] * vec3(1.0, 0.8, 0.55) * w;
-          weight += w;
-        }
-        float dt = length(vPos - uTip);
-        float tip = exp(-(dt * dt) / 12.0) * 0.85 + exp(-(dt * dt) / 150.0) * 0.14;
-        float band = min(weight * 0.09, 0.42);
-        float cover = min(band + tip, 0.95);
-        vec3 col = cover > 0.0 ? (sum * (band / max(weight, 1e-4)) + uTipColor * tip) / cover : vec3(0.0);
-        gl_FragColor = vec4(col, cover * uOpacity);
+        // A soft warm line, not a glow: a wash the sky has taken.
+        float d = abs(vSide) * ${TRAIL_HALF.toFixed(1)};
+        float line = exp(-(d * d) / 1.6);
+        // Exposed as far as today. Scrolling back un-exposes.
+        float shown = smoothstep(uNow + 0.002, uNow - 0.002, vT);
+        gl_FragColor = vec4(vColor, line * 0.5 * shown * uOpacity);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    fog: false,
+  });
+  const trail = new THREE.Mesh(trailGeo, trailMat);
+  trail.position.set(0, 0, trailZ);
+  trail.renderOrder = -9;
+  trail.name = 'analemma';
+  group.add(trail);
+
+  // The sun itself: a glow on its own quad, moved to today's position.
+  const sunMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color() },
+      uOpacity: { value: 1 },
+    },
+    vertexShader: `
+      varying vec2 vLocal;
+      void main() {
+        vLocal = position.xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      varying vec2 vLocal;
+      void main() {
+        float d2 = dot(vLocal, vLocal);
+        // A disc that burns out to white, and the glare around it.
+        float core = exp(-d2 / 9.0);
+        float glow = exp(-d2 / 45.0) * 0.9 + exp(-d2 / 520.0) * 0.28;
+        // The halo reaches nothing well inside the quad's edge.
+        glow *= smoothstep(${(GLOW / 2).toFixed(1)}, ${(GLOW / 3.2).toFixed(1)}, sqrt(d2));
+        vec3 col = mix(uColor, vec3(1.0), core * 0.8);
+        gl_FragColor = vec4(col, min(core + glow, 1.0) * uOpacity);
         #include <colorspace_fragment>
       }`,
     transparent: true,
     depthWrite: false,
     fog: false,
   });
-  const trail = new THREE.Mesh(new THREE.PlaneGeometry(trailW, trailH), trailMat);
-  trail.position.set(0, trailY, skyDef.z + SUN_AHEAD);
-  trail.renderOrder = -9;
-  trail.name = 'solargraph';
-  group.add(trail);
+  const sun = new THREE.Mesh(new THREE.PlaneGeometry(GLOW, GLOW), sunMat);
+  sun.renderOrder = -9.6;
+  sun.name = 'sun';
+  group.add(sun);
+
+  // ---- the clouds: a deck of noise between the sun and its record. Read
+  // as a flat layer seen from below, so it is coarse overhead and packs
+  // toward the horizon. Cover and colour are the season's; the field
+  // churns with scroll, because scroll is time, and drifts a little on
+  // its own. Cloud near the sun is lit through.
+  const cloudCentreY = cloudDef.baseY + cloudDef.height / 2;
+  const cloudZ = cloudDef.z;
+  const cloudChurn = cloudDef.churn;
+  const cloudDrift = cloudDef.drift;
+  const cloudMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uLit: { value: new THREE.Color() },
+      uShade: { value: new THREE.Color() },
+      uHaze: { value: new THREE.Color() },
+      uSun: { value: new THREE.Color() },
+      uSunPos: { value: new THREE.Vector2() },
+      uCover: { value: 0 },
+      uTime: { value: 0 },
+      uWind: { value: cloudDef.wind },
+      uScale: { value: cloudDef.scale },
+      uAspect: { value: cloudDef.width / cloudDef.height },
+      uOpacity: { value: 1 },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec2 vLocal;
+      void main() {
+        vUv = uv;
+        vLocal = position.xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uLit, uShade, uHaze, uSun;
+      uniform vec2 uSunPos;
+      uniform float uCover, uTime, uWind, uScale, uAspect, uOpacity;
+      varying vec2 vUv;
+      varying vec2 vLocal;
+
+      float hash(vec3 p) {
+        p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+        p *= 17.0;
+        return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+      }
+      float noise(vec3 x) {
+        vec3 i = floor(x);
+        vec3 f = fract(x);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(
+          mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x),
+              mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+          mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x),
+              mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
+          f.z);
+      }
+      float fbm(vec3 p) {
+        float v = 0.0;
+        float a = 0.5;
+        for (int i = 0; i < 5; i++) {
+          v += a * noise(p);
+          p = p * 2.03 + vec3(1.7, 9.2, 0.0);
+          a *= 0.5;
+        }
+        return v / 0.96875;
+      }
+
+      void main() {
+        float e = vUv.y;
+        // The deck from below: overhead it is coarse; toward the horizon
+        // it packs together, the way a flat layer foreshortens.
+        float depth = 1.0 / (e * 0.75 + 0.25);
+        vec2 c = vec2((vUv.x - 0.5) * uAspect, 1.0) * depth * uScale;
+        c.x += uTime * uWind;
+        float n = fbm(vec3(c, uTime));
+
+        // Cover sets the threshold the noise must clear to be cloud.
+        float th = 0.66 - uCover * 0.33;
+        float cloud = smoothstep(th, th + 0.16, n);
+        float thick = smoothstep(th + 0.06, th + 0.3, n);
+
+        // Lit from the sun's side; thin cloud near the sun is bright with it.
+        vec2 dv = vLocal - uSunPos;
+        float near = exp(-dot(dv, dv) / 1400.0);
+        vec3 col = mix(uLit, uShade, thick * 0.9);
+        col += uSun * near * (1.0 - thick * 0.7) * 0.55;
+        // Toward the horizon the deck sinks into the haze.
+        col = mix(col, uHaze, (1.0 - smoothstep(0.0, 0.4, e)) * 0.75);
+
+        float a = cloud * (0.45 + 0.55 * thick) * uOpacity;
+        gl_FragColor = vec4(col, a);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    fog: false,
+  });
+  const clouds = new THREE.Mesh(new THREE.PlaneGeometry(cloudDef.width, cloudDef.height), cloudMat);
+  clouds.position.set(0, cloudCentreY, cloudDef.z);
+  clouds.renderOrder = -9.3;
+  clouds.name = 'clouds';
+  group.add(clouds);
+
+  // Scratch for the frame.
+  const sunDir = new THREE.Vector3();
+  const sunAt = new THREE.Vector2();
 
   // ---- the elms: one stand, drawn twice, cross-faded by leaf density.
   // Texture height follows the plate's aspect, so a circle drawn on the
@@ -642,21 +824,17 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     const s = seasonAt(seasons!, local);
 
-    // The record so far. Days run end to end with no night between them
-    // — only daylight is recorded — from 4:17 once the hold ends, to 4:17
-    // a year on. Scroll is the exposure; scrolling back un-exposes.
-    const turned = hold < 1 ? Math.max(0, local - hold) / (1 - hold) : 0;
-    const exposure = AFTERNOON_ALONG + turned * ARCS;
-    const arc = Math.min(Math.floor(exposure), ARCS);
-    const along = arc === ARCS && exposure > ARCS ? Math.min(exposure - ARCS, 1) : exposure - arc;
-    const tipAngle = Math.PI * along;
-    const tipH = arcHeights[arc];
-    // The arc runs right to left across the western sky, so the 4:17 sun
-    // stands ahead and to the left — where the plates are lit from. The
-    // water reflects that held afternoon sun, whatever the record shows.
-    const afternoon = Math.PI * AFTERNOON_ALONG;
-    const sunX = Math.cos(afternoon) * SUN_RX;
-    const elev = Math.sin(afternoon) * s.sunHeight;
+    // The record so far: which day's 4:17 is now, from the opening day
+    // once the hold ends to the same day a year on. Scroll is the
+    // exposure; scrolling back un-exposes.
+    const turned = hold < 1 ? clamp01((local - hold) / (1 - hold)) : 0;
+    const day = turned * DAYS;
+    const d0 = Math.min(Math.floor(day), DAYS - 1);
+    sunDir.lerpVectors(apparent[d0], apparent[d0 + 1], day - d0).normalize();
+    // The water's glitter gathers under the sun at the far shore.
+    onPlane(sunDir, waterFarZ, sunAt);
+    const sunX = sunAt.x;
+    const elev = Math.asin(sunDir.y);
 
     const skyZenith = s.skyZenith;
     const skyHorizon = s.skyHorizon;
@@ -679,14 +857,24 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     skyMat.uniforms.uHorizon.value.setHex(skyHorizon);
     skyMat.uniforms.uOpacity.value = alpha;
 
-    trailMat.uniforms.uArcs.value = arc;
-    trailMat.uniforms.uAlong.value = along;
-    trailMat.uniforms.uTip.value.set(
-      Math.cos(tipAngle) * SUN_RX,
-      SUN_BASE_Y + Math.sin(tipAngle) * tipH,
-    );
-    trailMat.uniforms.uTipColor.value.setHex(s.sun);
+    trailMat.uniforms.uNow.value = turned;
     trailMat.uniforms.uOpacity.value = alpha;
+
+    onPlane(sunDir, sunZ, sunAt);
+    sun.position.set(sunAt.x, sunAt.y, sunZ);
+    sunMat.uniforms.uColor.value.setHex(s.sun);
+    sunMat.uniforms.uOpacity.value = alpha;
+
+    onPlane(sunDir, cloudZ, sunAt);
+    cloudMat.uniforms.uSunPos.value.set(sunAt.x, sunAt.y - cloudCentreY);
+    cloudMat.uniforms.uLit.value.setHex(s.cloudLit);
+    cloudMat.uniforms.uShade.value.setHex(s.cloudShade);
+    cloudMat.uniforms.uHaze.value.setHex(haze);
+    cloudMat.uniforms.uSun.value.setHex(s.sun);
+    cloudMat.uniforms.uCover.value = s.cloudCover;
+    cloudMat.uniforms.uTime.value =
+      local * cloudChurn + (reducedMotion ? 0 : elapsed * cloudDrift);
+    cloudMat.uniforms.uOpacity.value = alpha;
 
     setTint(leafyMat, canopy, canopyDef!.shade ?? 0);
     setTint(bareMat, canopy, canopyDef!.shade ?? 0);
