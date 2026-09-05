@@ -53,3 +53,31 @@ Wired the same day: canopy (all four seasons) and near bank are live in
 scene 04 via `npm run plates` and the manifest's `images` declarations.
 The mirrored flanks show as a symmetric pair of backlit crowns at the
 left of the strip; the dedicated left panel (shot 3) is not yet used.
+
+## Session 2 · the real bandshell · 2026-09-05
+
+Same conversation as session 1. The August master (1b) was attached as
+the reference and edited; the seasons were then re-run from the result.
+
+Reference notes (from an image search, not uploaded): the real Lake
+Harriet Bandshell (Milo Thompson, 1986) seen from the lake is a tall
+wooden pavilion whose steep pyramidal roof is its whole character —
+slate blue-grey shingle (repainted blue in 2025; earlier photos show
+tan), pitched almost like a tent, low eaves, a white finial spire. The
+lake-facing wall is a tall gabled projection with one large arched
+window of white mullions under a white X-lattice truss, small dormers,
+white trim. To its left, four smaller octagonal pavilions with steep
+tent roofs and white finials. A boardwalk and low stone edge in front,
+lamp posts, a strip of lawn. It sits at the water's edge among the
+trees.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 5a | — | Master + "replace the small bandshell at the centre with the real Lake Harriet Bandshell … steep pyramidal roof, glass gable under white lattice, four tent pavilions to its left, boardwalk, lamp post" | Recognisable but too delicate: read as a glass conservatory with gazebo-sized pavilions. Superseded by 5b. |
+| — | — | October and January were run from 5a before the second pass | Superseded. |
+| 5b | `scene-04/canopy-august-v3.png` | Second pass on 5a: "far more massive and roof-dominated … not a glass conservatory, the only glass is one gable … pavilions are chunky octagonal buildings, half the height of the main building … everything wood painted blue-grey and white … dock and boardwalk, riprap, lamp posts" | **Accept.** Massive blue-grey pyramidal roof with dormers, arched window under X-lattice, clapboard walls, boardwalk. Drift: five pavilions rather than four. Band rows 272–706. |
+| 6a | `scene-04/canopy-october-v2.png` | Session 1's October prompt on 5b | **Accept.** Band rows 236–707. |
+| 6b | `scene-04/canopy-january-v2.png` | Session 1's January prompt on 5b, plus snow on the roofs | **Accept.** Band rows 271–710. |
+| 6c | `scene-04/canopy-april-v2.png` | Session 1's April prompt on 5b | **Accept.** Band rows 258–709. |
+
+Each edit took two to three minutes, up from about one in session 1.

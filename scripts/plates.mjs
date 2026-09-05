@@ -45,10 +45,10 @@ const NEAR_BANK = {
 
 const SCENES = {
   'scene-04': [
-    { id: 'canopy', variant: 'late-summer', raw: 'canopy-august-v2.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'autumn', raw: 'canopy-october-v1.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'winter', raw: 'canopy-january-v1.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'spring', raw: 'canopy-april-v1.png', recipe: 'canopy' },
+    { id: 'canopy', variant: 'late-summer', raw: 'canopy-august-v3.png', recipe: 'canopy' },
+    { id: 'canopy', variant: 'autumn', raw: 'canopy-october-v2.png', recipe: 'canopy' },
+    { id: 'canopy', variant: 'winter', raw: 'canopy-january-v2.png', recipe: 'canopy' },
+    { id: 'canopy', variant: 'spring', raw: 'canopy-april-v2.png', recipe: 'canopy' },
     { id: 'near-bank', variant: 'late-summer', raw: 'near-bank-august-v1.png', recipe: 'near-bank' },
   ],
 };
