@@ -21,19 +21,17 @@ import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } 
  *  reduced motion parks the sun instead of cycling it. */
 const AFTERNOON = 0.678;
 
-/** Night, borrowed from the piece's own ground so the world falls back to
- *  the colour the HUD already sits on. */
-const NIGHT_SKY = 0x05070c;
-const NIGHT_HORIZON = 0x0a0d14;
-const NIGHT_LAND = 0x090b0d;
-const NIGHT_WATER = 0x080a0e;
-const NIGHT_HAZE = 0x070910;
+/** The sun's arc across the western sky: a half-ellipse this wide, this
+ *  high at full summer height, standing this far above the waterline,
+ *  drawn this far in front of the sky plate. */
+const SUN_RX = 96;
+const SUN_ARC_H = 104;
+const SUN_BASE_Y = 5;
+const SUN_AHEAD = 18;
+/** Where 4:17 sits along a day's arc, 0 sunrise to 1 sunset. */
+const AFTERNOON_ALONG = (AFTERNOON - 0.25) / 0.5;
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
-const smoothstep = (edge0: number, edge1: number, x: number) => {
-  const t = clamp01((x - edge0) / (edge1 - edge0));
-  return t * t * (3 - 2 * t);
-};
 
 export interface YearScene {
   /** The scene builds its world once and shows it only while it runs. */
@@ -289,29 +287,93 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   sky.name = 'sky';
   group.add(sky);
 
-  // ---- sun: one soft disc, arcing.
-  const sunTex = canvasTexture(128, 128, (ctx) => {
-    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-    g.addColorStop(0, 'rgba(255,255,255,1)');
-    g.addColorStop(0.11, 'rgba(255,255,255,0.96)');
-    g.addColorStop(0.2, 'rgba(255,255,255,0.5)');
-    g.addColorStop(0.44, 'rgba(255,255,255,0.16)');
-    g.addColorStop(0.72, 'rgba(255,255,255,0.05)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 128, 128);
-  });
-  const sunMat = new THREE.MeshBasicMaterial({
-    map: sunTex,
+  // ---- the solargraph. The sky records the sun's arc, one per week, as
+  // the year advances: a fan of arcs that rises through spring and sinks
+  // through autumn. Nothing flips. The sky holds its season's light and
+  // the record accumulates; the tip of the newest arc is now.
+  const ARCS = Math.max(0, Math.min(def.dayCycles ?? 0, 63));
+  const hold = def.dayHold ?? 0;
+  const arcHeights: number[] = [];
+  const arcColors: THREE.Color[] = [];
+  for (let j = 0; j < 64; j++) {
+    const along = ARCS > 0 ? Math.min(j + 0.5, ARCS) / ARCS : 0;
+    const sj = seasonAt(seasons, clamp01(hold + along * (1 - hold)));
+    arcHeights.push(sj.sunHeight * SUN_ARC_H);
+    arcColors.push(new THREE.Color(sj.sun));
+  }
+  const trailW = (SUN_RX + 12) * 2;
+  const trailH = SUN_ARC_H + 16;
+  const trailY = SUN_BASE_Y - 6 + trailH / 2;
+  const trailMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uArcH: { value: arcHeights },
+      uArcColor: { value: arcColors },
+      uArcs: { value: 0 },
+      uAlong: { value: 0 },
+      uFirst: { value: AFTERNOON_ALONG },
+      uTip: { value: new THREE.Vector2() },
+      uTipColor: { value: new THREE.Color() },
+      uOffsetY: { value: trailY },
+      uOpacity: { value: 1 },
+    },
+    vertexShader: `
+      uniform float uOffsetY;
+      varying vec2 vPos;
+      void main() {
+        vPos = position.xy + vec2(0.0, uOffsetY);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      #define PI 3.14159265
+      uniform float uArcH[64];
+      uniform vec3 uArcColor[64];
+      uniform int uArcs;
+      uniform float uAlong, uFirst, uOpacity;
+      uniform vec2 uTip;
+      uniform vec3 uTipColor;
+      varying vec2 vPos;
+      void main() {
+        // The record is a wash, not a glow: each week's arc is a soft warm
+        // line, and where weeks overlap the band deepens. Amber is the
+        // season's sun colour with its blue taken out, the way a long
+        // exposure browns.
+        vec3 sum = vec3(0.0);
+        float weight = 0.0;
+        for (int j = 0; j < 64; j++) {
+          if (j > uArcs) break;
+          float H = uArcH[j];
+          vec2 p = vec2(vPos.x / ${SUN_RX.toFixed(1)}, (vPos.y - ${SUN_BASE_Y.toFixed(1)}) / H);
+          if (p.y < 0.0) continue;
+          // Distance to the arc, roughly, in world units; the arc is a
+          // half-ellipse and this is close enough for a soft line.
+          float d = abs(length(p) - 1.0) * min(${SUN_RX.toFixed(1)}, H);
+          float line = exp(-(d * d) / 1.6);
+          // How far along its arc this day has been exposed: whole days
+          // end to end, the first from 4:17, the newest up to now.
+          float a = atan(p.y, p.x) / PI;
+          float from = j == 0 ? uFirst : 0.0;
+          float to = j == uArcs ? uAlong : 1.0;
+          float w = line * smoothstep(-0.006, 0.006, a - from) * smoothstep(0.006, -0.006, a - to);
+          sum += uArcColor[j] * vec3(1.0, 0.8, 0.55) * w;
+          weight += w;
+        }
+        float dt = length(vPos - uTip);
+        float tip = exp(-(dt * dt) / 12.0) * 0.85 + exp(-(dt * dt) / 150.0) * 0.14;
+        float band = min(weight * 0.09, 0.42);
+        float cover = min(band + tip, 0.95);
+        vec3 col = cover > 0.0 ? (sum * (band / max(weight, 1e-4)) + uTipColor * tip) / cover : vec3(0.0);
+        gl_FragColor = vec4(col, cover * uOpacity);
+        #include <colorspace_fragment>
+      }`,
     transparent: true,
-    blending: THREE.AdditiveBlending,
     depthWrite: false,
     fog: false,
   });
-  const sun = new THREE.Mesh(new THREE.PlaneGeometry(52, 52), sunMat);
-  sun.renderOrder = -9;
-  sun.name = 'sun';
-  group.add(sun);
+  const trail = new THREE.Mesh(new THREE.PlaneGeometry(trailW, trailH), trailMat);
+  trail.position.set(0, trailY, skyDef.z + SUN_AHEAD);
+  trail.renderOrder = -9;
+  trail.name = 'solargraph';
+  group.add(trail);
 
   // ---- the elms: one stand, drawn twice, cross-faded by leaf density.
   // Texture height follows the plate's aspect, so a circle drawn on the
@@ -580,42 +642,29 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     const s = seasonAt(seasons!, local);
 
-    // Where the sun is. The day starts at the afternoon the piece opened
-    // on, and with whole cycles ends there too. Reduced motion holds it
-    // there rather than swinging the sky on the way through.
-    const cycles = reducedMotion ? 0 : def.dayCycles ?? 0;
-    const hold = def.dayHold ?? 0;
+    // The record so far. Days run end to end with no night between them
+    // — only daylight is recorded — from 4:17 once the hold ends, to 4:17
+    // a year on. Scroll is the exposure; scrolling back un-exposes.
     const turned = hold < 1 ? Math.max(0, local - hold) / (1 - hold) : 0;
-    // Scroll time runs evenly; sun time is warped so daylight takes the
-    // share of each cycle the manifest asks for and night is what is left.
-    // Sunrise is 0.25, sunset 0.75, in sun time.
-    const dayShare = Math.min(Math.max(def.dayShare ?? 0.5, 0.05), 0.95);
-    const toSun = (t: number) => {
-      const u = (t - 0.25 + 1) % 1;
-      const q = u < dayShare ? (u / dayShare) * 0.5 : 0.5 + ((u - dayShare) / (1 - dayShare)) * 0.5;
-      return (q + 0.25) % 1;
-    };
-    const toScroll = (q: number) => {
-      const v = (q - 0.25 + 1) % 1;
-      const u = v < 0.5 ? (v / 0.5) * dayShare : dayShare + ((v - 0.5) / 0.5) * (1 - dayShare);
-      return (u + 0.25) % 1;
-    };
-    const phase = cycles > 0 ? toSun((toScroll(AFTERNOON) + turned * cycles) % 1) : AFTERNOON;
-    const angle = (phase - 0.25) * Math.PI * 2;
-    const elev = Math.sin(angle) * s.sunHeight;
+    const exposure = AFTERNOON_ALONG + turned * ARCS;
+    const arc = Math.min(Math.floor(exposure), ARCS);
+    const along = arc === ARCS && exposure > ARCS ? Math.min(exposure - ARCS, 1) : exposure - arc;
+    const tipAngle = Math.PI * along;
+    const tipH = arcHeights[arc];
     // The arc runs right to left across the western sky, so the 4:17 sun
-    // stands ahead and to the left — where the plates are lit from.
-    const sunX = Math.cos(angle) * 96;
-    const daylight = smoothstep(-0.12, 0.2, elev);
+    // stands ahead and to the left — where the plates are lit from. The
+    // water reflects that held afternoon sun, whatever the record shows.
+    const afternoon = Math.PI * AFTERNOON_ALONG;
+    const sunX = Math.cos(afternoon) * SUN_RX;
+    const elev = Math.sin(afternoon) * s.sunHeight;
 
-    // Everything the season declares, dimmed toward night.
-    const skyZenith = mixHex(NIGHT_SKY, s.skyZenith, daylight);
-    const skyHorizon = mixHex(NIGHT_HORIZON, s.skyHorizon, daylight);
-    const haze = mixHex(NIGHT_HAZE, s.haze, daylight);
-    const canopy = mixHex(NIGHT_LAND, s.canopy, 0.14 + 0.86 * daylight);
-    const bank = mixHex(NIGHT_LAND, s.bank, 0.12 + 0.88 * daylight);
-    const waterCol = mixHex(NIGHT_WATER, s.water, 0.16 + 0.84 * daylight);
-    const airCol = mixHex(NIGHT_LAND, s.air, 0.2 + 0.8 * daylight);
+    const skyZenith = s.skyZenith;
+    const skyHorizon = s.skyHorizon;
+    const haze = s.haze;
+    const canopy = s.canopy;
+    const bank = s.bank;
+    const waterCol = s.water;
+    const airCol = s.air;
 
     // The scene fades its own world in and out at the edges the manifest
     // declares, so the placeholder field can hand over and take back.
@@ -630,9 +679,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     skyMat.uniforms.uHorizon.value.setHex(skyHorizon);
     skyMat.uniforms.uOpacity.value = alpha;
 
-    sun.position.set(sunX, elev * 104 + 5, skyDef!.z + 18);
-    sunMat.color.setHex(s.sun);
-    sunMat.opacity = alpha * smoothstep(-0.06, 0.16, elev);
+    trailMat.uniforms.uArcs.value = arc;
+    trailMat.uniforms.uAlong.value = along;
+    trailMat.uniforms.uTip.value.set(
+      Math.cos(tipAngle) * SUN_RX,
+      SUN_BASE_Y + Math.sin(tipAngle) * tipH,
+    );
+    trailMat.uniforms.uTipColor.value.setHex(s.sun);
+    trailMat.uniforms.uOpacity.value = alpha;
 
     setTint(leafyMat, canopy, canopyDef!.shade ?? 0);
     setTint(bareMat, canopy, canopyDef!.shade ?? 0);
@@ -652,10 +706,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uOpacity.value = alpha;
     if (!reducedMotion) waterMat.uniforms.uTime.value = elapsed;
 
-    // Image plates carry their own colour; only night dims them. Every
-    // active layer is opaque except the frontmost, which carries the
-    // blend — so a cross-fade never lets the sky through the trunks.
-    const nightTint = mixHex(NIGHT_LAND, 0xffffff, 0.14 + 0.86 * daylight);
+    // Image plates carry their own colour; only their declared shade
+    // dims them. Every active layer is opaque except the frontmost, which
+    // carries the blend — so a cross-fade never lets the sky through the
+    // trunks.
     const weights = seasonWeights(seasons!, local);
     const weightOf = (key: string) => (key === '*' ? 1 : weights[key] ?? 0);
     const setImage = (plate: ImagePlate | null, shade: number) => {
@@ -666,7 +720,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       });
       plate.layers.forEach((l, i) => {
         const w = weightOf(l.key);
-        setTint(l.mat, nightTint, shade);
+        setTint(l.mat, 0xffffff, shade);
         l.mat.opacity = alpha * (w <= 0 ? 0 : i === front ? w : 1);
       });
     };
