@@ -81,3 +81,17 @@ trees.
 | 6c | `scene-04/canopy-april-v2.png` | Session 1's April prompt on 5b | **Accept.** Band rows 258–709. |
 
 Each edit took two to three minutes, up from about one in session 1.
+
+### Session 2b · four pavilions
+
+5b was attached and edited once more: "five small octagonal pavilions;
+the real one has exactly four. Remove the leftmost and let shoreline
+shrubs and trees fill its place." Everything else held. The seasons
+were then re-run from it a third time.
+
+| # | File (once downloaded) | Result |
+| --- | --- | --- |
+| 5c | `scene-04/canopy-august-v4.png` | **Accept.** Four pavilions, building and trees unchanged. Band rows 271–707. |
+| 6d | `scene-04/canopy-october-v3.png` | **Accept.** Band rows 245–707. |
+| 6e | `scene-04/canopy-january-v3.png` | **Accept.** Band rows 259–712. |
+| 6f | `scene-04/canopy-april-v3.png` | **Accept.** Band rows 273–708. |
