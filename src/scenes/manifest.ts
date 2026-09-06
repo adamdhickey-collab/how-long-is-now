@@ -367,15 +367,16 @@ export const scenes: Scene[] = [
         },
       },
       // 1536 × 320, the waterline as a thin strip: riprap and reeds, one
-      // frame mirrored six times across. The rocks' foot sits a little
-      // above the strip's bottom edge, so the plate reaches just below
-      // the waterline.
+      // frame mirrored forty times across, which keeps the reeds at reed
+      // height against the elms and the bandshell — a fringe for
+      // parallax, not a bank. Its rocks sit at the water, its foot just
+      // below, where the lake covers it.
       {
         id: 'far-bank',
         z: -40,
         width: 240,
-        height: 8.3,
-        baseY: -1,
+        height: 1.2,
+        baseY: -0.2,
         shade: 0.08,
         lip: 0.42,
         images: {
@@ -384,7 +385,7 @@ export const scenes: Scene[] = [
           WINTER: 'plates/scene-04/far-bank-winter.webp',
           SPRING: 'plates/scene-04/far-bank-spring.webp',
         },
-        imageRepeat: 6,
+        imageRepeat: 40,
       },
       // 1536 × 844, grass tips at the top edge, ground the rest of the way.
       // One frame of it is a quarter of the plate: mirrored four times
