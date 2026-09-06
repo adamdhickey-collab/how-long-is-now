@@ -42,6 +42,8 @@ const D2R = Math.PI / 180;
 const INK = 0xe8e6e1;
 /** The one accent, reserved for now: here, the radar's sweep. */
 const NOW = 0xd9a95b;
+/** The piece's ground, near-black: what a scope's face is backed with. */
+const GROUND = 0x060708;
 /** How far back an echo's trail reaches, in seconds of falling. */
 const ECHO_TRAIL_S = 0.8;
 /** Where the ring of seasons sits on the screen, in clip space, and its
@@ -437,13 +439,15 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uniform float uNow, uOpacity;
       varying float vSide, vT;
       varying vec3 vColor;
+      uniform vec3 uInk;
       void main() {
-        // A soft warm line, not a glow: a wash the sky has taken.
-        float d = abs(vSide) * ${TRAIL_HALF.toFixed(1)};
-        float line = exp(-(d * d) / 1.6);
+        // A one-pixel stroke of ink down the ribbon's centre: the record
+        // as a drawn line, the way a survey plots it.
+        float w = max(fwidth(vSide), 1e-4);
+        float line = 1.0 - smoothstep(0.5 * w, 1.5 * w, abs(vSide));
         // Exposed as far as today. Scrolling back un-exposes.
         float shown = smoothstep(uNow + 0.002, uNow - 0.002, vT);
-        gl_FragColor = vec4(vColor, line * 0.5 * shown * uOpacity);
+        gl_FragColor = vec4(uInk, line * 0.95 * shown * uOpacity);
         #include <colorspace_fragment>
       }`,
     transparent: true,
@@ -965,7 +969,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         float ang = atan(p.y, p.x);
         float since = mod(ang - uSweep, 6.2831853);
         vR = length(p);
-        vGlow = exp(-since * 2.2) * 0.7 * (1.0 - aTail * 0.85) * step(0.0, clip.w);
+        vGlow = exp(-since * 2.2) * (1.0 - aTail * 0.85) * step(0.0, clip.w);
         gl_Position = vec4(uCentre + p * uRadius, 0.0, 1.0);
       }`,
     fragmentShader: `
@@ -997,6 +1001,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     uniforms: {
       uInk: { value: new THREE.Color(INK) },
       uNow: { value: new THREE.Color(NOW) },
+      uGround: { value: new THREE.Color(GROUND) },
       uOn: { value: 0 },
       uSweep: { value: 0 },
       uCentre: { value: scopeCentre },
@@ -1011,36 +1016,41 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       }`,
     fragmentShader: `
       #define TAU 6.2831853
-      uniform vec3 uInk, uNow;
+      uniform vec3 uInk, uNow, uGround;
       uniform float uOn, uSweep;
       varying vec2 vP;
       void main() {
         float r = length(vP);
         float ang = atan(vP.y, vP.x);
-        // Range rings and bearings, one pixel wide, inside the bezel.
+        // The face is backed with the piece's ground, so its lines read
+        // against any sky; the bezel is a hairline of ink at its edge.
         float rw = fwidth(r);
         float face = 1.0 - smoothstep(1.0 - rw, 1.0 + rw, r);
-        float bezel = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(r - 1.0));
+        float bezel = 1.0 - smoothstep(0.4 * rw, 1.4 * rw, abs(r - 1.0));
+        // Range rings and bearings, one pixel wide, inside the bezel.
         float ring = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(fract(r / 0.25) - 0.5) * 0.25);
         float sp = abs(fract(ang / (TAU / 12.0)) - 0.5) * (TAU / 12.0) * r;
         float sw = fwidth(sp);
         float spoke = (1.0 - smoothstep(0.4 * sw, 1.2 * sw, sp)) * smoothstep(0.04, 0.08, r);
-        float grid = max(max(ring, spoke) * 0.07 * face, bezel * 0.14);
+        float grid = max(ring, spoke) * 0.55 * face;
         // The sweep: a hairline arm, and the glow it leaves behind.
         float since = mod(ang - uSweep, TAU);
         float off = min(since, TAU - since);
         float d = r * sin(min(off, 1.5707963));
         float dw = fwidth(d);
         float arm = (1.0 - smoothstep(0.4 * dw, 1.4 * dw, d)) * step(off, 1.5707963);
-        float glow = exp(-since * 3.5) * 0.07;
-        vec3 col = uInk * grid + uNow * (arm * 0.35 + glow) * reach;
-        gl_FragColor = vec4(col, uOn);
+        float glow = exp(-since * 2.6) * 0.5;
+        float sweep = (arm + glow) * face;
+        // Ink lines and the accent sweep, over the backing, with alpha.
+        float inkW = max(grid, bezel * 0.9);
+        vec3 col = mix(mix(uGround, uInk, inkW), uNow, clamp(sweep, 0.0, 1.0));
+        float a = max(face * 0.62, max(inkW, sweep)) * uOn;
+        gl_FragColor = vec4(col, a);
         #include <colorspace_fragment>
       }`,
     transparent: true,
     depthWrite: false,
     depthTest: false,
-    blending: THREE.AdditiveBlending,
     fog: false,
   });
   const radar = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), radarMat);

@@ -519,7 +519,7 @@ export const scenes: Scene[] = [
         from: 0.16,
         to: 0.92,
         period: 6,
-        scope: { corner: 'top-right', size: 0.14, inset: { x: 0.04, y: 0.095 } },
+        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
       },
       {
         kind: 'thermal',
