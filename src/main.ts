@@ -17,6 +17,7 @@ import gsap from 'gsap';
 import Lenis from 'lenis';
 import { scenes, sceneAt, totalLengthVh } from './scenes/manifest';
 import { createYearScene } from './scenes/scene-04-year';
+import { createTwoClocksScene } from './scenes/scene-08-two-clocks';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -78,6 +79,11 @@ const yearDef = scenes.find((s) => s.id === 'scene-04-year')!;
 const year = createYearScene(scene, yearDef, reducedMotion);
 let yearWarm = false;
 
+// Scene 08 does the same, and renders the frame itself: two views of one
+// corridor, side by side, each through its own camera.
+const twoClocksDef = scenes.find((s) => s.id === 'scene-08-two-clocks')!;
+const twoClocks = createTwoClocksScene(scene, twoClocksDef, reducedMotion);
+
 function resize() {
   const { innerWidth: w, innerHeight: h } = window;
   renderer.setSize(w, h);
@@ -95,6 +101,13 @@ const clock = document.getElementById('clock')!;
 const caption = document.getElementById('caption')!;
 
 let activeIndex = -1;
+let captionUp = false;
+
+function showCaption(up: boolean) {
+  if (captionUp === up) return;
+  captionUp = up;
+  gsap.to(caption, { opacity: up ? 1 : 0, duration: reducedMotion ? 0 : up ? 1.4 : 0.6, ease: 'power2.out' });
+}
 
 function enterScene(index: number) {
   const s = scenes[index];
@@ -108,12 +121,10 @@ function enterScene(index: number) {
   );
   scaleLabel.textContent = s.label;
 
-  if (s.caption) {
-    caption.textContent = s.caption;
-    gsap.to(caption, { opacity: 1, duration: reducedMotion ? 0 : 1.4, ease: 'power2.out' });
-  } else {
-    gsap.to(caption, { opacity: 0, duration: reducedMotion ? 0 : 0.6 });
-  }
+  // A caption is up for the whole scene unless the scene declares the
+  // window it speaks in; then the loop raises it when local gets there.
+  if (s.caption) caption.textContent = s.caption;
+  showCaption(!!s.caption && !s.captionAt);
 }
 
 // ---------------------------------------------------------------- loop
@@ -145,11 +156,16 @@ function frame(now: number) {
   const mm = String(minutes % 60).padStart(2, '0');
   clock.textContent = `${hh}:${mm}`;
 
-  // A scene that declares plates owns the world; the placeholder stands down.
-  const ownsWorld = !!active.plates;
+  // A scene that builds its own world owns it; the placeholder stands down.
+  const ownsWorld = !!active.plates || !!active.twoClocks;
   field.visible = !ownsWorld;
   year.setActive(active.id === 'scene-04-year');
+  twoClocks.setActive(active.id === 'scene-08-two-clocks');
+  if (active.caption && active.captionAt) {
+    showCaption(local >= active.captionAt.from && local <= active.captionAt.to);
+  }
   year.update(local, dt);
+  twoClocks.update(local);
 
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
@@ -185,7 +201,9 @@ function frame(now: number) {
   // The hint dissolves the moment the visitor commits to leaving now.
   scrollHint.style.opacity = progress > 0.005 ? '0' : '1';
 
-  renderer.render(scene, camera);
+  // A scene that splits the frame renders it; otherwise the world is
+  // drawn once through the one camera.
+  if (!twoClocks.render(renderer)) renderer.render(scene, camera);
   if (stepping) return;
   requestAnimationFrame(frame);
 }

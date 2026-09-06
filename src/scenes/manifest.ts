@@ -217,6 +217,56 @@ export interface CloudDeck {
   wind: number;
 }
 
+/**
+ * Scene 08's corridor. Both clocks run down the same one — a long
+ * institutional corridor, doors receding, a light in the ceiling every
+ * few bays — because the point is that the ten minutes are identical and
+ * only the time is different. World units; the camera stands at eye
+ * height, halfway across, and looks down it.
+ */
+export interface Corridor {
+  width: number;
+  height: number;
+  /** How far it runs before the fog takes it: as good as endless. */
+  depth: number;
+  /** Distance between doors, and between ceiling lights. */
+  bay: number;
+  lamp: number;
+}
+
+/**
+ * One way ten minutes can go. `livedBays`: how far down the corridor the
+ * camera travels while it is happening — a few bays for the one who is
+ * waiting, so the same doors creep past forever, and a great many for
+ * the one who is absorbed, so they race. `rememberedBays`: how long the
+ * corridor is once looked back on — the waiting one collapses to a stub
+ * with a wall across it; the absorbed one runs on, hung with fragments.
+ */
+export interface Clock {
+  livedBays: number;
+  rememberedBays: number;
+}
+
+/**
+ * The two clocks: the centrepiece. Two views of one corridor, side by
+ * side, labelled by the state of mind that walks each. Scroll is the ten
+ * minutes; at `turn` the label changes from lived to remembered, the
+ * frame dips to black for `turnOver` of the scene, and the corridors come
+ * back at their remembered lengths. Every number here is choreography;
+ * the scene module only draws it.
+ */
+export interface TwoClocks {
+  corridor: Corridor;
+  turn: number;
+  turnOver: number;
+  labels: { lived: string; remembered: string; waiting: string; absorbed: string };
+  waiting: Clock;
+  /** The absorbed ten minutes break into this many fragments, looking back. */
+  absorbed: Clock & { fragments: number };
+  /** A fragment's world size: a pane hung in the corridor. */
+  fragment: { width: number; height: number };
+}
+
 export interface Scene {
   /** Stable id — also the name used in asset folders and discussions. */
   id: string;
@@ -226,6 +276,9 @@ export interface Scene {
   lengthVh: number;
   /** Center-screen text, if the scene speaks. */
   caption?: string;
+  /** The window of local progress the caption is up for. Absent, the
+   *  caption is up for the whole scene. */
+  captionAt?: { from: number; to: number };
   /**
    * The span of simulated time the whole scene covers, in seconds. The
    * fixed clock reads it out; the world uses it to know what it is
@@ -282,6 +335,8 @@ export interface Scene {
   sun?: SunRecord;
   /** What the sky is doing above the sun. */
   clouds?: CloudDeck;
+  /** Scene 08: the two clocks. A scene that declares this owns the world. */
+  twoClocks?: TwoClocks;
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
@@ -598,7 +653,30 @@ export const scenes: Scene[] = [
     label: '10 MINUTES',
     lengthVh: 200,
     caption: 'Same ten minutes. Different time.',
+    captionAt: { from: 0.86, to: 1 },
     timeRate: 600,
+    // The same ten minutes, walked twice. While it is happening the
+    // waiting clock covers a bay and a half in the whole scene's first
+    // half, the absorbed one thirty. Looking back, the waiting corridor
+    // is a stub one bay long with a wall across it; the absorbed one runs
+    // twenty bays hung with three dozen fragments. The turn is the exact
+    // middle.
+    twoClocks: {
+      corridor: { width: 2.6, height: 3, depth: 160, bay: 4, lamp: 4 },
+      turn: 0.5,
+      turnOver: 0.08,
+      labels: {
+        lived: 'WHILE IT WAS HAPPENING',
+        remembered: 'LOOKING BACK',
+        waiting: 'WAITING FOR IT TO END',
+        absorbed: 'ABSORBED',
+      },
+      waiting: { livedBays: 1.5, rememberedBays: 1 },
+      absorbed: { livedBays: 30, rememberedBays: 20, fragments: 36 },
+      fragment: { width: 0.9, height: 1.2 },
+    },
+    fadeIn: 0.04,
+    fadeOut: 0.03,
   },
   {
     id: 'scene-09-memory-compression',
