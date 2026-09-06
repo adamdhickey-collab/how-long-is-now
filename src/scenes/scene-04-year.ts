@@ -40,6 +40,10 @@ const D2R = Math.PI / 180;
 
 /** The HUD's ink: what every instrument draws its lines in. */
 const INK = 0xe8e6e1;
+/** The one accent, reserved for now: here, the radar's sweep. */
+const NOW = 0xd9a95b;
+/** How far back an echo's trail reaches, in seconds of falling. */
+const ECHO_TRAIL_S = 0.8;
 /** Local progress an instrument spends easing on, and off. */
 const INSTRUMENT_EDGE = 0.02;
 
@@ -811,6 +815,112 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   air.name = 'air';
   group.add(air);
 
+  // ---- the radar: the air read as echoes. Each mote is a short line
+  // along where it has just been, lit as the sweep passes its bearing on
+  // the screen and fading after. Drawn additively, over everything.
+  const echoPos = new Float32Array(airDef.count * 2 * 3);
+  const echoTail = new Float32Array(airDef.count * 2);
+  for (let i = 0; i < airDef.count; i++) echoTail[i * 2 + 1] = 1;
+  const echoGeo = new THREE.BufferGeometry();
+  echoGeo.setAttribute('position', new THREE.BufferAttribute(echoPos, 3));
+  echoGeo.setAttribute('aTail', new THREE.BufferAttribute(echoTail, 1));
+  const echoMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uInk: { value: new THREE.Color(INK) },
+      uOn: { value: 0 },
+      uSweep: { value: 0 },
+      uAspect: { value: 1 },
+    },
+    vertexShader: `
+      attribute float aTail;
+      uniform float uSweep, uAspect;
+      varying float vGlow;
+      void main() {
+        vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec2 ndc = clip.xy / max(clip.w, 1e-4);
+        float ang = atan(ndc.y, ndc.x * uAspect);
+        float since = mod(ang - uSweep, 6.2831853);
+        vGlow = exp(-since * 2.2) * 0.7 * (1.0 - aTail * 0.85);
+        gl_Position = clip;
+      }`,
+    fragmentShader: `
+      uniform vec3 uInk;
+      uniform float uOn;
+      varying float vGlow;
+      void main() {
+        gl_FragColor = vec4(uInk, vGlow * uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const echo = new THREE.LineSegments(echoGeo, echoMat);
+  echo.renderOrder = 6;
+  echo.frustumCulled = false;
+  echo.name = 'radar-echo';
+  group.add(echo);
+
+  // The radar's face: range rings and bearings centred on the viewer,
+  // hairline, and the sweep — the one thing drawn in the accent — with
+  // its afterglow behind it. A screen-space quad; the camera is ignored.
+  const radarMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uInk: { value: new THREE.Color(INK) },
+      uNow: { value: new THREE.Color(NOW) },
+      uOn: { value: 0 },
+      uSweep: { value: 0 },
+      uAspect: { value: 1 },
+    },
+    vertexShader: `
+      varying vec2 vP;
+      void main() {
+        vP = position.xy;
+        gl_Position = vec4(position.xy, 0.0, 1.0);
+      }`,
+    fragmentShader: `
+      #define TAU 6.2831853
+      uniform vec3 uInk, uNow;
+      uniform float uOn, uSweep, uAspect;
+      varying vec2 vP;
+      void main() {
+        vec2 v = vec2(vP.x * uAspect, vP.y);
+        float r = length(v);
+        float ang = atan(v.y, v.x);
+        // Range rings and bearings, one pixel wide, fading out past the
+        // frame's shorter edge.
+        float rw = fwidth(r);
+        float ring = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(fract(r / 0.22) - 0.5) * 0.22);
+        float sp = abs(fract(ang / (TAU / 12.0)) - 0.5) * (TAU / 12.0) * r;
+        float sw = fwidth(sp);
+        float spoke = (1.0 - smoothstep(0.4 * sw, 1.2 * sw, sp)) * smoothstep(0.04, 0.08, r);
+        float reach = 1.0 - smoothstep(0.95, 1.35, r);
+        float grid = max(ring, spoke) * 0.045 * reach;
+        // The sweep: a hairline arm, and the glow it leaves behind.
+        float since = mod(ang - uSweep, TAU);
+        float off = min(since, TAU - since);
+        float d = r * sin(min(off, 1.5707963));
+        float dw = fwidth(d);
+        float arm = (1.0 - smoothstep(0.4 * dw, 1.4 * dw, d)) * step(off, 1.5707963);
+        float glow = exp(-since * 3.5) * 0.07;
+        vec3 col = uInk * grid + uNow * (arm * 0.35 + glow) * reach;
+        gl_FragColor = vec4(col, uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const radar = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), radarMat);
+  radar.renderOrder = 5;
+  radar.frustumCulled = false;
+  radar.name = 'radar';
+  group.add(radar);
+
   // ---- the air's density is the scene's, and it is handed back on exit.
   const fog = world.fog instanceof THREE.FogExp2 ? world.fog : null;
   const fogWas = fog ? { color: fog.color.getHex(), density: fog.density } : null;
@@ -977,6 +1087,40 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     setTint(airMat, airCol, 0);
     airMat.opacity = alpha * s.airCount;
     airMat.size = 0.05 + s.airFall * 0.07;
+
+    // The radar instrument. The sweep turns clockwise at the period the
+    // manifest declares, or holds a bearing under reduced motion; the
+    // echoes trail back along each mote's fall and sway.
+    const radarOn = alpha * instrumentOn('radar', local);
+    const period = def.instruments?.find((i) => i.kind === 'radar')?.period ?? 6;
+    const sweep = reducedMotion ? 2.2 : -((elapsed / period) * Math.PI * 2) % (Math.PI * 2);
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    radar.visible = radarOn > 0;
+    echo.visible = radarOn > 0;
+    radarMat.uniforms.uOn.value = radarOn;
+    radarMat.uniforms.uSweep.value = sweep;
+    radarMat.uniforms.uAspect.value = aspect;
+    echoMat.uniforms.uOn.value = radarOn * s.airCount;
+    echoMat.uniforms.uSweep.value = sweep;
+    echoMat.uniforms.uAspect.value = aspect;
+    if (radarOn > 0) {
+      const pos = airGeo.getAttribute('position') as THREE.BufferAttribute;
+      const back = airDef!.fall * s.airFall * ECHO_TRAIL_S;
+      const swayBack = s.airFall * 0.35 * ECHO_TRAIL_S;
+      for (let i = 0; i < airDef!.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const o = i * 6;
+        echoPos[o] = x;
+        echoPos[o + 1] = y;
+        echoPos[o + 2] = z;
+        echoPos[o + 3] = x - Math.sin(elapsed * 0.8 + airPhase[i]) * swayBack;
+        echoPos[o + 4] = y + back * airSpeed[i];
+        echoPos[o + 5] = z;
+      }
+      (echoGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+    }
 
     if (fog) fog.color.setHex(haze);
 

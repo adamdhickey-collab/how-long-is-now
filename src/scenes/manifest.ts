@@ -104,15 +104,19 @@ export interface CameraMove {
 /**
  * An instrument: one of the things normally invisible, drawn live over
  * the world (see DIRECTION.md). `flow` reads the wind on the water as
- * streamlines. Scroll switches instruments on: each is on screen for a
- * window of the scene's local progress, easing in and out at its edges.
+ * streamlines; `radar` reads the air, a sweep centred on the viewer
+ * lighting each mote and the short trail of where it has been. Scroll
+ * switches instruments on: each is on screen for a window of the
+ * scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow';
+export type InstrumentKind = 'flow' | 'radar';
 
 export interface Instrument {
   kind: InstrumentKind;
   from: number;
   to: number;
+  /** Seconds per revolution, for an instrument that sweeps. */
+  period?: number;
 }
 
 /**
@@ -446,9 +450,14 @@ export const scenes: Scene[] = [
     fogDensity: 0.006,
     skyRamp: 0.13,
     seasons: lakeHarrietSeasons,
-    // The first instrument: the wind read on the water, on once the
-    // world has faded in and off before it fades out.
-    instruments: [{ kind: 'flow', from: 0.05, to: 0.94 }],
+    // The instruments, in the order they come on: the wind read on the
+    // water once the world has faded in, then the radar over the air as
+    // the year begins to turn — pollen, then leaves, then snow — both
+    // off before the world fades out.
+    instruments: [
+      { kind: 'flow', from: 0.05, to: 0.94 },
+      { kind: 'radar', from: 0.16, to: 0.92, period: 6 },
+    ],
     // The sun at 4:17 every day for a year, from the east bank of Lake
     // Harriet. Held to Central Daylight Time all year, the way an analemma
     // photographer holds one time zone. Once August stops being held the
