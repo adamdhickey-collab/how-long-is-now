@@ -127,3 +127,31 @@ keys all four seasons instead of one image for the year.
 
 Same crop as the August frame (rows 180–1024), so the four align.
 
+## Session 5 · moodboards for a new direction · 2026-09-06
+
+A fresh conversation, not the plate one, so nothing inherited the
+photographic style: https://chatgpt.com/c/6a9dc61c-efe0-83e9-ab87-711f8fabf78a
+Three boards, one per way into the brief (surreal, flat vector, maybe
+isometric, invisible layers made visible, overabundant life), all on
+the piece's palette so the winner drops into the design language.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| M1 | `moodboards/m1-flat-vector-abundance.png` | Flat vector, paper cut-out layers, Risograph grain, thin luminous line work for wind, pollen, birdsong, roots, the analemma, a clock ring; 3×3 tiles | Dense, warm, storybook. Not flat: it read the brief as detailed illustration on blue skies, ignoring the near-black ground. The leaf-as-circuitry and the seasons-under-an-analemma tiles are the keepers. About two minutes; the UI showed "Something went wrong" but delivered. |
+| M2 | `moodboards/m2-isometric-diorama.png` | Isometric low-poly diorama, six cutaway layers from sky to soil, contour lines and ticks as a living survey; 3×2 tiles | The strongest as a *system*: six blocks on the near-black ground, the sun's arcs in a glass sky, a wireframe water surface, roots as a network. Loses the eye-level bench view, which is the price of isometric. |
+| M3 | `moodboards/m3-instruments.png` | Flat vector fused with data visualisation: thermal grass, birdsong spectrogram, seed radar, long-exposure sun band, particle pollen, vector water, ring of seasons; 3×3 tiles | The most on-theme for "science-grounded": each tile is the park through one instrument. Style drifted painterly again, but the thermal tile, the seed radar, the vector-arrow water and the ring-of-seasons tile are direct, buildable ideas. |
+
+### Session 5b · the full-frame round
+
+Board M3 chosen. Four of its tiles asked for again as single full-frame
+scenes from the bench, same conversation so the style carried.
+
+| # | File (once downloaded) | Instrument | Result |
+| --- | --- | --- | --- |
+| F1 | `moodboards/f1-thermal.png` | Thermal: near grass warm, water cool, isotherm lines, a dot scale at the edge | The look survives full frame. The bandshell became a generic A-frame, as it does whenever the plate conversation's reference is absent. |
+| F2 | `moodboards/f2-spectrogram.png` | Birdsong as a spectrogram ribbon across the sky, fainter songs from the far trees | Reads clearly; the ribbon sits in the sky above the treeline, which is where the sound layer would live in the build. |
+| F3 | `moodboards/f3-radar.png` | Seed radar: circular grid centred on the viewer, a sweeping arm, seeds as dots with trails | The strongest of the four: the sweep gives the frame a *now*, and the trails are the air particle system with an instrument over it. |
+| F4 | `moodboards/f4-vector-water.png` | The lake as flow arrows and streamlines, brightest along the sun's path | Subtler than the others: concentric streamlines around the reeds and along the glitter path, the rest of the water left natural. Reads as a shader over the existing lake. |
+
+Each took one to two minutes, a third of the plate edits.
+
