@@ -5,13 +5,15 @@ ChatGPT's image tool driven from the browser, and how a picture becomes a
 plate the manifest can place. `CONCEPT.md` says what the piece is;
 `APPROACH.md` says "cheat like crazy"; this file is the cheat, itemised.
 
-Status: **pipeline proven, 2026-09-05.** Session 1 generated its six
-images (seven with one correction); findings in `assets/LEDGER.md`. The
-accepted set is downloaded, `scripts/plates.mjs` (`npm run plates`)
-turns it into WebP plates, and scene 04 runs on them: four seasons of
-canopy cross-faded by the manifest's season blend, and an August near
-bank tiled four times across its plate. Still procedural: the far bank,
-sky, water, sun and air.
+Status: **pipeline proven, 2026-09-05; plates restyled, 2026-09-06.**
+Session 1 generated its six images (seven with one correction); findings
+in `assets/LEDGER.md`. Sessions 2–4 finished the three plate families as
+photographs. Session 6 regenerated all twelve in the illustrated style the
+moodboards decided (`DIRECTION.md`), in the same formats, so
+`scripts/plates.mjs` (`npm run plates`) turns them into the same WebP
+plates and scene 04 runs on them unchanged: four seasons of canopy
+cross-faded by the manifest's season blend, the near bank tiled four
+times, the far bank forty. Still procedural: the sky, water, sun and air.
 
 ## What the tool is, and isn't
 
@@ -57,7 +59,25 @@ Consequences the plan is built around:
 ## The style bible
 
 Every prompt starts from the same paragraph, so the pieces agree with each
-other. This is the paragraph; it gets refined in session 1 and then frozen.
+other. Since session 6 the paragraph is the moodboards' (the M3 board and
+its four full-frame tests, `assets/raw/moodboards/`), and the prompts run
+in that conversation so the style is inherited rather than described:
+
+> In the illustrated style of the four full-frame scenes above: dense
+> stylised foliage built from clean clustered leaf shapes, gold rim light
+> from a low late-August sun ahead and to the left, deep saturated
+> blue-green in the shadows, warm gold in the light, clean crisp edges.
+> Lake Harriet, Minneapolis, from the east bank, looking west across the
+> water at 4:17 in August. Mature American elms and cottonwoods, the real
+> Lake Harriet Bandshell at the far shore. Plain park only: no
+> instruments, no line work, no grids, no arrows, no glow overlays, no
+> people, no boats, no city skyline, no text.
+
+The instruments are never in a plate. They are drawn live over it
+(`DIRECTION.md`); the plate is the park with nothing yet noticed.
+
+The photographic bible that made sessions 1–4 is kept for the record,
+since its plates still exist in `assets/raw/` and could return:
 
 > Photograph, not illustration. Lake Harriet, Minneapolis, from the east
 > bank, looking west across the water. Late afternoon, 4:17 in August:

@@ -295,17 +295,23 @@ export interface Scene {
  * path, and a lake that goes from swimmable to walked-on. The piece opens
  * at 4:17 on an August afternoon on its east bank.
  */
-/** The four palettes the year passes through. */
+/**
+ * The four palettes the year passes through. Since the plates were
+ * redrawn in the moodboards' style (assets/LEDGER.md, session 6) the
+ * sky and water are graded to the boards: the zenith a saturated blue,
+ * the water deep, the horizon still carrying the afternoon's warmth.
+ * The canopy and bank colours only tint the procedural stand-ins now.
+ */
 type Palette = Omit<Season, 'at'>;
 
 const LATE_SUMMER: Palette = {
   name: 'LATE SUMMER',
-  skyZenith: 0x5a92bd,
-  skyHorizon: 0xd8c9a8,
+  skyZenith: 0x1d6cae,
+  skyHorizon: 0x9dbfd0,
   haze: 0xa9a084,
   canopy: 0x2f4128,
   bank: 0x1b2418,
-  water: 0x35566a,
+  water: 0x1f4f6e,
   sun: 0xffe6b0,
   cloudCover: 0.32,
   cloudLit: 0xfff3dc,
@@ -322,12 +328,12 @@ const LATE_SUMMER: Palette = {
 
 const AUTUMN: Palette = {
   name: 'AUTUMN',
-  skyZenith: 0x35648b,
-  skyHorizon: 0xe0b884,
+  skyZenith: 0x2a5f95,
+  skyHorizon: 0xc9b58f,
   haze: 0xb0906a,
   canopy: 0x8a5a24,
   bank: 0x2a2015,
-  water: 0x344a58,
+  water: 0x28485f,
   sun: 0xffd79a,
   cloudCover: 0.5,
   cloudLit: 0xf7e2c4,
@@ -366,12 +372,12 @@ const WINTER: Palette = {
 
 const SPRING: Palette = {
   name: 'SPRING',
-  skyZenith: 0x4e7ea8,
-  skyHorizon: 0xd6d9c4,
+  skyZenith: 0x3577ad,
+  skyHorizon: 0xb3c9cf,
   haze: 0xa8ae98,
   canopy: 0x4e6b34,
   bank: 0x2f3a20,
-  water: 0x416274,
+  water: 0x2f5a74,
   sun: 0xffeec6,
   cloudCover: 0.46,
   cloudLit: 0xf6f2e6,
@@ -437,14 +443,20 @@ export const scenes: Scene[] = [
     },
     plates: [
       { id: 'sky', z: -170, width: 620, height: 340, baseY: -90 },
-      // 2918 × 480 strip: one generated panel per season, its own flanks
-      // mirrored outward. The shoreline sits 15 px above the strip's foot.
+      // 2918 × 628 strip: one drawn panel per season, its own flanks
+      // mirrored outward. The shoreline sits 14 px above the strip's foot.
+      // The drawn elms fill more of their frame than the photographs did,
+      // so the plate is taller than it was and narrower, keeping the
+      // strip's own proportions: a tree is the shape it was drawn. It sits
+      // a little lower too, its foot behind the far bank, so the crowns
+      // stay under December's sun. 150 wide clears a 2:1 frame at the top
+      // of the rise; wider screens see the strip's ends.
       {
         id: 'canopy',
         z: -46,
-        width: 171,
-        height: 28,
-        baseY: -1.9,
+        width: 150,
+        height: 32.3,
+        baseY: -2.6,
         shade: 0.16,
         images: {
           'LATE SUMMER': 'plates/scene-04/canopy-late-summer.webp',
@@ -474,7 +486,7 @@ export const scenes: Scene[] = [
         },
         imageRepeat: 40,
       },
-      // 1536 × 844, grass tips at the top edge, ground the rest of the way.
+      // 1536 × 884, grass tips at the top edge, ground the rest of the way.
       // One frame of it is a quarter of the plate: mirrored four times
       // across, which puts the grass at about four units tall, and deep
       // enough that ground is still under the frame once the camera has
@@ -483,7 +495,7 @@ export const scenes: Scene[] = [
         id: 'near-bank',
         z: 0,
         width: 110,
-        height: 15,
+        height: 15.8,
         baseY: -14,
         shade: 0.25,
         lip: 0.16,

@@ -6,9 +6,16 @@ says what the piece is; this file says what it looks like from here.
 
 ## The decision
 
-The park stays real. What changes is that the things normally invisible
-are drawn over it, one instrument at a time, and scroll is what switches
-them on. Heat, sound, wind, what is in the air, the sun's record, the
+The park stays the park: the bench, the lake, the bandshell, the same
+plates at the same distances. What changes is that the things normally
+invisible are drawn over it, one instrument at a time, and scroll is what
+switches them on.
+
+Amended 2026-09-06, the same day: the plates themselves are redrawn in
+the boards' illustrated style rather than left photographic (ledger
+session 6). The boards were the better picture, and a photograph under a
+drawn instrument read as two pieces; a drawn park under a drawn
+instrument reads as one. Heat, sound, wind, what is in the air, the sun's record, the
 year's ring, the network inside a leaf: each is a layer the world can be
 seen through, drawn live over the plates, never baked into them.
 
@@ -37,9 +44,10 @@ drive the spectrogram.
 
 ## Rules
 
-- **Drawn live, never generated.** Every instrument is a shader, a
-  particle pass or a screen-space SVG over the world. The ChatGPT tests
-  were look tests; their painterly drift is not inherited, because
+- **Instruments are drawn live, never generated.** Every instrument is
+  a shader, a particle pass or a screen-space SVG over the world. The
+  plates are generated stills in the boards' style (`ASSETS.md`), but
+  they carry no instrument: the full-frame tests were look tests, and
   nothing from them enters the build.
 - **One accent, for now.** The amber marks the present moment only: the
   radar's sweep, the record's tip, the crosshair. Everything else an

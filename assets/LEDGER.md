@@ -155,3 +155,137 @@ scenes from the bench, same conversation so the style carried.
 
 Each took one to two minutes, a third of the plate edits.
 
+
+## Session 6 · the plates, redrawn · 2026-09-06
+
+The moodboard conversation again (not the plate one), so the plates
+inherit the boards' style rather than the photographs': the illustrated
+look of board M3 and the four full-frame tests. Every scene 04 plate
+family regenerated, four seasons each, as transparent cutouts in the
+same formats as sessions 1–4 so `scripts/plates.mjs` needs only new
+crop rows. Attaching the August canopy photograph as a composition
+reference was blocked by the browser tooling, so the real bandshell was
+described in words (session 2's description) and held.
+
+Style line used on every first shot of a family, then "same style":
+
+> In the illustrated style of the four full-frame scenes above: dense
+> stylised foliage built from clean clustered leaf shapes, gold rim light
+> from a low late-August sun ahead and to the left, deep saturated
+> blue-green in the shadows, warm gold in the light, clean crisp edges.
+> Plain park only: no instruments, no line work, no grids, no arrows, no
+> glow overlays, no people, no boats, no city skyline, no text.
+
+Each fresh generation took 60–100 s. The one *edit* (9b) took over
+three minutes and lost the alpha.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 9a | `scene-04/canopy-august-v5.png` | Style line + "the far treeline of Lake Harriet seen from across the water, mature elms and cottonwoods in full late-August leaf, one horizontal band filling the middle of the frame, bottom edge is the shoreline: riprap and a thin strip of bank" + the bandshell description from session 2 + "everything above the trees fully transparent alpha, no water" | **Accept.** Illustrated, gold-lit, the real bandshell with four pavilions, boardwalk and lamp posts, riprap along the foot, transparent sky. Trees fill the band's full height. |
+| 10a | `scene-04/canopy-october-v4.png` | "Same image again, same trees, same bandshell … mid-October: canopy two-thirds full and turned amber, gold and rust, bare branches showing, leaves in the air, shrubs rust, sun lower" | **Accept.** Same layout, amber. |
+| 10b | `scene-04/canopy-january-v4.png` | "… mid-January: elms completely bare, every branch drawn clean, dusting of snow on branches and roofs, shoreline snow-covered, flat pale light, grey-blue and warm brown" | **Accept.** Bare elms, snow on the pyramidal roof and pavilions. |
+| 10c | `scene-04/canopy-april-v4.png` | "… late April: elms half-leafed in pale yellow-green, canopy translucent with branches through the new leaves, shrubs budding, snow gone, rocks wet" | **Accept.** |
+| 11a | `scene-04/near-bank-august-v2.png` | Style line + "the NEAR bank, seen from behind at eye height, sun ahead-left backlighting: tall grasses, reeds and cattails, black-eyed susans, white asters, goldenrod; bottom third solid ground, mown grass and the edge of a paved path; transparent above the grass tips, no sky, no water, no trees, no bench" | **Accept.** Cattails and coneflowers rim-lit gold, path and mown grass solid below, clean alpha above. |
+| 11b | `scene-04/near-bank-october-v2.png` | "… mid-October: grasses tan and straw-gold, seed heads dry, wildflowers finished and brown, cattails split, shrubs rust, fallen amber leaves in the grass and on the path" | **Accept.** |
+| 11c | `scene-04/near-bank-january-v2.png` | "… mid-January: grasses dead, pale tan and bent, heavy with snow, cattails broken, snow on the ground and path with walked footprints, snow in the bare shrubs" | **Accept.** |
+| 11d | — | "… late April: snow gone, last year's grasses flattened and pale with green shoots, cattails broken and grey, shrubs budding, ground wet, mown grass greening" | **Miss:** black-eyed susans in bloom in April. |
+| 11e | — | Edit of 11d: "remove the yellow flowers and any other blooms, nothing is in flower yet in late April" | **Reject.** Flowers gone, but the edit painted a grey fog where the alpha was. Not downloaded. |
+| 11f | `scene-04/near-bank-april-v3.png` | Fresh generation, not an edit, the April addendum with "nothing is in flower: no black-eyed susans, no blooms of any kind" in the prompt itself | **Accept.** Pale flattened grasses with green shoots, clean alpha. |
+| 12a | `scene-04/far-bank-august-v2.png` | Style line + "the far shore's waterline only, one thin horizontal strip running the full width, centred, about one eighth of the frame tall: riprap boulders with reeds, grasses and low shrubs among and behind them; transparent above the reeds and below the waterline" | **Accept.** |
+| 12b | `scene-04/far-bank-october-v2.png` | "… mid-October: reeds and grasses tan and rust, shrubs red-brown and thinning, fallen amber leaves among the rocks" | **Accept.** |
+| 12c | `scene-04/far-bank-january-v2.png` | "… mid-January: snow on the tops of the boulders, reeds dead and pale, dusted with snow, shrubs bare, a thin shelf of ice along the waterline" | **Accept.** (The first send of this prompt never submitted; resent.) |
+| 12d | `scene-04/far-bank-april-v2.png` | "… late April: snow and ice gone, rocks dark and wet, last year's reeds flattened with green shoots, shrubs budding" | **Accept.** |
+
+### What session 6 decided
+
+1. **The illustrated style survives the plate formats.** Cutouts with
+   alpha come out as clean as the photographs did, and seasons hold
+   their layout inside one conversation exactly as before.
+2. **Describe, don't edit.** An edit of a transparent image lost its
+   alpha (11e); a fresh generation with the correction written into the
+   season line (11f) did not. Corrections go in the prompt, not the
+   edit tool.
+3. **The bandshell holds from words alone** when the session 2
+   description is given in full, so the photographic reference is not
+   needed for this conversation either.
+4. **Palette follows the plates.** The generated plates carry more
+   saturated blue-greens and golds than the photographs did; the
+   manifest's four season palettes (sky, water, haze, sun) are re-graded
+   against them once they are in the scene, the way ASSETS.md says
+   colour is negotiated.
+
+### Session 6b · wiring, and what the plates changed
+
+Downloaded 2026-09-06 into `assets/raw/scene-04/` (the twelve accepted;
+11d and 11e left in the conversation). Measured alpha bounds, 1536 × 1024:
+
+| Family | Band (rows) | Crop in `plates.mjs` |
+| --- | --- | --- |
+| Canopy | 240–853 (April tallest, January's bare crowns to 257) | 232, 628 tall |
+| Near bank | grass tips from 147–158, ground to the foot | 140, 884 tall; alpha forced opaque from crop row 440 down |
+| Far bank | 408–667 (April's wet rocks lowest) | 355, 320 tall |
+
+What wiring them decided:
+
+1. **The drawn treeline is taller than the photographed one** — the band
+   is 628 rows against 480 — so the canopy plate keeps the strip's own
+   proportions rather than its old size: 150 × 32.3 world units instead of
+   171 × 28, and 0.7 lower so December's sun clears the crowns. 150 clears
+   a 2:1 frame at the top of the rise; wider screens see the strip's ends.
+2. **Neither flank can be a mirror.** The pavilions stand near the panel's
+   left edge and the bandshell reaches to within ~145 columns of its
+   right, so mirroring either edge put a second bandshell on the shore.
+   Both flanks now tile the tree-only right slice out and back, the left
+   one cross-faded under the panel's first 110 columns. Visible as
+   repeating crowns at the strip's ends; the fix is a trees-only
+   extension panel per season (13a–d, below).
+3. **The near bank's lawn was not quite solid**: about 7 % of its ground
+   pixels came out between half and full alpha, enough to let the lake
+   show through once the camera looks down. `plates.mjs` forces the
+   ground opaque; no pixel there was ever fully clear.
+4. **The palettes followed the plates.** Late summer's sky went from
+   `5a92bd→d8c9a8` to `1d6cae→9dbfd0` and its water from `35566a` to
+   `1f4f6e`, sampled from the boards (`f4` sky top `#186eaf`, water
+   `#0e4767`–`#235772`); autumn and spring deepened the same way; winter
+   already agreed. The canopy and bank colours now tint only the
+   procedural stand-ins.
+5. **Budget:** 4.9 MB of WebP for the twelve plates, the winter canopy
+   at 693 KB the largest; the spring canopy needed a fourth quality
+   step (q54) to fit. The bare-branch seasons still cost the most.
+
+### Session 6c · the treeline's ends
+
+Same conversation. Trees-only continuations of the treeline, one per
+season, to replace the tiled flanks. Downloaded and filed the same day.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 13a | `scene-04/canopy-ext-august-v1.png` | "The same Lake Harriet treeline continuing further along the shore, away from the bandshell. Trees only … riprap, low shrubs and a strip of bank along the bottom edge, two lamp posts on the shore path. No bandshell, no pavilions, no buildings" | **Accept** on screen: trees only, band height and shoreline match. |
+| 13b | `scene-04/canopy-ext-october-v1.png` | Same continuation, session 6's October addendum | **Accept** on screen. |
+| 13c | `scene-04/canopy-ext-january-v1.png` | Same continuation, the January addendum | **Accept** on screen. |
+| 13d | `scene-04/canopy-ext-april-v1.png` | Same continuation, the April addendum | **Accept** on screen. |
+
+`scripts/plates.mjs` looks for each `ext` file beside its panel and uses
+it for both flanks when it is there (its right end under the panel's left
+edge; flipped, its left end under the right), tiling the panel's own
+tree slice until then and saying so in its output.
+
+As session 1's shot 3 warned, the continuations drifted: each came out
+larger than its master and with its shoreline lower.
+
+| Season | Master band (rows) | Extension band | Scale applied |
+| --- | --- | --- | --- |
+| August | 283–841 | 236–847 | ×0.913 |
+| October | 277–845 | 192–859 | ×0.852 |
+| January | 257–846 | 184–889 | ×0.835 |
+| April | 240–846 | 175–865 | ×0.878 |
+
+So the recipe measures both (first row with anything in it, last row of
+solid ground), resizes the extension uniformly until its band is the
+master's height, shifts it so the shorelines share a row, then applies
+the master's crop. The four strips came out with one bandshell each and
+a continuous treeline to both ends; the canopy plates sit at 593–699 KB.
+
+A note for the file loop: the download batch was renamed by
+modification time and one rename overwrote another, losing August;
+re-downloaded. Rename one file at a time, checking each.
