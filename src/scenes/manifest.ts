@@ -93,6 +93,13 @@ export interface Season {
    */
   windFrom: number;
   windSpeed: number;
+  /**
+   * Afternoon surface temperatures, degrees Celsius: the sunlit bank,
+   * and the lake. Grass warms far past the air by mid-afternoon and the
+   * water barely moves; in January both are the snow and the ice.
+   */
+  tempGround: number;
+  tempWater: number;
 }
 
 /** A camera move, declared start to end across the scene's own progress. */
@@ -104,12 +111,24 @@ export interface CameraMove {
 /**
  * An instrument: one of the things normally invisible, drawn live over
  * the world (see DIRECTION.md). `flow` reads the wind on the water as
- * streamlines; `radar` reads the air, a sweep centred on the viewer
- * lighting each mote and the short trail of where it has been. Scroll
- * switches instruments on: each is on screen for a window of the
- * scene's local progress, easing in and out at its edges.
+ * streamlines; `radar` reads the air into a small scope in the frame's
+ * corner, a sweep lighting each mote and the short trail of where it has
+ * been. Scroll switches instruments on: each is on screen for a window
+ * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal';
+
+/**
+ * Where an instrument that draws into a scope sits: which corner of the
+ * frame, its diameter, and how far in from the corner's two edges — all
+ * as fractions of the frame's shorter edge. Without one the instrument
+ * fills the frame, centred.
+ */
+export interface Scope {
+  corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  size: number;
+  inset: { x: number; y: number };
+}
 
 export interface Instrument {
   kind: InstrumentKind;
@@ -117,6 +136,14 @@ export interface Instrument {
   to: number;
   /** Seconds per revolution, for an instrument that sweeps. */
   period?: number;
+  scope?: Scope;
+  /**
+   * The reading's own ramp, cold to hot, for an instrument that reads a
+   * quantity as colour; and the values, in the quantity's units, at the
+   * ramp's two ends. Thermal reads degrees Celsius.
+   */
+  ramp?: number[];
+  range?: [number, number];
 }
 
 /**
@@ -273,6 +300,8 @@ const LATE_SUMMER: Palette = {
   airCount: 0.22,
   windFrom: 180,
   windSpeed: 3.8,
+  tempGround: 32,
+  tempWater: 24,
 };
 
 const AUTUMN: Palette = {
@@ -293,6 +322,8 @@ const AUTUMN: Palette = {
   airCount: 0.7,
   windFrom: 315,
   windSpeed: 4.4,
+  tempGround: 14,
+  tempWater: 12,
 };
 
 const WINTER: Palette = {
@@ -313,6 +344,8 @@ const WINTER: Palette = {
   airCount: 1,
   windFrom: 320,
   windSpeed: 4.5,
+  tempGround: -6,
+  tempWater: -1,
 };
 
 const SPRING: Palette = {
@@ -333,6 +366,8 @@ const SPRING: Palette = {
   airCount: 0.45,
   windFrom: 330,
   windSpeed: 5.2,
+  tempGround: 16,
+  tempWater: 8,
 };
 
 /**
@@ -454,9 +489,28 @@ export const scenes: Scene[] = [
     // water once the world has faded in, then the radar over the air as
     // the year begins to turn — pollen, then leaves, then snow — both
     // off before the world fades out.
+    // The thermal ramp is the palette's own colours in temperature
+    // order: the winter zenith, the summer lake, the autumn horizon's
+    // sand, the August sun — over the span the banks and the water
+    // actually cover in a year.
     instruments: [
       { kind: 'flow', from: 0.05, to: 0.94 },
-      { kind: 'radar', from: 0.16, to: 0.92, period: 6 },
+      // The radar is a scope a quarter of the frame's short edge across,
+      // tucked under the clock: a corner instrument, not a veil.
+      {
+        kind: 'radar',
+        from: 0.16,
+        to: 0.92,
+        period: 6,
+        scope: { corner: 'top-right', size: 0.25, inset: { x: 0.04, y: 0.1 } },
+      },
+      {
+        kind: 'thermal',
+        from: 0.3,
+        to: 0.9,
+        ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0],
+        range: [-10, 36],
+      },
     ],
     // The sun at 4:17 every day for a year, from the east bank of Lake
     // Harriet. Held to Central Daylight Time all year, the way an analemma
@@ -613,5 +667,7 @@ export function seasonAt(seasons: Season[], local: number): Season {
     airCount: mix(a.airCount, b.airCount, k),
     windFrom: mixBearing(a.windFrom, b.windFrom, k),
     windSpeed: mix(a.windSpeed, b.windSpeed, k),
+    tempGround: mix(a.tempGround, b.tempGround, k),
+    tempWater: mix(a.tempWater, b.tempWater, k),
   };
 }

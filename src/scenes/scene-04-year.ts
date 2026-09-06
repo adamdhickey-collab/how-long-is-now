@@ -44,6 +44,34 @@ const INK = 0xe8e6e1;
 const NOW = 0xd9a95b;
 /** How far back an echo's trail reaches, in seconds of falling. */
 const ECHO_TRAIL_S = 0.8;
+
+/**
+ * The thermal reading, shared by every surface that takes it: a
+ * three-stop ramp from cold to hot, and hairline isotherms every eighth
+ * of the range. `t` is the temperature as a fraction of the ramp.
+ */
+const THERMAL_GLSL = `
+  uniform float uThermal, uThermalTime;
+  uniform vec3 uRamp0, uRamp1, uRamp2, uRamp3, uThermalInk;
+  vec3 thermalRamp(float t) {
+    t = clamp(t, 0.0, 1.0) * 3.0;
+    if (t < 1.0) return mix(uRamp0, uRamp1, t);
+    if (t < 2.0) return mix(uRamp1, uRamp2, t - 1.0);
+    return mix(uRamp2, uRamp3, t - 2.0);
+  }
+  // Isotherms every eighth of the range, drawn on the smooth field so
+  // they run as contours across a surface, not along every blade.
+  float isotherm(float t) {
+    float k = t * 8.0;
+    float d = min(fract(k), 1.0 - fract(k));
+    float w = max(fwidth(k), 1e-4);
+    return 1.0 - smoothstep(0.5 * w, 1.5 * w, d);
+  }
+  // The reading drifts a little as the afternoon moves on.
+  float thermalDrift(vec2 sc) {
+    return sin(sc.x * 3.1 + uThermalTime * 0.17) * 0.03 + sin(sc.y * 2.3 - uThermalTime * 0.11) * 0.03;
+  }
+`;
 /** Local progress an instrument spends easing on, and off. */
 const INSTRUMENT_EDGE = 0.02;
 
@@ -626,6 +654,67 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   // behind the first frame; the procedural stand-in holds until every one
   // of them is in, then hands over. One layer per image, stacked in the
   // order the manifest declares them.
+  // ---- the thermal reading's uniforms, shared by the banks and the lake
+  // so one update sets them all. The ramp is the instrument's own.
+  const thermalDef = def.instruments?.find((i) => i.kind === 'thermal');
+  const thermalRamp = thermalDef?.ramp ?? [0x24425f, 0x35566a, 0xe8e6e1];
+  const thermalRange = thermalDef?.range ?? [-10, 36];
+  const thermalU = {
+    uThermal: { value: 0 },
+    uThermalTime: { value: 0 },
+    uThermalInk: { value: new THREE.Color(INK) },
+    uRamp0: { value: new THREE.Color(thermalRamp[0]) },
+    uRamp1: { value: new THREE.Color(thermalRamp[1] ?? thermalRamp[0]) },
+    uRamp2: { value: new THREE.Color(thermalRamp[2] ?? thermalRamp[1] ?? thermalRamp[0]) },
+    uRamp3: { value: new THREE.Color(thermalRamp[3] ?? thermalRamp[2] ?? thermalRamp[0]) },
+    uTempGround: { value: 0 },
+    uTempWater: { value: 0 },
+  };
+  const thermalNorm = (celsius: number) =>
+    (celsius - thermalRange[0]) / Math.max(1e-3, thermalRange[1] - thermalRange[0]);
+
+  /**
+   * The thermal pass on a plate: the image's own luminance stands in for
+   * how much sun each blade and stone has taken, warming the season's
+   * base temperature, and the result is read through the ramp with its
+   * isotherms. Installed on the material's own shader, so the plate's
+   * alpha and cross-fade are untouched.
+   */
+  const thermalPlate = (mat: THREE.MeshBasicMaterial) => {
+    mat.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, {
+        uThermal: thermalU.uThermal,
+        uThermalTime: thermalU.uThermalTime,
+        uThermalInk: thermalU.uThermalInk,
+        uRamp0: thermalU.uRamp0,
+        uRamp1: thermalU.uRamp1,
+        uRamp2: thermalU.uRamp2,
+        uRamp3: thermalU.uRamp3,
+        uTempBase: thermalU.uTempGround,
+      });
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', `${THERMAL_GLSL}
+  uniform float uTempBase;
+  void main() {`)
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+          #ifdef USE_MAP
+          if (uThermal > 0.0) {
+            float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+            float field = uTempBase + thermalDrift(gl_FragCoord.xy * 0.004);
+            float t = field + (lum - 0.45) * 0.35;
+            // The blades keep their light: the ramp is shaded by the
+            // image's own luminance, so the bank stays a bank.
+            vec3 heat = thermalRamp(t) * (0.55 + 0.9 * lum);
+            heat = mix(heat, uThermalInk, isotherm(field) * 0.25);
+            diffuseColor.rgb = mix(diffuseColor.rgb, heat, uThermal * 0.92);
+          }
+          #endif`,
+        );
+    };
+  };
+
   interface ImageLayer {
     key: string;
     mat: THREE.MeshBasicMaterial;
@@ -641,6 +730,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     y: number,
     renderOrder: number,
     standIns: THREE.Object3D[],
+    thermal = false,
   ): ImagePlate | null {
     if (!p.images) return null;
     const loader = new THREE.TextureLoader();
@@ -648,6 +738,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const plate: ImagePlate = { layers, ready: false };
     Object.keys(p.images).forEach((key, i) => {
       const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
+      if (thermal) thermalPlate(mat);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(0, y, p.z + i * 0.05);
       mesh.renderOrder = renderOrder + i * 0.01;
@@ -690,6 +781,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     nearBank.position.y,
     -3,
     [nearBank],
+    true,
   );
   const farImg = imagePlate(
     farBankDef,
@@ -697,6 +789,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     farBank.position.y,
     -6,
     [farBank],
+    true,
   );
 
   // ---- the lake: haze toward the far shore, and the sun's path on it.
@@ -715,6 +808,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uFlow: { value: 0 },
       uFlowDir: { value: new THREE.Vector2(1, 0) },
       uFlowSpeed: { value: 0 },
+      uThermal: thermalU.uThermal,
+      uThermalTime: thermalU.uThermalTime,
+      uThermalInk: thermalU.uThermalInk,
+      uRamp0: thermalU.uRamp0,
+      uRamp1: thermalU.uRamp1,
+      uRamp2: thermalU.uRamp2,
+      uRamp3: thermalU.uRamp3,
+      uTempWater: thermalU.uTempWater,
     },
     vertexShader: `
       varying vec3 vWorld;
@@ -726,8 +827,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     fragmentShader: `
       varying vec3 vWorld;
       uniform vec3 uWater, uHaze, uSun, uInk;
-      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity, uFlow, uFlowSpeed;
+      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity, uFlow, uFlowSpeed, uTempWater;
       uniform vec2 uFlowDir;
+      ${THERMAL_GLSL}
       void main() {
         // Distance haze: the lake dissolves into the air at the far shore.
         float far = 1.0 - smoothstep(uFarZ, uFarZ + 46.0, vWorld.z);
@@ -744,6 +846,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         sparkle = sparkle * sparkle * sparkle;
         float glint = band * sparkle * far * smoothstep(0.0, 0.35, uSunElev);
         col += uSun * glint * 0.9;
+
+        // The thermal reading of the lake: the season's water temperature,
+        // a little warmer where the sun's path lies, drifting slowly.
+        if (uThermal > 0.0) {
+          float tw = uTempWater + band * 0.05 + thermalDrift(vWorld.xz * 0.05);
+          vec3 heat = mix(thermalRamp(tw), uThermalInk, isotherm(tw) * 0.25);
+          col = mix(col, mix(heat, uHaze, far * 0.4), uThermal * 0.85);
+        }
 
         // The flow field: the wind read on the water. Streamlines run
         // with the wind and bend with the ripples; along each, a dash
@@ -1061,6 +1171,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uFlowDir.value.set(Math.cos(toward), Math.sin(toward));
     waterMat.uniforms.uFlowSpeed.value = s.windSpeed;
     waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', local);
+    // The thermal instrument: the season's afternoon temperatures, as
+    // fractions of the ramp, on the banks and the lake.
+    thermalU.uThermal.value = alpha * instrumentOn('thermal', local);
+    thermalU.uTempGround.value = thermalNorm(s.tempGround);
+    thermalU.uTempWater.value = thermalNorm(s.tempWater);
+    if (!reducedMotion) thermalU.uThermalTime.value = elapsed;
 
     // Image plates carry their own colour; only their declared shade
     // dims them. Every active layer is opaque except the frontmost, which
