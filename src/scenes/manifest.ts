@@ -85,12 +85,34 @@ export interface Season {
   air: number;
   airFall: number;
   airCount: number;
+  /**
+   * The prevailing wind: the bearing it blows from, degrees clockwise
+   * from north, and its mean speed in metres per second. Approximate
+   * monthly normals for Minneapolis–St Paul: southerly in late summer,
+   * north-westerly from autumn through winter, strongest in spring.
+   */
+  windFrom: number;
+  windSpeed: number;
 }
 
 /** A camera move, declared start to end across the scene's own progress. */
 export interface CameraMove {
   from: { y: number; z: number; lookY: number };
   to: { y: number; z: number; lookY: number };
+}
+
+/**
+ * An instrument: one of the things normally invisible, drawn live over
+ * the world (see DIRECTION.md). `flow` reads the wind on the water as
+ * streamlines. Scroll switches instruments on: each is on screen for a
+ * window of the scene's local progress, easing in and out at its edges.
+ */
+export type InstrumentKind = 'flow';
+
+export interface Instrument {
+  kind: InstrumentKind;
+  from: number;
+  to: number;
 }
 
 /**
@@ -200,6 +222,8 @@ export interface Scene {
   skyRamp?: number;
   /** Season keyframes, in progress order. */
   seasons?: Season[];
+  /** The instruments this scene is read through, and when. */
+  instruments?: Instrument[];
   /**
    * The sun, photographed at the same clock time every day for a year.
    * Held to one time of day, the sun does not arc: it traces a figure of
@@ -243,6 +267,8 @@ const LATE_SUMMER: Palette = {
   air: 0xe8e6e1,
   airFall: 0.12,
   airCount: 0.22,
+  windFrom: 180,
+  windSpeed: 3.8,
 };
 
 const AUTUMN: Palette = {
@@ -261,6 +287,8 @@ const AUTUMN: Palette = {
   air: 0xc98f4a,
   airFall: 0.55,
   airCount: 0.7,
+  windFrom: 315,
+  windSpeed: 4.4,
 };
 
 const WINTER: Palette = {
@@ -279,6 +307,8 @@ const WINTER: Palette = {
   air: 0xe8e6e1,
   airFall: 1,
   airCount: 1,
+  windFrom: 320,
+  windSpeed: 4.5,
 };
 
 const SPRING: Palette = {
@@ -297,6 +327,8 @@ const SPRING: Palette = {
   air: 0xd9e2c0,
   airFall: 0.28,
   airCount: 0.45,
+  windFrom: 330,
+  windSpeed: 5.2,
 };
 
 /**
@@ -414,6 +446,9 @@ export const scenes: Scene[] = [
     fogDensity: 0.006,
     skyRamp: 0.13,
     seasons: lakeHarrietSeasons,
+    // The first instrument: the wind read on the water, on once the
+    // world has faded in and off before it fades out.
+    instruments: [{ kind: 'flow', from: 0.05, to: 0.94 }],
     // The sun at 4:17 every day for a year, from the east bank of Lake
     // Harriet. Held to Central Daylight Time all year, the way an analemma
     // photographer holds one time zone. Once August stops being held the
@@ -497,6 +532,12 @@ export function mixHex(a: number, b: number, t: number): number {
 
 const mix = (a: number, b: number, t: number) => a + (b - a) * clamp01(t);
 
+/** Blend two bearings the short way round the compass. */
+const mixBearing = (a: number, b: number, t: number) => {
+  const d = ((((b - a) % 360) + 540) % 360) - 180;
+  return (((a + d * clamp01(t)) % 360) + 360) % 360;
+};
+
 /** Locate the active scene and local progress (0–1) for a global progress. */
 export function sceneAt(progress: number): { scene: Scene; local: number; index: number } {
   const target = clamp01(progress) * totalLengthVh;
@@ -561,5 +602,7 @@ export function seasonAt(seasons: Season[], local: number): Season {
     air: mixHex(a.air, b.air, k),
     airFall: mix(a.airFall, b.airFall, k),
     airCount: mix(a.airCount, b.airCount, k),
+    windFrom: mixBearing(a.windFrom, b.windFrom, k),
+    windSpeed: mix(a.windSpeed, b.windSpeed, k),
   };
 }

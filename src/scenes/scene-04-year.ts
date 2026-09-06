@@ -38,6 +38,11 @@ const AMBER = new THREE.Color(1.0, 0.8, 0.55);
 
 const D2R = Math.PI / 180;
 
+/** The HUD's ink: what every instrument draws its lines in. */
+const INK = 0xe8e6e1;
+/** Local progress an instrument spends easing on, and off. */
+const INSTRUMENT_EDGE = 0.02;
+
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 
 export interface YearScene {
@@ -702,6 +707,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uFarZ: { value: waterFarZ },
       uTime: { value: 0 },
       uOpacity: { value: 1 },
+      uInk: { value: new THREE.Color(INK) },
+      uFlow: { value: 0 },
+      uFlowDir: { value: new THREE.Vector2(1, 0) },
+      uFlowSpeed: { value: 0 },
     },
     vertexShader: `
       varying vec3 vWorld;
@@ -712,8 +721,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       }`,
     fragmentShader: `
       varying vec3 vWorld;
-      uniform vec3 uWater, uHaze, uSun;
-      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity;
+      uniform vec3 uWater, uHaze, uSun, uInk;
+      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity, uFlow, uFlowSpeed;
+      uniform vec2 uFlowDir;
       void main() {
         // Distance haze: the lake dissolves into the air at the far shore.
         float far = 1.0 - smoothstep(uFarZ, uFarZ + 46.0, vWorld.z);
@@ -730,6 +740,28 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         sparkle = sparkle * sparkle * sparkle;
         float glint = band * sparkle * far * smoothstep(0.0, 0.35, uSunElev);
         col += uSun * glint * 0.9;
+
+        // The flow field: the wind read on the water. Streamlines run
+        // with the wind and bend with the ripples; along each, a dash
+        // brightens toward its head and travels at the wind's speed, so
+        // the field reads as direction and not as texture. Lines hold
+        // one pixel wide at any distance, and gather under the sun.
+        if (uFlow > 0.0) {
+          vec2 p = vWorld.xz;
+          vec2 nrm = vec2(-uFlowDir.y, uFlowDir.x);
+          float alongF = dot(p, uFlowDir);
+          float across = dot(p, nrm)
+            + sin(alongF * 0.31 + uTime * 0.35) * 1.4
+            + sin(alongF * 0.09 - uTime * 0.12) * 3.0;
+          float lane = across / 4.5;
+          float toLine = abs(fract(lane) - 0.5) * 4.5;
+          float w = fwidth(across);
+          float line = 1.0 - smoothstep(0.5 * w, 1.6 * w, toLine);
+          float head = fract(alongF * 0.16 - uTime * uFlowSpeed * 0.05);
+          float dash = head * head * head;
+          float flow = line * dash * (0.4 + 0.6 * band) * mix(1.0, 0.2, far);
+          col = mix(col, uInk, flow * uFlow * 0.55);
+        }
 
         gl_FragColor = vec4(col, uOpacity);
         #include <colorspace_fragment>
@@ -794,6 +826,18 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   let elapsed = 0;
+
+  /** How far on an instrument is at this point in the scene, 0–1. */
+  const instrumentOn = (kind: string, local: number): number => {
+    let on = 0;
+    for (const i of def.instruments ?? []) {
+      if (i.kind !== kind) continue;
+      const rise = clamp01((local - i.from) / INSTRUMENT_EDGE);
+      const fall = clamp01((i.to - local) / INSTRUMENT_EDGE);
+      on = Math.max(on, Math.min(rise, fall));
+    }
+    return on;
+  };
 
   const imagePlates = [canopyImg, farImg, nearImg];
   let warmed = false;
@@ -900,6 +944,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uSunElev.value = elev;
     waterMat.uniforms.uOpacity.value = alpha;
     if (!reducedMotion) waterMat.uniforms.uTime.value = elapsed;
+    // The flow instrument: on for the window the manifest declares. The
+    // wind blows from its bearing, so the water moves the other way; the
+    // camera faces west, +x north and +z east.
+    const toward = ((s.windFrom + 180) * Math.PI) / 180;
+    waterMat.uniforms.uFlowDir.value.set(Math.cos(toward), Math.sin(toward));
+    waterMat.uniforms.uFlowSpeed.value = s.windSpeed;
+    waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', local);
 
     // Image plates carry their own colour; only their declared shade
     // dims them. Every active layer is opaque except the frontmost, which
