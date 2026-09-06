@@ -109,14 +109,27 @@ export interface CameraMove {
 }
 
 /**
+ * A dated event in the park's year, for the ring of seasons to mark.
+ * Month and day; the year is whichever the sun's record opens in.
+ */
+export interface YearMark {
+  name: string;
+  month: number;
+  day: number;
+}
+
+/**
  * An instrument: one of the things normally invisible, drawn live over
  * the world (see DIRECTION.md). `flow` reads the wind on the water as
  * streamlines; `radar` reads the air into a small scope in the frame's
  * corner, a sweep lighting each mote and the short trail of where it has
- * been. Scroll switches instruments on: each is on screen for a window
+ * been; `thermal` reads surface temperature; `ring` is the year as a
+ * dial, the exposure filling it from the day the record opens, the
+ * present as a tick, the scene's dated marks on its rim. Scroll switches
+ * instruments on: each is on screen for a window
  * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar' | 'thermal';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
@@ -256,6 +269,8 @@ export interface Scene {
   seasons?: Season[];
   /** The instruments this scene is read through, and when. */
   instruments?: Instrument[];
+  /** The dated events of this place's year, for the ring to mark. */
+  marks?: YearMark[];
   /**
    * The sun, photographed at the same clock time every day for a year.
    * Held to one time of day, the sun does not arc: it traces a figure of
@@ -513,6 +528,17 @@ export const scenes: Scene[] = [
         ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0],
         range: [-10, 36],
       },
+      { kind: 'ring', from: 0.14, to: 0.95 },
+    ],
+    // The year's dated marks, for the ring. Ice-out is the Minnesota DNR's
+    // median for Lake Harriet; freeze-up is when the lake typically
+    // closes; leaf-out and leaf-fall are the elms', from Minnesota
+    // phenology records. Approximate to the week.
+    marks: [
+      { name: 'LEAF FALL', month: 10, day: 25 },
+      { name: 'ICE IN', month: 12, day: 5 },
+      { name: 'ICE OUT', month: 4, day: 8 },
+      { name: 'LEAF OUT', month: 5, day: 1 },
     ],
     // The sun at 4:17 every day for a year, from the east bank of Lake
     // Harriet. Held to Central Daylight Time all year, the way an analemma

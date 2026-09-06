@@ -44,6 +44,10 @@ const INK = 0xe8e6e1;
 const NOW = 0xd9a95b;
 /** How far back an echo's trail reaches, in seconds of falling. */
 const ECHO_TRAIL_S = 0.8;
+/** Where the ring of seasons sits on the screen, in clip space, and its
+ *  radius as a fraction of the frame's half-height. */
+const RING_CENTRE = { x: 0, y: -0.58 };
+const RING_R = 0.2;
 
 /**
  * The thermal reading, shared by every surface that takes it: a
@@ -1045,6 +1049,92 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   radar.name = 'radar';
   group.add(radar);
 
+  // ---- the ring of seasons: the year as a dial, clockwise from the day
+  // the record opens. The exposure fills the rim as the year turns, the
+  // present is the accent tick at its head, the first of each month is a
+  // small tick inside, and the place's dated marks stand on the rim
+  // outside, lit once the year has passed them. A small quad, placed in
+  // clip space; the camera is ignored.
+  const doy = (m: number, d: number) =>
+    Math.round((Date.UTC(openY, m - 1, d) - Date.UTC(openY, 0, 1)) / 86_400_000);
+  const openDoy = doy(openM, openD);
+  const turn = (m: number, d: number) => ((((doy(m, d) - openDoy) % 365) + 365) % 365) / 365;
+  const months = Array.from({ length: 12 }, (_, i) => turn(i + 1, 1));
+  const marks = (def.marks ?? []).slice(0, 8).map((k) => turn(k.month, k.day));
+  while (marks.length < 8) marks.push(-1);
+  const ringMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uInk: { value: new THREE.Color(INK) },
+      uNow: { value: new THREE.Color(NOW) },
+      uOn: { value: 0 },
+      uDay: { value: 0 },
+      uCentre: { value: new THREE.Vector2(RING_CENTRE.x, RING_CENTRE.y) },
+      uExtent: { value: new THREE.Vector2(RING_R * 1.5, RING_R * 1.5) },
+      uMonths: { value: months },
+      uMarks: { value: marks },
+    },
+    vertexShader: `
+      uniform vec2 uCentre, uExtent;
+      varying vec2 vP;
+      void main() {
+        vP = position.xy;
+        gl_Position = vec4(uCentre + position.xy * uExtent, 0.0, 1.0);
+      }`,
+    fragmentShader: `
+      #define TAU 6.2831853
+      uniform vec3 uInk, uNow;
+      uniform float uOn, uDay;
+      uniform float uMonths[12];
+      uniform float uMarks[8];
+      varying vec2 vP;
+      // A hairline where d, in ring radii, is zero.
+      float hair(float d) {
+        float w = max(fwidth(d), 1e-4);
+        return 1.0 - smoothstep(0.5 * w, 1.5 * w, abs(d));
+      }
+      // Arc distance between two turns of the ring, in ring radii at r.
+      float along(float f, float g, float r) {
+        float d = abs(f - g);
+        return min(d, 1.0 - d) * TAU * r;
+      }
+      void main() {
+        vec2 v = vP * 1.5;
+        float r = length(v);
+        float f = mod(atan(v.x, v.y) / TAU + 1.0, 1.0);
+        vec3 col = vec3(0.0);
+        // The rim, and the exposed arc on it.
+        col += uInk * hair(r - 1.0) * 0.45;
+        float exposed = step(f, uDay) * (1.0 - smoothstep(0.0, 0.035, abs(r - 1.03)));
+        col += uInk * exposed * 0.85;
+        // The months, as ticks inside the rim.
+        for (int i = 0; i < 12; i++) {
+          float t = hair(along(f, uMonths[i], r)) * step(0.9, r) * step(r, 0.97);
+          col += uInk * t * 0.5;
+        }
+        // The place's marks, outside the rim, lit once passed.
+        for (int i = 0; i < 8; i++) {
+          if (uMarks[i] < 0.0) continue;
+          float t = hair(along(f, uMarks[i], r)) * step(1.08, r) * step(r, 1.2);
+          col += uInk * t * mix(0.35, 0.9, step(uMarks[i], uDay));
+        }
+        // Now: the accent tick at the head of the exposure.
+        float nowTick = hair(along(f, uDay, r)) * step(0.88, r) * step(r, 1.16);
+        col += uNow * nowTick;
+        gl_FragColor = vec4(col * (1.0 - smoothstep(1.3, 1.45, r)), uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), ringMat);
+  ring.renderOrder = 5;
+  ring.frustumCulled = false;
+  ring.name = 'ring';
+  group.add(ring);
+
   // ---- the air's density is the scene's, and it is handed back on exit.
   const fog = world.fog instanceof THREE.FogExp2 ? world.fog : null;
   const fogWas = fog ? { color: fog.color.getHex(), density: fog.density } : null;
@@ -1250,6 +1340,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     echoMat.uniforms.uOn.value = radarOn * s.airCount;
     echoMat.uniforms.uSweep.value = sweep;
     echoMat.uniforms.uAspect.value = aspect;
+    // The ring of seasons: the year's turn so far, from the record.
+    const ringOn = alpha * instrumentOn('ring', local);
+    ring.visible = ringOn > 0;
+    ringMat.uniforms.uOn.value = ringOn;
+    ringMat.uniforms.uDay.value = clamp01(day / DAYS);
+    ringMat.uniforms.uExtent.value.set((RING_R * 1.5) / aspect, RING_R * 1.5);
     if (radarOn > 0) {
       const pos = airGeo.getAttribute('position') as THREE.BufferAttribute;
       const back = airDef!.fall * s.airFall * ECHO_TRAIL_S;
