@@ -42,10 +42,10 @@ const D2R = Math.PI / 180;
 const INK = 0xe8e6e1;
 /** The one accent, reserved for now: here, the radar's sweep. */
 const NOW = 0xd9a95b;
-/** The piece's ground, near-black: what a scope's face is backed with. */
-const GROUND = 0x060708;
 /** How far back an echo's trail reaches, in seconds of falling. */
 const ECHO_TRAIL_S = 0.8;
+/** The dot drawn at an echo's head, in CSS pixels. */
+const ECHO_DOT_PX = 3.2;
 /** Where the ring of seasons sits on the screen, in clip space, and its
  *  radius as a fraction of the frame's half-height. */
 const RING_CENTRE = { x: 0, y: -0.58 };
@@ -948,20 +948,23 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const echoGeo = new THREE.BufferGeometry();
   echoGeo.setAttribute('position', new THREE.BufferAttribute(echoPos, 3));
   echoGeo.setAttribute('aTail', new THREE.BufferAttribute(echoTail, 1));
-  const echoMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uInk: { value: new THREE.Color(INK) },
-      uOn: { value: 0 },
-      uSweep: { value: 0 },
-      uAspect: { value: 1 },
-      uCentre: { value: scopeCentre },
-      uRadius: { value: scopeRadius },
-    },
-    vertexShader: `
+  // An echo is lit full as the sweep passes and fades over the half turn
+  // behind it, never quite to nothing, so the scope is never empty; the
+  // trail is a hairline behind it and the head a dot, on the same vertices.
+  const echoUniforms = {
+    uInk: { value: new THREE.Color(INK) },
+    uOn: { value: 0 },
+    uSweep: { value: 0 },
+    uAspect: { value: 1 },
+    uDot: { value: 0 },
+    uCentre: { value: scopeCentre },
+    uRadius: { value: scopeRadius },
+  };
+  const echoVertex = `
       attribute float aTail;
-      uniform float uSweep, uAspect;
+      uniform float uSweep, uAspect, uDot;
       uniform vec2 uCentre, uRadius;
-      varying float vGlow, vR;
+      varying float vGlow, vR, vTail;
       void main() {
         vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         vec2 ndc = clip.xy / max(clip.w, 1e-4);
@@ -969,13 +972,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         float ang = atan(p.y, p.x);
         float since = mod(ang - uSweep, 6.2831853);
         vR = length(p);
-        vGlow = exp(-since * 2.2) * (1.0 - aTail * 0.85) * step(0.0, clip.w);
+        vTail = aTail;
+        vGlow = (0.12 + 0.88 * exp(-since * 1.2)) * (1.0 - aTail * 0.8) * step(0.0, clip.w);
         gl_Position = vec4(uCentre + p * uRadius, 0.0, 1.0);
-      }`,
-    fragmentShader: `
+        gl_PointSize = uDot * (1.0 - aTail);
+      }`;
+  const echoFace = `
       uniform vec3 uInk;
       uniform float uOn;
-      varying float vGlow, vR;
+      varying float vGlow, vR, vTail;`;
+  const echoMat = new THREE.ShaderMaterial({
+    uniforms: echoUniforms,
+    vertexShader: echoVertex,
+    fragmentShader: `${echoFace}
       void main() {
         float face = 1.0 - smoothstep(0.97, 1.0, vR);
         gl_FragColor = vec4(uInk, vGlow * face * uOn);
@@ -984,7 +993,23 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     transparent: true,
     depthWrite: false,
     depthTest: false,
-    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const echoDotMat = new THREE.ShaderMaterial({
+    uniforms: echoUniforms,
+    vertexShader: echoVertex,
+    fragmentShader: `${echoFace}
+      void main() {
+        if (vTail > 0.5) discard;
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        float dot = 1.0 - smoothstep(0.6, 1.0, d);
+        float face = 1.0 - smoothstep(0.97, 1.0, vR);
+        gl_FragColor = vec4(uInk, dot * vGlow * face * uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
     fog: false,
   });
   const echo = new THREE.LineSegments(echoGeo, echoMat);
@@ -992,16 +1017,21 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   echo.frustumCulled = false;
   echo.name = 'radar-echo';
   group.add(echo);
+  const echoDot = new THREE.Points(echoGeo, echoDotMat);
+  echoDot.renderOrder = 7;
+  echoDot.frustumCulled = false;
+  echoDot.name = 'radar-echo-dot';
+  group.add(echoDot);
 
-  // The radar's face: range rings and bearings, hairline, inside a bezel,
-  // and the sweep — the one thing drawn in the accent — with its
-  // afterglow behind it. A screen-space quad placed at the scope; the
-  // camera is ignored.
+  // The radar's face: range rings and bearings, hairline and faint, inside
+  // a bezel, and the sweep — the one thing drawn in the accent — with its
+  // afterglow behind it. The face itself is clear: the scope is lines over
+  // the world, and the echoes are what it is for. A screen-space quad
+  // placed at the scope; the camera is ignored.
   const radarMat = new THREE.ShaderMaterial({
     uniforms: {
       uInk: { value: new THREE.Color(INK) },
       uNow: { value: new THREE.Color(NOW) },
-      uGround: { value: new THREE.Color(GROUND) },
       uOn: { value: 0 },
       uSweep: { value: 0 },
       uCentre: { value: scopeCentre },
@@ -1016,14 +1046,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       }`,
     fragmentShader: `
       #define TAU 6.2831853
-      uniform vec3 uInk, uNow, uGround;
+      uniform vec3 uInk, uNow;
       uniform float uOn, uSweep;
       varying vec2 vP;
       void main() {
         float r = length(vP);
         float ang = atan(vP.y, vP.x);
-        // The face is backed with the piece's ground, so its lines read
-        // against any sky; the bezel is a hairline of ink at its edge.
+        // The face is a clear disc; the bezel is a hairline of ink at its edge.
         float rw = fwidth(r);
         float face = 1.0 - smoothstep(1.0 - rw, 1.0 + rw, r);
         float bezel = 1.0 - smoothstep(0.4 * rw, 1.4 * rw, abs(r - 1.0));
@@ -1032,19 +1061,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         float sp = abs(fract(ang / (TAU / 12.0)) - 0.5) * (TAU / 12.0) * r;
         float sw = fwidth(sp);
         float spoke = (1.0 - smoothstep(0.4 * sw, 1.2 * sw, sp)) * smoothstep(0.04, 0.08, r);
-        float grid = max(ring, spoke) * 0.55 * face;
+        float grid = max(ring, spoke) * 0.22 * face;
         // The sweep: a hairline arm, and the glow it leaves behind.
         float since = mod(ang - uSweep, TAU);
         float off = min(since, TAU - since);
         float d = r * sin(min(off, 1.5707963));
         float dw = fwidth(d);
         float arm = (1.0 - smoothstep(0.4 * dw, 1.4 * dw, d)) * step(off, 1.5707963);
-        float glow = exp(-since * 2.6) * 0.5;
+        float glow = exp(-since * 2.6) * 0.3;
         float sweep = (arm + glow) * face;
-        // Ink lines and the accent sweep, over the backing, with alpha.
-        float inkW = max(grid, bezel * 0.9);
-        vec3 col = mix(mix(uGround, uInk, inkW), uNow, clamp(sweep, 0.0, 1.0));
-        float a = max(face * 0.62, max(inkW, sweep)) * uOn;
+        // Ink lines and the accent sweep, with alpha; nothing behind them.
+        float inkW = max(grid, bezel * 0.5);
+        vec3 col = mix(uInk, uNow, clamp(sweep, 0.0, 1.0));
+        float a = max(inkW, sweep) * uOn;
         gl_FragColor = vec4(col, a);
         #include <colorspace_fragment>
       }`,
@@ -1345,11 +1374,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     }
     radar.visible = radarOn > 0;
     echo.visible = radarOn > 0;
+    echoDot.visible = radarOn > 0;
     radarMat.uniforms.uOn.value = radarOn;
     radarMat.uniforms.uSweep.value = sweep;
-    echoMat.uniforms.uOn.value = radarOn * s.airCount;
-    echoMat.uniforms.uSweep.value = sweep;
-    echoMat.uniforms.uAspect.value = aspect;
+    echoUniforms.uOn.value = radarOn * s.airCount;
+    echoUniforms.uSweep.value = sweep;
+    echoUniforms.uAspect.value = aspect;
+    echoUniforms.uDot.value = ECHO_DOT_PX * Math.min(window.devicePixelRatio, 2);
     // The ring of seasons: the year's turn so far, from the record.
     const ringOn = alpha * instrumentOn('ring', local);
     ring.visible = ringOn > 0;
