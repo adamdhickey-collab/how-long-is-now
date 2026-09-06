@@ -113,3 +113,17 @@ six times across the plate.
 
 Shared crop rows 340–660 so all four align.
 
+## Session 4 · the near bank's seasons · 2026-09-05
+
+Same conversation. The August near bank (shot 4) attached as the
+reference and re-seasoned three times; the manifest's near-bank now
+keys all four seasons instead of one image for the year.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 8a | `scene-04/near-bank-october-v1.png` | Same grasses in place, "gone tan and straw-gold, seed heads dry, wildflowers finished, shrubs rust and thinning, fallen leaves in the grass" | **Accept.** Grass tips from row 184, ground solid. |
+| 8b | `scene-04/near-bank-january-v1.png` | "Grasses dead, pale tan and bent over, heavy with snow; snow on the ground and caught in the shrubs, shrubs bare" | **Accept.** Tips from row 172. |
+| 8c | `scene-04/near-bank-april-v1.png` | "Snow gone; last year's grasses flattened and matted with green shoots through them; shrubs budding; ground wet and dark" | **Accept.** Tips from row 195. |
+
+Same crop as the August frame (rows 180–1024), so the four align.
+

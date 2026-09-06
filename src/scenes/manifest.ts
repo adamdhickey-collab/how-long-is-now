@@ -399,7 +399,12 @@ export const scenes: Scene[] = [
         baseY: -14,
         shade: 0.25,
         lip: 0.16,
-        images: { '*': 'plates/scene-04/near-bank-late-summer.webp' },
+        images: {
+          'LATE SUMMER': 'plates/scene-04/near-bank-late-summer.webp',
+          AUTUMN: 'plates/scene-04/near-bank-autumn.webp',
+          WINTER: 'plates/scene-04/near-bank-winter.webp',
+          SPRING: 'plates/scene-04/near-bank-spring.webp',
+        },
         imageRepeat: 4,
       },
     ],
