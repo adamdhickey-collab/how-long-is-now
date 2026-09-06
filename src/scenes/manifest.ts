@@ -120,9 +120,10 @@ export type InstrumentKind = 'flow' | 'radar' | 'thermal';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
- * frame, its diameter, and how far in from the corner's two edges — all
- * as fractions of the frame's shorter edge. Without one the instrument
- * fills the frame, centred.
+ * frame, its diameter as a fraction of the frame's shorter edge, and how
+ * far in from the corner's two edges as fractions of the frame's width
+ * and height — the HUD's own insets, so the scope lines up with the
+ * clock. Without one the instrument fills the frame, centred.
  */
 export interface Scope {
   corner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -495,14 +496,15 @@ export const scenes: Scene[] = [
     // actually cover in a year.
     instruments: [
       { kind: 'flow', from: 0.05, to: 0.94 },
-      // The radar is a scope a quarter of the frame's short edge across,
-      // tucked under the clock: a corner instrument, not a veil.
+      // The radar is a small scope tucked under the clock, in the band
+      // of sky between it and the survey's horizon datum: a corner
+      // instrument, not a veil.
       {
         kind: 'radar',
         from: 0.16,
         to: 0.92,
         period: 6,
-        scope: { corner: 'top-right', size: 0.25, inset: { x: 0.04, y: 0.1 } },
+        scope: { corner: 'top-right', size: 0.14, inset: { x: 0.04, y: 0.095 } },
       },
       {
         kind: 'thermal',

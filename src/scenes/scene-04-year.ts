@@ -925,9 +925,15 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   air.name = 'air';
   group.add(air);
 
-  // ---- the radar: the air read as echoes. Each mote is a short line
-  // along where it has just been, lit as the sweep passes its bearing on
-  // the screen and fading after. Drawn additively, over everything.
+  // ---- the radar: the air read as echoes into a scope. The frame is
+  // read into the scope's circle — its longer half-edge is the scope's
+  // range — and each mote is a short line along where it has just been,
+  // lit as the sweep passes its bearing and fading after. Drawn
+  // additively, over everything. The scope's centre and radius are in
+  // clip space, set each frame from the manifest's declaration.
+  const radarDef = def.instruments?.find((i) => i.kind === 'radar');
+  const scopeCentre = new THREE.Vector2(0, 0);
+  const scopeRadius = new THREE.Vector2(1, 1);
   const echoPos = new Float32Array(airDef.count * 2 * 3);
   const echoTail = new Float32Array(airDef.count * 2);
   for (let i = 0; i < airDef.count; i++) echoTail[i * 2 + 1] = 1;
@@ -940,25 +946,31 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uOn: { value: 0 },
       uSweep: { value: 0 },
       uAspect: { value: 1 },
+      uCentre: { value: scopeCentre },
+      uRadius: { value: scopeRadius },
     },
     vertexShader: `
       attribute float aTail;
       uniform float uSweep, uAspect;
-      varying float vGlow;
+      uniform vec2 uCentre, uRadius;
+      varying float vGlow, vR;
       void main() {
         vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         vec2 ndc = clip.xy / max(clip.w, 1e-4);
-        float ang = atan(ndc.y, ndc.x * uAspect);
+        vec2 p = vec2(ndc.x * uAspect, ndc.y) / max(uAspect, 1.0);
+        float ang = atan(p.y, p.x);
         float since = mod(ang - uSweep, 6.2831853);
-        vGlow = exp(-since * 2.2) * 0.7 * (1.0 - aTail * 0.85);
-        gl_Position = clip;
+        vR = length(p);
+        vGlow = exp(-since * 2.2) * 0.7 * (1.0 - aTail * 0.85) * step(0.0, clip.w);
+        gl_Position = vec4(uCentre + p * uRadius, 0.0, 1.0);
       }`,
     fragmentShader: `
       uniform vec3 uInk;
       uniform float uOn;
-      varying float vGlow;
+      varying float vGlow, vR;
       void main() {
-        gl_FragColor = vec4(uInk, vGlow * uOn);
+        float face = 1.0 - smoothstep(0.97, 1.0, vR);
+        gl_FragColor = vec4(uInk, vGlow * face * uOn);
         #include <colorspace_fragment>
       }`,
     transparent: true,
@@ -973,41 +985,43 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   echo.name = 'radar-echo';
   group.add(echo);
 
-  // The radar's face: range rings and bearings centred on the viewer,
-  // hairline, and the sweep — the one thing drawn in the accent — with
-  // its afterglow behind it. A screen-space quad; the camera is ignored.
+  // The radar's face: range rings and bearings, hairline, inside a bezel,
+  // and the sweep — the one thing drawn in the accent — with its
+  // afterglow behind it. A screen-space quad placed at the scope; the
+  // camera is ignored.
   const radarMat = new THREE.ShaderMaterial({
     uniforms: {
       uInk: { value: new THREE.Color(INK) },
       uNow: { value: new THREE.Color(NOW) },
       uOn: { value: 0 },
       uSweep: { value: 0 },
-      uAspect: { value: 1 },
+      uCentre: { value: scopeCentre },
+      uRadius: { value: scopeRadius },
     },
     vertexShader: `
+      uniform vec2 uCentre, uRadius;
       varying vec2 vP;
       void main() {
         vP = position.xy;
-        gl_Position = vec4(position.xy, 0.0, 1.0);
+        gl_Position = vec4(uCentre + position.xy * uRadius, 0.0, 1.0);
       }`,
     fragmentShader: `
       #define TAU 6.2831853
       uniform vec3 uInk, uNow;
-      uniform float uOn, uSweep, uAspect;
+      uniform float uOn, uSweep;
       varying vec2 vP;
       void main() {
-        vec2 v = vec2(vP.x * uAspect, vP.y);
-        float r = length(v);
-        float ang = atan(v.y, v.x);
-        // Range rings and bearings, one pixel wide, fading out past the
-        // frame's shorter edge.
+        float r = length(vP);
+        float ang = atan(vP.y, vP.x);
+        // Range rings and bearings, one pixel wide, inside the bezel.
         float rw = fwidth(r);
-        float ring = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(fract(r / 0.22) - 0.5) * 0.22);
+        float face = 1.0 - smoothstep(1.0 - rw, 1.0 + rw, r);
+        float bezel = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(r - 1.0));
+        float ring = 1.0 - smoothstep(0.4 * rw, 1.2 * rw, abs(fract(r / 0.25) - 0.5) * 0.25);
         float sp = abs(fract(ang / (TAU / 12.0)) - 0.5) * (TAU / 12.0) * r;
         float sw = fwidth(sp);
         float spoke = (1.0 - smoothstep(0.4 * sw, 1.2 * sw, sp)) * smoothstep(0.04, 0.08, r);
-        float reach = 1.0 - smoothstep(0.95, 1.35, r);
-        float grid = max(ring, spoke) * 0.045 * reach;
+        float grid = max(max(ring, spoke) * 0.07 * face, bezel * 0.14);
         // The sweep: a hairline arm, and the glow it leaves behind.
         float since = mod(ang - uSweep, TAU);
         float off = min(since, TAU - since);
@@ -1206,16 +1220,33 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     // The radar instrument. The sweep turns clockwise at the period the
     // manifest declares, or holds a bearing under reduced motion; the
-    // echoes trail back along each mote's fall and sway.
+    // echoes trail back along each mote's fall and sway. The scope sits
+    // where the manifest puts it, sized by the frame's shorter edge, or
+    // fills the frame if it declares no scope.
     const radarOn = alpha * instrumentOn('radar', local);
-    const period = def.instruments?.find((i) => i.kind === 'radar')?.period ?? 6;
+    const period = radarDef?.period ?? 6;
     const sweep = reducedMotion ? 2.2 : -((elapsed / period) * Math.PI * 2) % (Math.PI * 2);
-    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const W = Math.max(1, window.innerWidth);
+    const H = Math.max(1, window.innerHeight);
+    const aspect = W / H;
+    const scope = radarDef?.scope;
+    if (scope) {
+      const short = Math.min(W, H);
+      const rPx = (scope.size * short) / 2;
+      const right = scope.corner.endsWith('right');
+      const top = scope.corner.startsWith('top');
+      const cx = right ? W - scope.inset.x * W - rPx : scope.inset.x * W + rPx;
+      const cy = top ? scope.inset.y * H + rPx : H - scope.inset.y * H - rPx;
+      scopeCentre.set((cx / W) * 2 - 1, 1 - (cy / H) * 2);
+      scopeRadius.set((rPx / W) * 2, (rPx / H) * 2);
+    } else {
+      scopeCentre.set(0, 0);
+      scopeRadius.set(Math.max(1, 1 / aspect), Math.max(1, aspect));
+    }
     radar.visible = radarOn > 0;
     echo.visible = radarOn > 0;
     radarMat.uniforms.uOn.value = radarOn;
     radarMat.uniforms.uSweep.value = sweep;
-    radarMat.uniforms.uAspect.value = aspect;
     echoMat.uniforms.uOn.value = radarOn * s.airCount;
     echoMat.uniforms.uSweep.value = sweep;
     echoMat.uniforms.uAspect.value = aspect;
