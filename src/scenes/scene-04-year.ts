@@ -1432,7 +1432,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (group.visible === on) return;
     group.visible = on;
     shown = 0;
-    if (!on) figure?.hide();
+    if (!on) {
+      figure?.hide();
+      // Whatever the overlay was left showing goes with the world: a
+      // holder that ran decades leaves nothing counted on the elm.
+      if (ringsG) ringsG.style.opacity = '0';
+    }
     if (!fog || !fogWas) return;
     if (!on) {
       fog.color.setHex(fogWas.color);
