@@ -2066,13 +2066,16 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // at the ends of their span, and only the ones the holder names.
     for (const set of figureSets) {
       const f = set.def;
-      const there = presence(f as unknown as Plate) * (f.walk && f.baseY < 0 ? 1 : seated);
+      const there = presence(f as unknown as Plate);
       setTint(set.mat, 0xffffff, nightShade(0.1));
       set.mat.opacity = alpha * there;
       const life = holder?.life;
       for (const p of set.placed) {
         const walker = p.def.speed !== undefined && f.walk;
         p.mesh.visible = !!set.mat.map && there > 0 && (!walker || !life || life.includes(p.def.id));
+        // Every figure faces the camera, feet where they stand: from the
+        // seat a card, from the year's height a person seen from above.
+        p.mesh.quaternion.copy(camera.quaternion);
         if (walker && f.walk && !reducedMotion) {
           const span = f.walk.to - f.walk.from;
           const travelled = (p.x0 - f.walk.from + (p.def.speed ?? 0) * elapsed) % span;

@@ -553,7 +553,19 @@ returns at 1). A plate or a sheet may now declare several windows.
 
 Skaters walk a span on the lake (`walk` with negative z); the still
 winter things are a sheet with no speeds. Sails have no winter window.
-Once a sheet is generated and looked at, its manifest entry is a
-`figures` declaration with the window above; nothing in the code
-changes. The lifetime (scene 05, held at 1) sees the summer crowd's
-return window, which is where people as appearances begins.
+Generated the same day, all six on the first try (`--crowd`, about a
+minute each, four at a time), cut and placed with the windows above:
+six autumn sitters and eight on the path, one of them raking and not
+moving; eight winter stills — the house and the fisherman and the
+bonfire and the net on the ice, a snowman and a sled on the lawn — and
+nine winter movers, five of them crossing the ice; seven spring sitters
+with the goslings and nine on the path with the geese walking. Every
+figure now faces the camera, feet where it stands, so the year's high
+view reads them as people seen from above rather than cards on the
+ground; the seat's own cards (the elms, the foreground) still fade as
+the eye rises. The lifetime (scene 05, held at 1) sees the summer
+crowd's return window, which is where people as appearances begins.
+
+Known: the winter stills' cells carry a little of their drawn snow
+ground past the key, a paler patch under the house and the sled on the
+ice; a tighter key for that sheet, or a snowier ice, would hide it.
