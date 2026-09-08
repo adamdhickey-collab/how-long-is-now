@@ -118,7 +118,7 @@ mind, not so they get generated now.
 | `canopy` | The far treeline across the lake, bandshell included | `canopy` 220 × 22 at z −46 | 3 overlapping 3:2 panels, transparent sky, stitched to ~4000 × 400 | 4 seasons |
 | `far-bank` | The far shoreline: sand, riprap, path, the base of the trees | `far-bank` 240 × 6 at z −40 | 2 panels, transparent above, stitched | 4 seasons |
 | `near-bank` | The bank the camera rises from: grass, reeds, the path edge, water's edge at the bottom | `near-bank` 110 × 26 at z 0 | 1 panel 3:2, cropped to ~4:1, transparent above the grass line | 4 seasons |
-| `bench` | The bench, empty, three-quarter view. Scene 01's anchor and scene 10's | new hero plate, near-bank depth | cutout, transparent | August only (grade for others) |
+| `bench` | The bench, empty, three-quarter view. Scene 01's anchor and scene 10's | new hero plate, near-bank depth | cutout, transparent | August only (grade for others) — **done 2026-09-08**, ledger session 9; it is present while August is held and leaves as the year turns, so the other three seasons are only needed if it should sit through them |
 | `clouds` | A thin field of high cloud | optional plate in front of `sky` | transparent, tileable horizontally | August, January |
 
 Sixteen to twenty images before rejects. Sky, sun, water, air and the

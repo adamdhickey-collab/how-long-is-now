@@ -123,6 +123,13 @@ const SQUARES = {
   cols: 6,
 };
 
+/**
+ * A cutout: one object on transparent ground, trimmed to what is
+ * actually in it so the plate's world size is the object's own and
+ * nothing is spent on empty pixels. The scene places it by eye.
+ */
+const CUTOUT = { pad: 4 };
+
 const SCENES = {
   'scene-09': [
     { id: 'days-same', raw: ['days-same-v2.png'], recipe: 'squares' },
@@ -140,6 +147,7 @@ const SCENES = {
     { id: 'fragments', raw: ['fragments-a-v1.png', 'fragments-b-v1.png'], recipe: 'fragments' },
   ],
   'scene-04': [
+    { id: 'bench', variant: 'august', raw: 'bench-v1.png', recipe: 'cutout' },
     // Session 6 (assets/LEDGER.md): the drawn plates. The photographic
     // set (canopy v4/v3, banks v1) stays in assets/raw for the record.
     { id: 'canopy', variant: 'late-summer', raw: 'canopy-august-v5.png', ext: 'canopy-ext-august-v1.png', recipe: 'canopy' },
@@ -361,6 +369,22 @@ async function fragmentAtlas(files) {
   }).composite(composite);
 }
 
+async function cutout(file) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const box = alphaBox(data, info.width, 0, 0, info.width, info.height);
+  if (!box) throw new Error(`${file}: nothing in it`);
+  const pad = CUTOUT.pad;
+  const left = Math.max(0, box.left - pad);
+  const top = Math.max(0, box.top - pad);
+  console.log(`  trimmed to ${box.width} × ${box.height} at ${box.left},${box.top}`);
+  return sharp(file).extract({
+    left,
+    top,
+    width: Math.min(info.width - left, box.width + pad * 2),
+    height: Math.min(info.height - top, box.height + pad * 2),
+  });
+}
+
 async function squaresAtlas(files, p) {
   const { grid, inset, tile, cols } = SQUARES;
   const tiles = [];
@@ -395,6 +419,7 @@ async function squaresAtlas(files, p) {
 
 const RECIPES = {
   canopy: canopyStrip,
+  cutout,
   squares: squaresAtlas,
   'near-bank': nearBank,
   'far-bank': farBank,

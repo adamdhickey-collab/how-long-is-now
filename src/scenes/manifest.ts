@@ -22,6 +22,17 @@ export interface Plate {
   id: string;
   /** World z. The camera looks down −z, so further back is more negative. */
   z: number;
+  /** World x, for a plate that is one object rather than a whole band of
+   *  scenery. The bands are centred and leave this alone. */
+  x?: number;
+  /**
+   * The window of the scene's own progress the plate is present for,
+   * with the distance it takes to arrive and to go. A plate that is one
+   * season's object rather than a thing the year happens to declares it:
+   * the bench is an August cutout, so it is there in the second the
+   * piece sits in and gone by the time the year has turned.
+   */
+  present?: { from: number; to: number; edge: number };
   /** World size of the plate. */
   width: number;
   height: number;
@@ -861,6 +872,29 @@ export const scenes: Scene[] = [
           SPRING: 'plates/scene-04/far-bank-spring.webp',
         },
         imageRepeat: 40,
+      },
+      // The bench, a cutout on its own patch of grass: not a band of
+      // scenery but one object, set left of centre so the bandshell is
+      // still seen past it, and near enough that the piece opens looking
+      // at it. It belongs to the park rather than to any one scene — the
+      // camera rises off it through the year, it is under the frame for
+      // the lifetime, and the fall in scene 06 lands back at it.
+      {
+        id: 'bench',
+        x: -4.5,
+        z: 8,
+        width: 6.5,
+        height: 3.28,
+        baseY: -0.9,
+        shade: 0.16,
+        // An August cutout: it belongs to the afternoon the piece opens
+        // and closes on, which every held scene sits in, and it leaves as
+        // the year begins to turn rather than sitting through a winter
+        // in summer grass. Four seasons of bench would let it stay.
+        // It goes exactly when the year does: the record and the seasons
+        // hold August until local 0.12, and the bench holds with them.
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        images: { '*': 'plates/scene-04/bench-august.webp' },
       },
       // 1536 × 884, grass tips at the top edge, ground the rest of the way.
       // One frame of it is a quarter of the plate: mirrored four times

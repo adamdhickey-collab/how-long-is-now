@@ -391,3 +391,34 @@ vivid days. Re-run once with the style spelled out.
 
 Downloaded and filed 2026-09-08; `scripts/plates.mjs` now packs the desk
 atlas from 15b. The first sheet stays in `assets/raw/` for the record.
+
+## Session 9 · the bench · 2026-09-08
+
+The moodboard conversation. One cutout, the last thing ASSETS.md's
+scene 04 shot list still wanted: the piece's anchor, and the object the
+return in scene 10 lands on.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 17 | `scene-04/bench-v1.png` | Style line + "an EMPTY park bench, three-quarter from behind and slightly left, facing away toward the water: weathered wooden slats, dark cast-iron ends … backlit at 4:17, far edges rim-lit warm, near faces in cool shadow. Include a small patch of the ground it stands on, mown grass with a few taller tufts at its feet, fading out at the edges so the bench plants itself. Nobody sitting on it, no text." Landscape 3:2, transparent. | **Accept**, first try, about two minutes. Cast-iron ends, weathered slats, its own grass patch. |
+
+Trimmed to its alpha by a new `cutout` recipe in `scripts/plates.mjs`:
+1462 × 738 at 276 KB.
+
+### What placing it decided
+
+1. **A plate can be one object, not a band.** Every plate before it ran
+   the width of the frame and was centred; the bench needed an `x`, and
+   sits at −4.5 so the bandshell is still seen past it.
+2. **It belongs to the park, not to a scene.** Declared once in the
+   year's world, it is there in every scene that holds the opening
+   second — the second itself, the ten minutes, the day, the descent,
+   the return — and the fall in scene 06 lands back at it. The camera
+   rises off it through the year; the lifetime is far above it.
+3. **An August cutout cannot sit through a winter.** In January it was a
+   brown bench on green summer grass under snow. A plate can now declare
+   the window of the year it is `present` for, and the bench's is
+   August: it goes as the seasons start to turn, at the same local 0.12
+   the record's own hold ends. Four seasons of bench would let it stay
+   all year, and is the better answer when there is a reason to spend
+   three more generations on it.

@@ -351,6 +351,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const canopyDef = plate('canopy');
   const farBankDef = plate('far-bank');
   const nearBankDef = plate('near-bank');
+  const benchDef = plate('bench');
   if (!skyDef || !canopyDef || !farBankDef || !nearBankDef) {
     return { setActive: () => {}, update: () => {}, warm: () => true };
   }
@@ -910,7 +911,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
       if (thermal) thermalPlate(mat);
       const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(0, y, p.z + i * 0.05);
+      mesh.position.set(p.x ?? 0, y, p.z + i * 0.05);
       mesh.renderOrder = renderOrder + i * 0.01;
       mesh.visible = false;
       mesh.name = `${p.id}:${key}`;
@@ -953,6 +954,20 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     [nearBank],
     true,
   );
+  // The bench: one object, nearest of all the plates, and the only one
+  // that is not a band across the frame. It takes the thermal like the
+  // ground does — a bench in the sun is the first warm thing noticed.
+  const benchImg = benchDef
+    ? imagePlate(
+        benchDef,
+        new THREE.PlaneGeometry(benchDef.width, benchDef.height),
+        benchDef.baseY + benchDef.height / 2,
+        -2,
+        [],
+        true,
+      )
+    : null;
+
   const farImg = imagePlate(
     farBankDef,
     farBank.geometry as THREE.PlaneGeometry,
@@ -1615,7 +1630,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // trunks.
     const weights = seasonWeights(seasons!, local);
     const weightOf = (key: string) => (key === '*' ? 1 : weights[key] ?? 0);
-    const setImage = (plate: ImagePlate | null, shade: number) => {
+    const setImage = (plate: ImagePlate | null, shade: number, presence = 1) => {
       if (!plate?.ready) return;
       let front = -1;
       plate.layers.forEach((l, i) => {
@@ -1624,12 +1639,22 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       plate.layers.forEach((l, i) => {
         const w = weightOf(l.key);
         setTint(l.mat, 0xffffff, shade);
-        l.mat.opacity = alpha * (w <= 0 ? 0 : i === front ? w : 1);
+        l.mat.opacity = alpha * presence * (w <= 0 ? 0 : i === front ? w : 1);
       });
     };
     setImage(canopyImg, nightShade(canopyDef!.shade ?? 0));
     setImage(farImg, nightShade(farBankDef!.shade ?? 0));
     setImage(nearImg, nightShade(nearBankDef!.shade ?? 0));
+    // A plate present for only part of the year arrives and goes over the
+    // edge it declares. Held scenes sit at the year's opening, where the
+    // bench is; the year itself leaves it behind as the seasons start.
+    const presence = (p: Plate | undefined) => {
+      const w = p?.present;
+      if (!w) return 1;
+      const edge = Math.max(1e-6, w.edge);
+      return clamp01(Math.min((local - w.from) / edge + 1, (w.to - local) / edge));
+    };
+    if (benchImg) setImage(benchImg, nightShade(benchDef!.shade ?? 0), presence(benchDef));
 
     setTint(airMat, airCol, night * 0.7);
     airMat.opacity = alpha * s.airCount;
