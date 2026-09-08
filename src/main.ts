@@ -20,7 +20,12 @@ import { createYearScene } from './scenes/scene-04-year';
 import { createTwoClocksScene } from './scenes/scene-08-two-clocks';
 import { createMemoryScene } from './scenes/scene-09-memory';
 
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Reduced motion is the visitor's setting; in development a query flag
+// stands in for it, so the still essay can be looked at without changing
+// the machine. Stripped from production builds.
+const reducedMotion =
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+  (import.meta.env.DEV && new URLSearchParams(location.search).has('reduced'));
 
 // ---------------------------------------------------------------- scroll
 
