@@ -491,6 +491,13 @@ export interface Scene {
    */
   labelAt?: { from: number; label: string }[];
   /**
+   * The window of local progress over which the interface itself leaves:
+   * the scale label, the hint and the clock fade out and do not come
+   * back. The piece's last gesture, and the only place it is declared —
+   * a scene that ends the piece ends the HUD with it.
+   */
+  hudOut?: { from: number; to: number };
+  /**
    * The span of simulated time the whole scene covers, in seconds. The
    * fixed clock reads it out; the world uses it to know what it is
    * showing. One second, ten minutes, a year, a lifetime.
@@ -1211,9 +1218,31 @@ export const scenes: Scene[] = [
   {
     id: 'scene-10-return-to-now',
     label: '1 SECOND',
-    lengthVh: 150,
+    // Longer than the second it opened on: an ending needs room to leave in.
+    lengthVh: 180,
     caption: 'The moment didn’t get longer.\nYou got closer.',
+    captionAt: { from: 0.58, to: 0.88 },
     timeRate: 1,
+    // Exactly the same lake, from exactly the same seat, at exactly the
+    // same second the piece opened on — the camera does not move,
+    // because nothing about the afternoon has changed. Only what is
+    // being noticed has. Every instrument is faintly on at once, and
+    // then they go, one by one: the ring of seasons first, the most
+    // abstract of them, and the wind on the water last, being the least
+    // like an instrument and the most like the world. Then the line,
+    // and then the interface itself.
+    hold: { of: 'scene-04-year', at: 0 },
+    camera: {
+      from: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+    },
+    instruments: [
+      { kind: 'ring', from: 0, to: 0.18, strength: 0.5 },
+      { kind: 'radar', from: 0, to: 0.3, strength: 0.5, period: 6, scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } } },
+      { kind: 'thermal', from: 0, to: 0.42, strength: 0.32, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+      { kind: 'flow', from: 0, to: 0.54, strength: 0.5 },
+    ],
+    hudOut: { from: 0.88, to: 0.98 },
   },
 ];
 

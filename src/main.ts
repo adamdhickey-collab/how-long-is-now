@@ -100,6 +100,7 @@ window.addEventListener('resize', resize);
 
 // ---------------------------------------------------------------- hud
 
+const hud = document.querySelector('.hud') as HTMLElement;
 const scaleLabel = document.getElementById('scale-label')!;
 const scrollHint = document.getElementById('scroll-hint')!;
 const clock = document.getElementById('clock')!;
@@ -107,6 +108,7 @@ const caption = document.getElementById('caption')!;
 
 let activeIndex = -1;
 let captionUp = false;
+let hudShown = 1;
 
 function showCaption(up: boolean) {
   if (captionUp === up) return;
@@ -190,6 +192,17 @@ function frame(now: number) {
   }
   // A scene that subdivides its own scale says so as the scroll descends.
   if (active.labelAt) setScale(scaleOf(active, local));
+
+  // The interface leaves where a scene says it does, and comes back if
+  // the visitor scrolls away from the ending.
+  const out = active.hudOut;
+  const gone = out ? (local - out.from) / Math.max(1e-6, out.to - out.from) : 0;
+  const hudOpacity = 1 - Math.min(Math.max(gone, 0), 1);
+  if (hudOpacity !== hudShown) {
+    hudShown = hudOpacity;
+    hud.style.opacity = String(hudOpacity);
+    clock.style.opacity = String(hudOpacity);
+  }
 
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
