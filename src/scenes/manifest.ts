@@ -891,10 +891,15 @@ export const scenes: Scene[] = [
         id: 'canopy',
         z: -90,
         width: 290,
-        height: 43.8,
+        height: 47.6,
         baseY: -1,
         shade: 0.12,
-        images: { '*': 'plates/scene-04/park/far-shore.webp' },
+        images: {
+          'LATE SUMMER': 'plates/scene-04/park/far-shore-late-summer.webp',
+          AUTUMN: 'plates/scene-04/park/far-shore-autumn.webp',
+          WINTER: 'plates/scene-04/park/far-shore-winter.webp',
+          SPRING: 'plates/scene-04/park/far-shore-spring.webp',
+        },
       },
       // The near shore: the sea wall and the shrubs along the path, one
       // short band tiled along the water's edge. Keeps the far bank's id.
@@ -902,11 +907,16 @@ export const scenes: Scene[] = [
         id: 'far-bank',
         z: 4,
         width: 96,
-        height: 1.28,
+        height: 1.63,
         baseY: -0.1,
         shade: 0.08,
         lip: 0.42,
-        images: { '*': 'plates/scene-04/park/shoreline.webp' },
+        images: {
+          'LATE SUMMER': 'plates/scene-04/park/shoreline-late-summer.webp',
+          AUTUMN: 'plates/scene-04/park/shoreline-autumn.webp',
+          WINTER: 'plates/scene-04/park/shoreline-winter.webp',
+          SPRING: 'plates/scene-04/park/shoreline-spring.webp',
+        },
         imageRepeat: 12,
       },
       // The lawn: the ground itself, from the wall back past the seat,
@@ -920,7 +930,12 @@ export const scenes: Scene[] = [
         baseY: 0,
         shade: 0.1,
         ground: { depth: 40, repeat: [32, 6.5] },
-        images: { '*': 'plates/scene-04/park/lawn.webp' },
+        images: {
+          'LATE SUMMER': 'plates/scene-04/park/lawn-late-summer.webp',
+          AUTUMN: 'plates/scene-04/park/lawn-autumn.webp',
+          WINTER: 'plates/scene-04/park/lawn-winter.webp',
+          SPRING: 'plates/scene-04/park/lawn-spring.webp',
+        },
       },
       // The nearest people: the couple, the reader, the man with his dog,
       // on their blanket just ahead of the seat, cropped by the frame's
@@ -950,8 +965,12 @@ export const scenes: Scene[] = [
         // of the frame; the trunks run out of its foot.
         baseY: 0.1,
         shade: 0.08,
-        present: { from: 0, to: 0.12, edge: 0.04 },
-        images: { '*': 'plates/scene-04/park/trees.webp' },
+        images: {
+          'LATE SUMMER': 'plates/scene-04/park/trees-late-summer.webp',
+          AUTUMN: 'plates/scene-04/park/trees-autumn.webp',
+          WINTER: 'plates/scene-04/park/trees-winter.webp',
+          SPRING: 'plates/scene-04/park/trees-spring.webp',
+        },
       },
     ],
     figures: [

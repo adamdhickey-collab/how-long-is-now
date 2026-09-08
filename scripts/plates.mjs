@@ -138,14 +138,34 @@ const CUTOUT = { pad: 4 };
  */
 const PARK = {
   strip: { pad: 2 },
+  // Every season of a strip is cut to the same rows, so the year's
+  // cross-fades hold their composition and the plate one height.
+  band: {
+    'far-shore': [300, 552],
+    shoreline: [440, 753],
+  },
 };
 
 const SCENES = {
   'scene-04/park': [
-    { id: 'far-shore', raw: 'far-shore-v1.png', recipe: 'strip', key: true },
-    { id: 'shoreline', raw: 'shoreline-v2.png', recipe: 'strip', key: true },
-    { id: 'lawn', raw: 'lawn-v1.png', recipe: 'plain' },
-    { id: 'trees', raw: 'trees-v1.png', recipe: 'cutout', key: true },
+    { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-v1.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v1.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'winter', raw: 'far-shore-winter-v1.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'spring', raw: 'far-shore-spring-v1.png', recipe: 'strip', key: true },
+    { id: 'shoreline', variant: 'late-summer', raw: 'shoreline-v2.png', recipe: 'strip', key: true },
+    { id: 'shoreline', variant: 'autumn', raw: 'shoreline-autumn-v2.png', recipe: 'strip', key: true },
+    { id: 'shoreline', variant: 'winter', raw: 'shoreline-winter-v2.png', recipe: 'strip', key: true },
+    { id: 'shoreline', variant: 'spring', raw: 'shoreline-spring-v2.png', recipe: 'strip', key: true },
+    { id: 'lawn', variant: 'late-summer', raw: 'lawn-v1.png', recipe: 'plain' },
+    { id: 'lawn', variant: 'autumn', raw: 'lawn-autumn-v2.png', recipe: 'plain' },
+    { id: 'lawn', variant: 'winter', raw: 'lawn-winter-v2.png', recipe: 'plain' },
+    { id: 'lawn', variant: 'spring', raw: 'lawn-spring-v2.png', recipe: 'plain' },
+    // The framing card keeps its whole canvas in every season, so the
+    // trunks stand in the same place whatever hangs from them.
+    { id: 'trees', variant: 'late-summer', raw: 'trees-v1.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'autumn', raw: 'trees-autumn-v1.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'winter', raw: 'trees-winter-v1.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'spring', raw: 'trees-spring-v1.png', recipe: 'plain', key: true },
     { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
     { id: 'sitters', raw: ['sitters-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'boats', raw: ['boats-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
@@ -455,9 +475,16 @@ async function keyWhite(file) {
   return out;
 }
 
-/** A strip: a keyed band trimmed to what is in it, full width kept. */
-async function strip(file) {
+/** A strip: a keyed band trimmed to what is in it, full width kept —
+ *  or, where the plate declares a band, cut to those rows whatever the
+ *  season put in them. */
+async function strip(file, _ext, p) {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const band = PARK.band[p.id];
+  if (band) {
+    console.log(`  band rows ${band[0]}–${band[1]} (declared)`);
+    return sharp(file).extract({ left: 0, top: band[0], width: info.width, height: band[1] - band[0] });
+  }
   const box = alphaBox(data, info.width, 0, 0, info.width, info.height);
   if (!box) throw new Error(`${file}: nothing in it`);
   const pad = PARK.strip.pad;

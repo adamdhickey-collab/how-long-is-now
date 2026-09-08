@@ -56,3 +56,31 @@ export const layers = [
     prompt: `Layer 8, the framing trees: a large elm trunk at the far left edge and another at the far right edge, both rising from the bottom of the frame up out of the top, and their leafy canopy hanging across the top quarter of the image from both sides, in dappled late-summer light, seen from beneath them on the lawn. Everything between the trunks below the canopy is flat pure white.`,
   },
 ];
+
+/**
+ * The other three seasons of the layers the year turns through: each an
+ * edit of the late-summer layer, which travels with the prompt as the
+ * first image so the composition holds when the year cross-fades. What
+ * changes is only what the season changes.
+ */
+const SEASONS = {
+  autumn: `late October at Lake Harriet: the elms and cottonwoods turned gold, amber and rust with some branches already bare, a few leaves in the air, fallen leaves scattered on every horizontal surface, the light lower and warmer`,
+  winter: `mid January at Lake Harriet: every tree bare, snow along the branches and on every ledge and roof, the ground under fresh snow with a few footprints and dead grass showing through at the edges, the light pale and blue-white`,
+  spring: `late April at Lake Harriet: the trees just leafing out in thin fresh yellow-green, some still bare, buds on the shrubs, the grass new and pale green with the first dandelions, the light clear and cool`,
+};
+
+const TURNING = [
+  { id: 'far-shore', from: 'far-shore-v1.png', size: LANDSCAPE, keep: 'the treeline, the bandshell and its crowd exactly where they are, and the flat pure white above and below' },
+  { id: 'shoreline', from: 'shoreline-v2.png', size: LANDSCAPE, keep: 'the wall, its top edge and the low shrubs exactly where they are and exactly the same height — no trees, nothing taller than the shrubs, nothing on the ground in front of the wall — and the flat pure white above and below' },
+  { id: 'lawn', from: 'lawn-v1.png', size: SQUARE, keep: 'it as the ground only, seen from directly above and filled edge to edge — grass, or what now covers the grass, with no trees, no branches, no trunks, no objects and no white — still tiling seamlessly' },
+  { id: 'trees', from: 'trees-v1.png', size: LANDSCAPE, keep: 'both trunks and every branch exactly where they are, and the flat pure white between the trunks below the canopy' },
+];
+
+export const seasonLayers = Object.entries(SEASONS).flatMap(([season, when]) =>
+  TURNING.map((t) => ({
+    id: `${t.id}-${season}`,
+    size: t.size,
+    refs: [`assets/raw/scene-04/park/${t.from}`],
+    prompt: `The first image is one layer of the scene in late summer; the second is the style reference. Redraw the first image in ${when}. Keep ${t.keep}, and keep the second image's pointillist dots, palette and dot size. Change only what the season changes.`,
+  })),
+);

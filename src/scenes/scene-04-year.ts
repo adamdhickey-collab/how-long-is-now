@@ -2020,7 +2020,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // What is only real from the seat — the elms we sit under, the people
     // on the lawn — is a card seen from above once the camera leaves it,
     // so it goes as the eye rises and is back by the time the fall lands.
-    const seated = clamp01((6 - camera.position.y) / 3);
+    const seated = clamp01((3.6 - camera.position.y) / 1.4);
     if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
     if (treesImg) setImage(treesImg, nightShade(treesDef!.shade ?? 0), presence(treesDef) * seated);
 

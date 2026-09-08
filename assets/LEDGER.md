@@ -486,5 +486,29 @@ first two were made by hand in ChatGPT with the reference pasted in.
 
 Retired: the illustrated canopy, banks and bench (sessions 6 and 9)
 are out of `public/plates` and out of the recipes; their raws stay.
-Still to make in this style: the other three seasons of the far shore,
-shoreline, lawn and trees; the two missing walkers.
+
+### 10b · the other three seasons
+
+Twelve edits, `node scripts/generate.mjs --seasons`: each late-summer
+layer sent as the first image with the style reference second, and a
+season's description of what changes. About 45 s each, four at a time.
+
+| Layer | Autumn | Winter | Spring |
+| --- | --- | --- | --- |
+| `far-shore` | v1 accept | v1 accept: a snowfield below the treeline, keyed away with the paper | v1 accept |
+| `shoreline` | v1 reject (trees grew above the wall); v2 accept | v1 reject (same); v2 accept | v1 reject (same); v2 accept, saplings |
+| `lawn` | v1 reject (a canopy from above, not the ground); v2 accept, leaf litter | v1 reject (same); v2 accept, snow with footprints | v1 reject (same); v2 kept: bare-branch shadows on new grass |
+| `trees` | v1 accept | v1 accept | v1 accept |
+
+What the second round fixed in the prompts: "keep the shrubs exactly
+the same height — no trees, nothing taller" and "the ground only, seen
+from directly above — no trees, no branches, no trunks". An edit
+inherits the reference's dappled shadow as trees unless told not to.
+
+What the pipeline learned: every season of a strip is cut to the same
+rows (`PARK.band` in `plates.mjs`), whatever the season put above or
+below them, so the plate keeps one height and the cross-fades hold;
+the framing card keeps its whole canvas for the same reason. The
+framing trees now stay all year, in their season.
+
+Still to make in this style: the two missing walkers.

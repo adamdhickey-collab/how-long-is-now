@@ -9,6 +9,7 @@
  *
  *   node scripts/generate.mjs                 every layer
  *   node scripts/generate.mjs --only lawn,trees
+ *   node scripts/generate.mjs --seasons        the other three seasons
  *   node scripts/generate.mjs --dry           print what would be sent
  *   node scripts/generate.mjs --ref <file>    another reference image
  *   node scripts/generate.mjs --quality medium
@@ -17,7 +18,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STYLE, layers } from './park-layers.mjs';
+import { STYLE, layers, seasonLayers } from './park-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -33,6 +34,7 @@ const flag = (name) => {
 };
 const dry = args.includes('--dry');
 const only = flag('--only')?.split(',').map((s) => s.trim()).filter(Boolean);
+const seasons = args.includes('--seasons');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -76,6 +78,12 @@ async function generate(layer, key) {
   form.append('size', layer.size);
   form.append('quality', quality);
   form.append('n', '1');
+  // A layer with its own references sends them first: an edit of a
+  // late-summer layer travels with that layer, then the style.
+  for (const r of layer.refs ?? []) {
+    const file = resolve(root, r);
+    form.append('image[]', new Blob([readFileSync(file)], { type: 'image/png' }), file.split('/').pop());
+  }
   form.append('image[]', new Blob([readFileSync(ref)], { type: 'image/png' }), 'reference.png');
   const t0 = Date.now();
   const res = await fetch(ENDPOINT, {
@@ -107,9 +115,10 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const todo = layers.filter((l) => !only || only.includes(l.id));
+  const pool = seasons ? seasonLayers : layers;
+  const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
-    console.error(`Nothing matches --only ${only?.join(',')}; layers: ${layers.map((l) => l.id).join(', ')}`);
+    console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);
     process.exit(1);
   }
   console.log(`${todo.length} layer(s), ${CONCURRENCY} at a time, quality ${quality}${dry ? ' (dry run)' : ''}`);

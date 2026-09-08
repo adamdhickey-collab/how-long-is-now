@@ -125,8 +125,8 @@ mind, not so they get generated now.
 
 Superseded on 2026-09-08 by the park's layers (ledger session 10):
 `far-shore`, `shoreline`, `lawn`, `trees`, `foreground`, and the sheets
-`sitters`, `movers`, `boats`, all late summer, all from
-`scripts/park-layers.mjs`. The table below is what the illustrated park
+`sitters`, `movers`, `boats`, the first four in all four seasons, all from
+`scripts/park-layers.mjs` (`--seasons` for the edits). The table below is what the illustrated park
 was made of, kept for the record; its raws remain under `assets/raw/scene-04/`.
 
 
