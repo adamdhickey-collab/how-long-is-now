@@ -5,7 +5,17 @@ ChatGPT's image tool driven from the browser, and how a picture becomes a
 plate the manifest can place. `CONCEPT.md` says what the piece is;
 `APPROACH.md` says "cheat like crazy"; this file is the cheat, itemised.
 
-Status: **pipeline proven, 2026-09-05; plates restyled, 2026-09-06.**
+Status: **the park remade in a new direction, 2026-09-08 (session 10).**
+One reference — a pointillist Lake Harriet alive with people, at
+`assets/raw/park/reference.png` — now decides the style, and the park is
+generated through the image model's API rather than the browser:
+`scripts/generate.mjs` sends every prompt in `scripts/park-layers.mjs`
+with the reference attached and writes the layers to
+`assets/raw/scene-04/park/`; `npm run plates` keys them off their white
+and cuts them. The paragraphs below record how the earlier plates were
+made and remain true of the corridor and the memory sheets.
+
+Earlier status: pipeline proven, 2026-09-05; plates restyled, 2026-09-06.
 Session 1 generated its six images (seven with one correction); findings
 in `assets/LEDGER.md`. Sessions 2–4 finished the three plate families as
 photographs. Session 6 regenerated all twelve in the illustrated style the
@@ -112,6 +122,13 @@ finished; the rest is listed so the style bible is written with them in
 mind, not so they get generated now.
 
 ### Scene 04 · the park → one year (moment 1)
+
+Superseded on 2026-09-08 by the park's layers (ledger session 10):
+`far-shore`, `shoreline`, `lawn`, `trees`, `foreground`, and the sheets
+`sitters`, `movers`, `boats`, all late summer, all from
+`scripts/park-layers.mjs`. The table below is what the illustrated park
+was made of, kept for the record; its raws remain under `assets/raw/scene-04/`.
+
 
 | Id | What | Plate | Format | Variants |
 | --- | --- | --- | --- | --- |

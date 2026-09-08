@@ -166,23 +166,6 @@ const SCENES = {
     { id: 'corridor-floor', raw: 'corridor-floor-v1.png', recipe: 'corridor', surface: 'floor' },
     { id: 'fragments', raw: ['fragments-a-v1.png', 'fragments-b-v1.png'], recipe: 'fragments' },
   ],
-  'scene-04': [
-    { id: 'bench', variant: 'august', raw: 'bench-v1.png', recipe: 'cutout' },
-    // Session 6 (assets/LEDGER.md): the drawn plates. The photographic
-    // set (canopy v4/v3, banks v1) stays in assets/raw for the record.
-    { id: 'canopy', variant: 'late-summer', raw: 'canopy-august-v5.png', ext: 'canopy-ext-august-v1.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'autumn', raw: 'canopy-october-v4.png', ext: 'canopy-ext-october-v1.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'winter', raw: 'canopy-january-v4.png', ext: 'canopy-ext-january-v1.png', recipe: 'canopy' },
-    { id: 'canopy', variant: 'spring', raw: 'canopy-april-v4.png', ext: 'canopy-ext-april-v1.png', recipe: 'canopy' },
-    { id: 'near-bank', variant: 'late-summer', raw: 'near-bank-august-v2.png', recipe: 'near-bank' },
-    { id: 'near-bank', variant: 'autumn', raw: 'near-bank-october-v2.png', recipe: 'near-bank' },
-    { id: 'near-bank', variant: 'winter', raw: 'near-bank-january-v2.png', recipe: 'near-bank' },
-    { id: 'near-bank', variant: 'spring', raw: 'near-bank-april-v3.png', recipe: 'near-bank' },
-    { id: 'far-bank', variant: 'late-summer', raw: 'far-bank-august-v2.png', recipe: 'far-bank' },
-    { id: 'far-bank', variant: 'autumn', raw: 'far-bank-october-v2.png', recipe: 'far-bank' },
-    { id: 'far-bank', variant: 'winter', raw: 'far-bank-january-v2.png', recipe: 'far-bank' },
-    { id: 'far-bank', variant: 'spring', raw: 'far-bank-april-v2.png', recipe: 'far-bank' },
-  ],
 };
 
 // ----------------------------------------------------------------- steps
