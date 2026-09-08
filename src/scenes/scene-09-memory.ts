@@ -82,8 +82,20 @@ const paneFragment = `
   uniform vec3 uInk, uDim, uGround;
   uniform sampler2D uSheet;
   uniform float uRows, uStrip, uBright;
+  // One atlas per month: its tiles cols across, count in all, and
+  // whether it has arrived. A pane takes tile (day mod count).
+  uniform sampler2D uAtlas0, uAtlas1;
+  uniform vec3 uGrid0, uGrid1;
+  uniform float uHas0, uHas1;
   varying vec2 vUv;
   varying float vIndex, vSeed, vAlpha, vKind;
+  vec4 tileOf(sampler2D atlas, vec3 grid, float day, vec2 t) {
+    float i = mod(day, grid.z);
+    float rows = ceil(grid.z / grid.x);
+    // The atlas is packed top-down; the texture's v runs bottom-up.
+    vec2 cell = vec2(mod(i, grid.x), rows - 1.0 - floor(i / grid.x));
+    return texture2D(atlas, (cell + clamp(t, 0.0, 1.0)) / vec2(grid.x, rows));
+  }
   float hair(float d) {
     float w = fwidth(d);
     return 1.0 - smoothstep(0.5 * w, 1.5 * w, abs(d));
@@ -115,6 +127,25 @@ const paneFragment = `
       mark = (1.0 - smoothstep(0.12, 0.2, length(g))) * step(abs(q.x - c.x), 0.25);
     }
     mark *= 1.0 - inStrip;
+    float has = vKind < 0.5 ? uHas0 : uHas1;
+    if (has > 0.5) {
+      // The day's image fills the pane above the strip, cropped square
+      // to the pane's width, seen through the glass.
+      float day = mod(vIndex, 30.0);
+      float top = 1.0 - uStrip;
+      vec2 t = vec2(vUv.x, (vUv.y - uStrip) / top);
+      // The pane is wider than tall: crop the square tile to the pane's
+      // shape, keeping its centre.
+      float ratio = top * 1.1 / 1.6;
+      t.y = 0.5 + (t.y - 0.5) * ratio;
+      vec4 img = vKind < 0.5 ? tileOf(uAtlas0, uGrid0, day, t) : tileOf(uAtlas1, uGrid1, day, t);
+      float inImg = (1.0 - inStrip) * step(0.015, vUv.x) * step(vUv.x, 0.985) * step(vUv.y, 0.985);
+      vec3 col = mix(mix(uDim, uInk, max(border, text)), img.rgb, inImg * 0.92);
+      float a = max(face, max(border * 0.9, max(text, max(rule, inImg * 0.92)))) * vAlpha;
+      gl_FragColor = vec4(col * uBright, a);
+      #include <colorspace_fragment>
+      return;
+    }
     vec3 col = mix(uDim, uInk, max(border, max(text, mark)));
     float a = max(face, max(border * 0.9, max(text, max(mark * 0.8, rule)))) * vAlpha;
     gl_FragColor = vec4(col * uBright, a);
@@ -183,7 +214,38 @@ export function createMemoryScene(world: THREE.Scene, def: Scene, reducedMotion:
     uRows: { value: total },
     uStrip: { value: STRIP },
     uBright: { value: 1 },
+    uAtlas0: { value: null as THREE.Texture | null },
+    uAtlas1: { value: null as THREE.Texture | null },
+    uGrid0: { value: new THREE.Vector3(1, 1, 1) },
+    uGrid1: { value: new THREE.Vector3(1, 1, 1) },
+    uHas0: { value: 0 },
+    uHas1: { value: 0 },
   };
+  // The months' images, loaded behind the first frame and switched on
+  // as each arrives; until then the panes carry their marks.
+  const loader = new THREE.TextureLoader();
+  months.slice(0, 2).forEach((m, mi) => {
+    if (!m.atlas) return;
+    const { image, cols, count } = m.atlas;
+    loader
+      .loadAsync(`${import.meta.env.BASE_URL}${image}`)
+      .then((tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.anisotropy = 4;
+        if (mi === 0) {
+          uniforms.uAtlas0.value = tex;
+          uniforms.uGrid0.value.set(cols, 1, count);
+          uniforms.uHas0.value = 1;
+        } else {
+          uniforms.uAtlas1.value = tex;
+          uniforms.uGrid1.value.set(cols, 1, count);
+          uniforms.uHas1.value = 1;
+        }
+      })
+      .catch(() => {});
+  });
   const mat = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: paneVertex,

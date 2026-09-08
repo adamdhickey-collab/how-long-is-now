@@ -352,6 +352,11 @@ export interface Month {
   to: number;
   scatter: { x: number; y: number; z: number; tilt: number };
   readings: string[];
+  /** The days' images, packed into one atlas of `count` square tiles,
+   *  `cols` across. A month with fewer tiles than days reuses them in
+   *  turn — which, for a month of the same day, is the point. Without
+   *  an atlas the panes carry plain marks. */
+  atlas?: { image: string; cols: number; rows: number; count: number };
 }
 
 /**
@@ -853,6 +858,7 @@ export const scenes: Scene[] = [
           to: 0.46,
           scatter: { x: 0, y: 0, z: 0, tilt: 0 },
           readings: ['DESK · 4:17 · 21 °C · 6,204 STEPS'],
+          atlas: { image: 'plates/scene-09/days-same.webp', cols: 6, rows: 2, count: 9 },
         },
         {
           id: 'vivid',
@@ -860,6 +866,7 @@ export const scenes: Scene[] = [
           from: 0.54,
           to: 0.97,
           scatter: { x: 4, y: 2.4, z: 10, tilt: 30 },
+          atlas: { image: 'plates/scene-09/days-vivid.webp', cols: 6, rows: 5, count: 30 },
           readings: [
             'NEW CITY · 7:50 · 12 °C · 14,210 STEPS',
             'TRAIN · 9:14 · 15 °C · 3,020 STEPS',

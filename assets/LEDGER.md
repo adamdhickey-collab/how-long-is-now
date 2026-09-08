@@ -336,3 +336,46 @@ checked before naming (the lesson of session 6c). Sizes: the wall bay
   painted panel lands where the shader's lamp was.
 - The eighteen cutouts trimmed cleanly by cell; the atlas is 3072 × 1536
   at 556 KB. The four plates together are 1.1 MB.
+
+## Session 8 · scene 09: the sixty squares · 2026-09-08
+
+The moodboard conversation. The days of the two months, generated nine
+to a sheet in a 3 × 3 grid with thin gaps (no alpha: the squares fill
+the panes), sliced by thirds and packed into one atlas per month by
+`scripts/plates.mjs`. The same-day month is one sheet of nine that the
+thirty days reuse in turn, which for a month of the same day is the
+point; the vivid month is four sheets following its readings in order,
+thirty days and six spares.
+
+The account showed "Capabilities reduced until 4:05 PM" throughout. The
+image tool failed outright twice (16b and 16c, "the image generator hit
+an error") and succeeded each time on its own *Try again*; each
+generation took 100–170 s, up from 60–100. The first two sheets came out
+nearer to photographs than to the park's illustration; from 16b on the
+style returned.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 15 | `scene-09/days-same-v1.png` | "A neat 3 by 3 grid of NINE square pictures with thin white gaps … All nine the SAME DAY at the same desk: a desk by a window, a mug, a closed laptop, a lamp, 4:17, the same flat afternoon light. Vary almost nothing: the mug an inch to the left, the blind a little lower, the chair pushed in, a pen moved. Hard to tell apart." | **Accept.** Nine desks, hard to tell apart. |
+| 16a | `scene-09/days-vivid-a-v1.png` | Same form; days 1–9 of the vivid month as scenes: a new city at dawn, a train window, a name learned at a cafe table, a wrong turn onto a river, rain all day from inside, a first swim, hard news on a phone, a long walk on a ridge, a borrowed kitchen | **Accept.** All nine, in order. |
+| 16b | `scene-09/days-vivid-b-v1.png` | Days 10–18: fog with a lamp post, an argument on a bench, a market, a first try on a bicycle, hail on a car roof, an old friend laughing, lost keys under a sofa, high wind on a bridge, a letter at 4:17 | Failed twice; **Accept** on the retry. |
+| 16c | `scene-09/days-vivid-c-v1.png` | Days 19–27: a night bus, a stray dog, heat on a shuttered street, the wrong train, someone singing on a stairwell, thunder over rooftops, a door held open, a new word on a hand, a flood warning | Failed once; **Accept** on the retry. |
+| 16d | `scene-09/days-vivid-d-v1.png` | Days 28–30 and six spares: a long dinner, snow on blossom, home at the desk again; a ferry deck, a power cut, a bicycle in grass, a rooftop storm, an empty pool, a hand on a train door | **Accept.** Took just over four minutes. |
+
+### Session 8b · wiring
+
+Downloaded 2026-09-08 into `assets/raw/scene-09/`, one at a time and
+checked before naming. All five are 1254 × 1254 without alpha. Two
+things the loop taught: the conversation held the last sheet three
+times over (its preview copies), and a share control found by walking
+up from an image can belong to the next image down — the dialog's own
+title is what to check before downloading.
+
+`scripts/plates.mjs` cuts each sheet by thirds, insets 4.5 % past the
+gaps (3.5 % left a hairline of white at one row's edge), fits each cell
+to a 384 px tile and packs one atlas per month: nine desks, 6 × 2, at
+126 KB, and thirty days, 6 × 5, at 581 KB. The panes draw the day's
+square above their readings, through the glass; the same month reuses
+its nine in turn. One correction on wiring: the atlas is packed
+top-down and the texture reads bottom-up, so the first draw put day 26's
+picture under day 2's reading until the row was flipped.

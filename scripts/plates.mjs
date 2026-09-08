@@ -109,7 +109,30 @@ const FRAGMENTS = {
   cols: 6,
 };
 
+/**
+ * Scene 09's squares: sheets of nine small square images each, in a
+ * 3 × 3 grid with thin gaps, no alpha. Each cell is cut by thirds, inset
+ * past the gap, resized to a tile and packed into one atlas per month,
+ * `cols` across, in sheet order. The same-day month has one sheet and
+ * reuses its nine; the vivid month's four sheets follow its readings.
+ */
+const SQUARES = {
+  grid: 3,
+  inset: 0.045,
+  tile: 384,
+  cols: 6,
+};
+
 const SCENES = {
+  'scene-09': [
+    { id: 'days-same', raw: ['days-same-v1.png'], recipe: 'squares' },
+    {
+      id: 'days-vivid',
+      raw: ['days-vivid-a-v1.png', 'days-vivid-b-v1.png', 'days-vivid-c-v1.png', 'days-vivid-d-v1.png'],
+      recipe: 'squares',
+      count: 30,
+    },
+  ],
   'scene-08': [
     { id: 'corridor-wall', raw: 'corridor-wall-v1.png', recipe: 'corridor', surface: 'wall' },
     { id: 'corridor-ceiling', raw: 'corridor-ceiling-v1.png', recipe: 'corridor', surface: 'ceiling' },
@@ -338,8 +361,41 @@ async function fragmentAtlas(files) {
   }).composite(composite);
 }
 
+async function squaresAtlas(files, p) {
+  const { grid, inset, tile, cols } = SQUARES;
+  const tiles = [];
+  for (const file of files) {
+    const meta = await sharp(file).metadata();
+    const cw = meta.width / grid;
+    const ch = meta.height / grid;
+    for (let r = 0; r < grid; r++) {
+      for (let c = 0; c < grid; c++) {
+        if (p.count && tiles.length >= p.count) break;
+        const cut = await sharp(file)
+          .extract({
+            left: Math.round(c * cw + cw * inset),
+            top: Math.round(r * ch + ch * inset),
+            width: Math.round(cw * (1 - 2 * inset)),
+            height: Math.round(ch * (1 - 2 * inset)),
+          })
+          .resize({ width: tile, height: tile, fit: 'cover' })
+          .png()
+          .toBuffer();
+        tiles.push(cut);
+      }
+    }
+  }
+  const across = Math.min(cols, tiles.length);
+  const rows = Math.ceil(tiles.length / across);
+  console.log(`  ${tiles.length} squares into a ${across} × ${rows} atlas`);
+  return sharp({
+    create: { width: across * tile, height: rows * tile, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } },
+  }).composite(tiles.map((input, i) => ({ input, left: (i % across) * tile, top: Math.floor(i / across) * tile })));
+}
+
 const RECIPES = {
   canopy: canopyStrip,
+  squares: squaresAtlas,
   'near-bank': nearBank,
   'far-bank': farBank,
   corridor: corridorBay,
@@ -380,7 +436,7 @@ async function run() {
         continue;
       }
       const ext = p.ext && (await exists(path.join(RAW, scene, p.ext))) ? path.join(RAW, scene, p.ext) : undefined;
-      const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs) : await RECIPES[p.recipe](srcs[0], ext, p);
+      const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
       const { kb, quality, over } = await encode(pipeline, out);
       console.log(

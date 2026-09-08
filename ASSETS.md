@@ -153,7 +153,10 @@ The best fit for the tool in the whole piece. Thirty "same day" images for
 the repetitive month, generated with an explicit instruction to vary
 almost nothing: same desk, same window, same mug, same light. Then thirty
 for the vivid month, each a different place, weather, and hour. Squares,
-small, sixty in total. The panes are made of these.
+small, sixty in total. The panes are made of these. Generated 2026-09-08
+nine to a sheet in a 3 × 3 grid, sliced and packed into one atlas per
+month (ledger, session 8): one sheet of nine for the same day, which
+the thirty days reuse in turn, and four for the different days.
 
 ### Scene 05 · lifetime
 
