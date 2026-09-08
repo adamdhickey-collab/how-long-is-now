@@ -102,10 +102,16 @@ export interface Season {
   tempWater: number;
 }
 
-/** A camera move, declared start to end across the scene's own progress. */
+/**
+ * A camera move, declared start to end across the scene's own progress,
+ * or across the window `Scene.cameraAt` names. `ease` is how the move is
+ * travelled: `linear` for a rise the scroll drives directly, `fall` for
+ * one that gathers speed and lands gently — the return to the afternoon.
+ */
 export interface CameraMove {
   from: { y: number; z: number; lookY: number };
   to: { y: number; z: number; lookY: number };
+  ease?: 'linear' | 'fall';
 }
 
 /**
@@ -473,6 +479,10 @@ export interface Scene {
   /** The window of local progress the caption is up for. Absent, the
    *  caption is up for the whole scene. */
   captionAt?: { from: number; to: number };
+  /** The window of local progress the camera move runs over. Absent, it
+   *  runs the whole scene. Before and after, the camera holds at the
+   *  move's two ends. */
+  cameraAt?: { from: number; to: number };
   /**
    * The span of simulated time the whole scene covers, in seconds. The
    * fixed clock reads it out; the world uses it to know what it is
@@ -544,6 +554,9 @@ export interface Scene {
   hold?: {
     of: string;
     at: number;
+    /** The holder's own progress at which the world arrives. Before it
+     *  there is nothing to see: the scene is its own black. */
+    from?: number;
     /**
      * The span of the held world's own time this scene covers, in
      * seconds: scroll advances the world's clock through it, on top of
@@ -976,15 +989,43 @@ export const scenes: Scene[] = [
   {
     id: 'scene-06-return',
     label: '',
-    lengthVh: 100,
+    // Long enough that the stop is a stop: the black has to be sat in
+    // before the line arrives, and the line before the fall.
+    lengthVh: 140,
     caption: 'But that isn’t how you experienced it.',
+    captionAt: { from: 0.12, to: 0.52 },
     timeRate: 0,
+    // Everything stops. Black, the line, and then the fall: the park
+    // comes back — the same August afternoon the piece opened on, the
+    // elms their own size again — from where the lifetime left the eye,
+    // all the way down to the bench.
+    hold: { of: 'scene-04-year', at: 0, from: 0.56 },
+    // The fall starts high but no further back than the treeline can
+    // fill — beyond about z 28 the strip shows its ends — and the black
+    // before it hides the join, so it need not begin where the lifetime
+    // left the eye. What is left is a drop: twenty units down to the seat.
+    camera: {
+      from: { y: 20, z: 28, lookY: 14 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+      ease: 'fall',
+    },
+    cameraAt: { from: 0.56, to: 1 },
+    fadeIn: 0.2,
   },
   {
     id: 'scene-07-attention',
     label: '1 SECOND',
     lengthVh: 150,
     timeRate: 0.1,
+    // Not built: this is only the frame the fall lands in and stays in,
+    // the same held second scene 01 opens on, so the return has
+    // somewhere to arrive. The inward zoom — the spectrogram, the leaf
+    // as a network, the thermal of one hand — is still to make.
+    hold: { of: 'scene-04-year', at: 0 },
+    camera: {
+      from: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+    },
   },
   {
     id: 'scene-08-two-clocks',

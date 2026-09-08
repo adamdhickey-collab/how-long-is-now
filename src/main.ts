@@ -194,9 +194,18 @@ function frame(now: number) {
   // built; until then there is a step at scene 04's edges.
   if (active.camera) {
     const { from, to } = active.camera;
-    camera.position.y = from.y + (to.y - from.y) * local;
-    camera.position.z = from.z + (to.z - from.z) * local;
-    camera.lookAt(0, from.lookY + (to.lookY - from.lookY) * local, 0);
+    // The move runs over the window the scene declares, or the whole of
+    // it; a fall gathers speed and lands gently, where a rise is the
+    // scroll's own pace.
+    const w = active.cameraAt;
+    let k = w ? (local - w.from) / Math.max(1e-6, w.to - w.from) : local;
+    k = Math.min(Math.max(k, 0), 1);
+    if (active.camera.ease === 'fall') {
+      k = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    }
+    camera.position.y = from.y + (to.y - from.y) * k;
+    camera.position.z = from.z + (to.z - from.z) * k;
+    camera.lookAt(0, from.lookY + (to.lookY - from.lookY) * k, 0);
   } else {
     const outward = Math.min(progress / 0.55, 1); // scenes 01–05
     const inward = Math.max((progress - 0.55) / 0.45, 0); // 06–10
@@ -217,6 +226,7 @@ function frame(now: number) {
           at: active.hold.at,
           scene: active,
           local,
+          from: active.hold.from,
           seconds: active.hold.seconds,
           churn: active.hold.churn,
           lens: active.hold.lens,

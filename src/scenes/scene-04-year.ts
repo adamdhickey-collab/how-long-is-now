@@ -109,6 +109,8 @@ export interface YearScene {
 export interface Hold {
   at: number;
   scene: Scene;
+  /** The holder's progress at which the world arrives; before it, black. */
+  from?: number;
   /** The holder's own progress, which its instruments are windowed on. */
   local: number;
   /** The span of the world's own time the holder covers, in seconds, if
@@ -1471,10 +1473,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       if (fadeIn > 0) alpha = Math.min(alpha, local / fadeIn);
       if (fadeOut > 0) alpha = Math.min(alpha, (1 - local) / fadeOut);
     } else {
-      // A holder fades the world at its own edges, if it declares them.
+      // A holder fades the world at its own edges, if it declares them,
+      // and shows nothing at all before the point it asks the world to
+      // arrive at — which is how a scene of its own black is made.
+      const hFrom = holder.from ?? 0;
       const hIn = holder.scene.fadeIn ?? 0;
       const hOut = holder.scene.fadeOut ?? 0;
-      if (hIn > 0) alpha = Math.min(alpha, readAt / hIn);
+      alpha = Math.min(alpha, hIn > 0 ? (readAt - hFrom) / hIn : readAt >= hFrom ? 1 : 0);
       if (hOut > 0) alpha = Math.min(alpha, (1 - readAt) / hOut);
     }
     alpha = clamp01(alpha);
