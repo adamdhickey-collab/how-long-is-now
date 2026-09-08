@@ -879,14 +879,20 @@ export const scenes: Scene[] = [
       // at it. It belongs to the park rather than to any one scene — the
       // camera rises off it through the year, it is under the frame for
       // the lifetime, and the fall in scene 06 lands back at it.
+      // It stands in the near foreground with its feet below the frame:
+      // the scene has no mid-ground — past the reed tops everything is
+      // lake — so a bench with a visible base floats wherever it is put,
+      // and one cropped by the frame's edge, as a photograph would crop
+      // the seat you are standing behind, is the honest placement. The
+      // cutout's own patch of grass is below the frame with the feet.
       {
         id: 'bench',
-        x: -4.5,
-        z: 8,
-        width: 6.5,
-        height: 3.28,
-        baseY: -0.9,
-        shade: 0.16,
+        x: -2.4,
+        z: 11,
+        width: 5.2,
+        height: 2.63,
+        baseY: -1.55,
+        shade: 0.12,
         // An August cutout: it belongs to the afternoon the piece opens
         // and closes on, which every held scene sits in, and it leaves as
         // the year begins to turn rather than sitting through a winter

@@ -962,6 +962,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         benchDef,
         new THREE.PlaneGeometry(benchDef.width, benchDef.height),
         benchDef.baseY + benchDef.height / 2,
+        // In front of everything: the nearest thing in the park.
         -2,
         [],
         true,

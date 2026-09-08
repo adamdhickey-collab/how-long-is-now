@@ -408,14 +408,23 @@ Trimmed to its alpha by a new `cutout` recipe in `scripts/plates.mjs`:
 ### What placing it decided
 
 1. **A plate can be one object, not a band.** Every plate before it ran
-   the width of the frame and was centred; the bench needed an `x`, and
-   sits at −4.5 so the bandshell is still seen past it.
-2. **It belongs to the park, not to a scene.** Declared once in the
+   the width of the frame and was centred; the bench needed an `x`.
+2. **A visible base floats, wherever it is put.** First placed eight
+   units ahead at ground level, the bench sat with its grass patch at
+   the waterline and read as pasted on. Placed behind the reeds instead,
+   so they could stand in front of its feet, it landed on the far shore:
+   the scene has no mid-ground, and past the reed tops everything is
+   lake. The only depth a foreground object can honestly hold is the
+   near foreground with its feet below the frame — the way a photograph
+   crops the seat you are standing behind — so it stands five units from
+   the eye, left of centre, its base and its patch of grass out of frame,
+   the reeds beside and beyond it.
+3. **It belongs to the park, not to a scene.** Declared once in the
    year's world, it is there in every scene that holds the opening
    second — the second itself, the ten minutes, the day, the descent,
    the return — and the fall in scene 06 lands back at it. The camera
    rises off it through the year; the lifetime is far above it.
-3. **An August cutout cannot sit through a winter.** In January it was a
+4. **An August cutout cannot sit through a winter.** In January it was a
    brown bench on green summer grass under snow. A plate can now declare
    the window of the year it is `present` for, and the bench's is
    August: it goes as the seasons start to turn, at the same local 0.12
