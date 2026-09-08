@@ -133,11 +133,19 @@ the shore, a cloud reforming. Each of those is a tight macro cutout.
 
 ### Scene 08 · two clocks
 
-Two identical corridors. One image, generated once, used twice: a long
-institutional corridor, fluorescent, doors receding, 2:3 portrait so it
-can stand tall. Plus a set of "memory fragment" cutouts for the absorbed
-corridor's LOOKING BACK state: a hand on a page, a cup, a window, a face
-turned away, a shoe on a step. Twelve to twenty small squares.
+Two identical corridors, and the camera walks down both, so the corridor
+is not one picture but three surfaces the scene tiles along its length:
+one bay each of the wall (4 × 3 m, the door in the middle), the ceiling
+(4 × 2.6 m, one fluorescent panel) and the floor (4 × 2.6 m, terrazzo),
+each generated flat and front-on in the same illustrated style as the
+park, muted and institutional, and mirrored at every join so nothing
+seams. The scene lights them itself: the lamps' pooling, the floor's
+reflection, the fog, are the shader's, so the plates stay evenly lit.
+Plus the "memory fragment" cutouts for the absorbed corridor's LOOKING
+BACK state — a hand on a page, a cup, a window, a face turned away, a
+shoe on a step — generated nine to a sheet on transparent ground in a
+3 × 3 grid, sliced and packed into one atlas by `scripts/plates.mjs`.
+Eighteen in two sheets. Generated 2026-09-06 (ledger, session 7).
 
 ### Scene 09 · memory compression
 

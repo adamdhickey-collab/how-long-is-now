@@ -289,3 +289,50 @@ a continuous treeline to both ends; the canopy plates sit at 593–699 KB.
 A note for the file loop: the download batch was renamed by
 modification time and one rename overwrote another, losing August;
 re-downloaded. Rename one file at a time, checking each.
+
+## Session 7 · scene 08: the corridor and the fragments · 2026-09-06
+
+The moodboard conversation again, so the corridor inherits the park's
+style. Because the camera walks down the corridor, it is not one picture
+but three surfaces the scene tiles along its length, each generated flat
+and front-on; and the fragments are cutouts, nine to a sheet.
+
+Family line, given once: "Same illustrated style as the park plates
+above (clean clustered shapes, crisp edges, painted light) but muted,
+institutional: a long fluorescent-lit corridor. Pale grey-green walls, a
+darker green dado band at waist height, a dark skirting board,
+wood-veneer doors with brushed-steel handles and a small wired-glass
+window, speckled terrazzo floor, acoustic-tile ceiling with recessed
+fluorescent panels."
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 14a | `scene-08/corridor-wall-v1.png` | "ONE BAY of the corridor's wall seen exactly front-on, flat and orthographic, 4 m wide by 3 m tall: a single closed door centred, the dado band and skirting the full width, a narrow strip of ceiling tile along the top edge. Even fluorescent light, no vignette." Landscape 4:3. | **Accept.** Front-on, door centred, dado and skirting; a strip of ceiling with two lamps at the top and a strip of terrazzo at the foot, both to crop. |
+| 14b | `scene-08/corridor-ceiling-v1.png` | "ONE BAY of the ceiling seen from directly below, flat, 4 m by 2.6 m: a grid of acoustic tiles with T-bar joins and exactly one recessed fluorescent panel, 1.2 m by 0.3 m, glowing evenly white, centred." Landscape 3:2. | **Accept.** |
+| 14c | `scene-08/corridor-floor-v1.png` | "ONE BAY of the floor seen from directly above, flat, 4 m by 2.6 m: large square speckled terrazzo tiles, thin grout lines, matte, evenly lit, no reflections." Landscape 3:2. | **Accept.** |
+| 15a | `scene-08/fragments-a-v1.png` | "NINE separate small illustrations in a neat 3 by 3 grid with clear gaps, each a cutout with no background, frame or shadow, on a fully transparent background, muted warm colours: a hand on an open page; a cup of coffee with steam; a window with rain; a face turned away; a shoe on a step; a pencil mid-line; a phone face down; a leaf on a desk; a clock face with no hands." Square. | **Accept.** All nine, clean, in order. |
+| 15b | `scene-08/fragments-b-v1.png` | Same form: "two hands around a warm mug; an open doorway with light; a ring of keys; a small bird on a windowsill; a wristwatch, strap undone; a folded note; reading glasses on a closed book; a potted plant on a sill; a torn ticket stub." | **Accept.** All nine, clean, in order. |
+
+Each took 60–100 s. `scripts/plates.mjs` crops the wall bay to the wall
+alone, encodes the three surfaces as they are (the scene mirrors them at
+every join), and slices each sheet by its 3 × 3 cells, trims each cell to
+its alpha, and packs the eighteen into one 6 × 3 atlas the manifest
+addresses by index.
+
+### Session 7b · wiring
+
+Downloaded 2026-09-06 into `assets/raw/scene-08/`, one at a time and
+checked before naming (the lesson of session 6c). Sizes: the wall bay
+1448 × 1086 (4:3), the ceiling and floor 1536 × 1024, the sheets
+1254 × 1254 with true alpha.
+
+- The wall bay carries a strip of ceiling to row 55 and of floor from
+  row 922; the crop is the 867 rows between. Its wall region is wider
+  than the 4 × 3 m bay asked for, so the corridor's declared height went
+  from 3 m to 2.7 m: mapped to 3 m the door came out at 2.6 m tall,
+  mapped to 2.7 m it is a door.
+- The scene's own lighting (the pooling under each lamp, the floor's
+  reflection, the fog) sits over the plates unchanged; the ceiling bay's
+  painted panel lands where the shader's lamp was.
+- The eighteen cutouts trimmed cleanly by cell; the atlas is 3072 × 1536
+  at 556 KB. The four plates together are 1.1 MB.

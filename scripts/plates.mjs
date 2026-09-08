@@ -80,7 +80,42 @@ const FAR_BANK = {
   crop: { top: 355, height: 320 },
 };
 
+/**
+ * Scene 08's corridor: one bay of each surface, generated front-on and
+ * flat, cropped to the surface alone (the wall bay comes with a strip of
+ * ceiling and floor at its edges) and encoded as-is. The scene tiles each
+ * along the corridor with mirrored repeats, so nothing needs to be made
+ * seamless here.
+ */
+const CORRIDOR = {
+  // 1448 × 1086: a strip of ceiling to row 55, the floor from row 922.
+  wall: { crop: { top: 55, height: 867 } },
+  // 1536 × 1024, the bay edge to edge.
+  ceiling: { crop: { top: 0, height: 1024 } },
+  floor: { crop: { top: 0, height: 1024 } },
+};
+
+/**
+ * Scene 08's fragments: sheets of nine cutouts each on transparent
+ * ground, in a 3 × 3 grid. Each cell is trimmed to what is in it and
+ * fitted into a square tile with a margin; the tiles are packed into one
+ * atlas, `cols` across, in sheet order, so the manifest can address them
+ * by index. A cell with nothing in it is skipped.
+ */
+const FRAGMENTS = {
+  grid: 3,
+  tile: 512,
+  margin: 0.06,
+  cols: 6,
+};
+
 const SCENES = {
+  'scene-08': [
+    { id: 'corridor-wall', raw: 'corridor-wall-v1.png', recipe: 'corridor', surface: 'wall' },
+    { id: 'corridor-ceiling', raw: 'corridor-ceiling-v1.png', recipe: 'corridor', surface: 'ceiling' },
+    { id: 'corridor-floor', raw: 'corridor-floor-v1.png', recipe: 'corridor', surface: 'floor' },
+    { id: 'fragments', raw: ['fragments-a-v1.png', 'fragments-b-v1.png'], recipe: 'fragments' },
+  ],
   'scene-04': [
     // Session 6 (assets/LEDGER.md): the drawn plates. The photographic
     // set (canopy v4/v3, banks v1) stays in assets/raw for the record.
@@ -238,7 +273,78 @@ async function farBank(file) {
   return sharp(file).extract({ left: 0, top, width: meta.width, height });
 }
 
-const RECIPES = { canopy: canopyStrip, 'near-bank': nearBank, 'far-bank': farBank };
+async function corridorBay(file, _ext, p) {
+  const meta = await sharp(file).metadata();
+  const { top, height } = CORRIDOR[p.surface].crop;
+  return sharp(file).extract({ left: 0, top, width: meta.width, height: Math.min(height, meta.height - top) });
+}
+
+/** The tight box of everything with alpha in a raw RGBA buffer region. */
+function alphaBox(data, width, x0, y0, w, h) {
+  let minX = w;
+  let minY = h;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (data[((y0 + y) * width + x0 + x) * 4 + 3] > 12) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  return maxX < 0 ? null : { left: x0 + minX, top: y0 + minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+async function fragmentAtlas(files) {
+  const { grid, tile, margin, cols } = FRAGMENTS;
+  const inner = Math.round(tile * (1 - margin * 2));
+  const tiles = [];
+  for (const file of files) {
+    const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const cw = Math.floor(info.width / grid);
+    const ch = Math.floor(info.height / grid);
+    for (let r = 0; r < grid; r++) {
+      for (let c = 0; c < grid; c++) {
+        const box = alphaBox(data, info.width, c * cw, r * ch, cw, ch);
+        if (!box || box.width < cw * 0.1 || box.height < ch * 0.1) {
+          console.log(`  ${path.basename(file)} cell ${r},${c}: empty, skipped`);
+          continue;
+        }
+        const cut = await sharp(file)
+          .extract(box)
+          .resize({ width: inner, height: inner, fit: 'inside' })
+          .png()
+          .toBuffer({ resolveWithObject: true });
+        tiles.push({
+          input: cut.data,
+          left: Math.round((tile - cut.info.width) / 2),
+          top: Math.round((tile - cut.info.height) / 2),
+        });
+      }
+    }
+  }
+  const rows = Math.ceil(tiles.length / cols);
+  const composite = tiles.map((t, i) => ({
+    input: t.input,
+    left: (i % cols) * tile + t.left,
+    top: Math.floor(i / cols) * tile + t.top,
+  }));
+  console.log(`  ${tiles.length} fragments into a ${cols} × ${rows} atlas`);
+  return sharp({
+    create: { width: cols * tile, height: rows * tile, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  }).composite(composite);
+}
+
+const RECIPES = {
+  canopy: canopyStrip,
+  'near-bank': nearBank,
+  'far-bank': farBank,
+  corridor: corridorBay,
+  fragments: fragmentAtlas,
+};
 
 const exists = (f) =>
   access(f).then(
@@ -264,10 +370,17 @@ async function run() {
     if (only && only !== scene) continue;
     await mkdir(path.join(OUT, scene), { recursive: true });
     for (const p of plates) {
-      const src = path.join(RAW, scene, p.raw);
-      const out = path.join(OUT, scene, `${p.id}-${p.variant}.webp`);
+      const raws = Array.isArray(p.raw) ? p.raw : [p.raw];
+      const srcs = raws.map((r) => path.join(RAW, scene, r));
+      let missing = false;
+      for (const f of srcs) if (!(await exists(f))) missing = true;
+      const out = path.join(OUT, scene, p.variant ? `${p.id}-${p.variant}.webp` : `${p.id}.webp`);
+      if (missing) {
+        console.log(`${out}  skipped: raw not on disk (${raws.join(', ')})`);
+        continue;
+      }
       const ext = p.ext && (await exists(path.join(RAW, scene, p.ext))) ? path.join(RAW, scene, p.ext) : undefined;
-      const pipeline = await RECIPES[p.recipe](src, ext);
+      const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
       const { kb, quality, over } = await encode(pipeline, out);
       console.log(

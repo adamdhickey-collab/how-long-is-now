@@ -90,6 +90,8 @@ const corridorVertex = `
 const corridorFragment = `
   uniform vec3 uInk, uDim, uGround;
   uniform float uWidth, uHeight, uBay, uLamp, uEnd, uBright, uFog;
+  uniform sampler2D uWall, uCeiling, uFloor;
+  uniform float uImages;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vDepth;
@@ -117,7 +119,26 @@ const corridorFragment = `
     // Beyond the end wall nothing is drawn: the corridor stops there.
     if (p.z < uEnd - 0.01) discard;
 
-    if (abs(n.x) > 0.5) {
+    if (uImages > 0.5) {
+      // The drawn plates: one bay of each surface, tiled along the
+      // corridor and mirrored at every join so nothing seams. The lamps
+      // are painted in the ceiling bay; the light they pool is still
+      // this shader's, as is the floor's reflection of them.
+      if (abs(n.x) > 0.5) {
+        col = texture2D(uWall, vec2(p.z / uBay, p.y / uHeight)).rgb * lit;
+      } else if (n.y < -0.5) {
+        col = texture2D(uCeiling, vec2(p.z / uLamp, p.x / uWidth + 0.5)).rgb * max(lit, 0.55);
+      } else if (n.y > 0.5) {
+        float zc = (floor(p.z / uLamp) + 0.5) * uLamp;
+        float refl = exp(-pow(p.x / 0.42, 2.0)) * exp(-pow((p.z - zc) / 0.9, 2.0));
+        col = texture2D(uFloor, vec2(p.z / uLamp, p.x / uWidth + 0.5)).rgb * lit * 0.9 + uInk * refl * 0.3;
+      } else {
+        // The end wall wears the doorless flank of the wall bay, mirrored
+        // about its centre, so no door is painted across a dead end.
+        col = texture2D(uWall, vec2(abs(p.x) / uBay, p.y / uHeight)).rgb * max(lit, 0.7);
+        col = mix(col, uDim, max(hair(p.y - 0.02), hair(p.y - uHeight + 0.02)) * 0.5);
+      }
+    } else if (abs(n.x) > 0.5) {
       // A wall. A dado line at waist height; a door every bay, framed in
       // a hairline of dim ink, its face a shade darker than the wall.
       float zc = (floor(p.z / uBay) + 0.5) * uBay;
@@ -178,7 +199,9 @@ const fragmentVertex = `
 
 const fragmentFragment = `
   uniform vec3 uInk, uDim, uGround;
-  uniform float uShow, uBright, uFog;
+  uniform float uShow, uBright, uFog, uAtlasOn;
+  uniform sampler2D uAtlas;
+  uniform vec3 uAtlasGrid;
   varying vec2 vUv;
   varying float vSeed;
   varying float vDepth;
@@ -191,6 +214,23 @@ const fragmentFragment = `
     // The pane: a border a hair in, the face faintly there.
     float border = max(hair(abs(q.x) - 0.47), hair(abs(q.y) - 0.47));
     float face = 0.10;
+    if (uAtlasOn > 0.5) {
+      // A cutout from the atlas, by seed: the pane's height is the tile's,
+      // the tile centred across it, the cutout over the faint face.
+      float cols = uAtlasGrid.x;
+      float rows = uAtlasGrid.y;
+      float i = floor(fract(vSeed) * uAtlasGrid.z);
+      vec2 cell = vec2(mod(i, cols), rows - 1.0 - floor(i / cols));
+      vec2 t = vec2(q.x * 0.75 + 0.5, vUv.y);
+      vec4 cut = texture2D(uAtlas, (cell + clamp(t, 0.0, 1.0)) / vec2(cols, rows));
+      float inside = step(abs(q.x), 0.5 / 0.75 * 0.5);
+      float ca = cut.a * inside;
+      vec3 col = mix(mix(uDim, uInk, 0.6), cut.rgb, ca);
+      float a = max(face, max(border * 0.9, ca)) * uShow * exp(-vDepth * uFog);
+      gl_FragColor = vec4(col * uBright, a);
+      #include <colorspace_fragment>
+      return;
+    }
     // One of four marks, by seed: a ring, a line, a small square, a dot row.
     float kind = floor(fract(vSeed) * 4.0);
     vec2 c = vec2(fract(vSeed * 7.31) - 0.5, fract(vSeed * 3.17) - 0.5) * 0.4;
@@ -233,6 +273,10 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     uEnd: { value: -corridor.depth },
     uBright: { value: 1 },
     uFog: { value: FOG },
+    uWall: { value: null as THREE.Texture | null },
+    uCeiling: { value: null as THREE.Texture | null },
+    uFloor: { value: null as THREE.Texture | null },
+    uImages: { value: 0 },
   };
   const corridorMat = new THREE.ShaderMaterial({
     uniforms,
@@ -287,6 +331,9 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     uShow: { value: 0 },
     uBright: { value: 1 },
     uFog: { value: FOG },
+    uAtlas: { value: null as THREE.Texture | null },
+    uAtlasGrid: { value: new THREE.Vector3(1, 1, 1) },
+    uAtlasOn: { value: 0 },
   };
   const fragMat = new THREE.ShaderMaterial({
     uniforms: fragUniforms,
@@ -336,6 +383,40 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   };
   const camWaiting = makeCam();
   const camAbsorbed = makeCam();
+
+  // ---- the imagery, where the manifest has it: loaded behind the first
+  // frame, switched on only once every piece of a set has arrived, so
+  // the corridor never shows half-drawn. Until then the stand-in draws.
+  const loader = new THREE.TextureLoader();
+  const load = (path: string, wrap: THREE.Wrapping) =>
+    loader.loadAsync(`${import.meta.env.BASE_URL}${path}`).then((tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = wrap;
+      tex.wrapT = wrap;
+      tex.anisotropy = 8;
+      return tex;
+    });
+  if (corridor.images) {
+    const { wall, ceiling, floor } = corridor.images;
+    Promise.all([wall, ceiling, floor].map((path) => load(path, THREE.MirroredRepeatWrapping)))
+      .then(([w, c, f]) => {
+        uniforms.uWall.value = w;
+        uniforms.uCeiling.value = c;
+        uniforms.uFloor.value = f;
+        uniforms.uImages.value = 1;
+      })
+      .catch(() => {});
+  }
+  if (fragment.atlas) {
+    const { image, cols, rows, count } = fragment.atlas;
+    load(image, THREE.ClampToEdgeWrapping)
+      .then((tex) => {
+        fragUniforms.uAtlas.value = tex;
+        fragUniforms.uAtlasGrid.value.set(cols, rows, count);
+        fragUniforms.uAtlasOn.value = 1;
+      })
+      .catch(() => {});
+  }
 
   // ---- the labels, in the figure's overlay: the state of the ten minutes
   // across the top, and at the foot of each corridor, who is walking it,

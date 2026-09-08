@@ -232,6 +232,15 @@ export interface Corridor {
   /** Distance between doors, and between ceiling lights. */
   bay: number;
   lamp: number;
+  /**
+   * Real imagery, when the corridor has it: one bay of each surface,
+   * seen flat, under public/plates/. The wall bay is `bay` wide by
+   * `height` tall with its door in the middle; the ceiling and floor
+   * bays are `lamp` long by `width` across. Each tiles along the
+   * corridor, mirrored at every join. Until all three have loaded the
+   * procedural stand-in holds the frame.
+   */
+  images?: { wall: string; ceiling: string; floor: string };
 }
 
 /**
@@ -263,8 +272,15 @@ export interface TwoClocks {
   waiting: Clock;
   /** The absorbed ten minutes break into this many fragments, looking back. */
   absorbed: Clock & { fragments: number };
-  /** A fragment's world size: a pane hung in the corridor. */
-  fragment: { width: number; height: number };
+  /** A fragment's world size: a pane hung in the corridor, and the
+   *  cutouts that go on the panes, packed into one atlas of `count`
+   *  tiles, `cols` across by `rows` down. Without it the panes carry
+   *  plain marks. */
+  fragment: {
+    width: number;
+    height: number;
+    atlas?: { image: string; cols: number; rows: number; count: number };
+  };
 }
 
 export interface Scene {
@@ -662,7 +678,18 @@ export const scenes: Scene[] = [
     // twenty bays hung with three dozen fragments. The turn is the exact
     // middle.
     twoClocks: {
-      corridor: { width: 2.6, height: 3, depth: 160, bay: 4, lamp: 4 },
+      corridor: {
+        width: 2.6,
+        height: 2.7,
+        depth: 160,
+        bay: 4,
+        lamp: 4,
+        images: {
+          wall: 'plates/scene-08/corridor-wall.webp',
+          ceiling: 'plates/scene-08/corridor-ceiling.webp',
+          floor: 'plates/scene-08/corridor-floor.webp',
+        },
+      },
       turn: 0.5,
       turnOver: 0.08,
       labels: {
@@ -673,7 +700,11 @@ export const scenes: Scene[] = [
       },
       waiting: { livedBays: 1.5, rememberedBays: 1 },
       absorbed: { livedBays: 30, rememberedBays: 20, fragments: 36 },
-      fragment: { width: 0.9, height: 1.2 },
+      fragment: {
+        width: 0.9,
+        height: 1.2,
+        atlas: { image: 'plates/scene-08/fragments.webp', cols: 6, rows: 3, count: 18 },
+      },
     },
     fadeIn: 0.04,
     fadeOut: 0.03,
