@@ -484,6 +484,13 @@ export interface Scene {
    *  move's two ends. */
   cameraAt?: { from: number; to: number };
   /**
+   * A scene whose scale changes inside itself: each entry replaces the
+   * HUD's label from its point in local progress onward. The outward
+   * journey crosses a scene to change scale; the inward one subdivides
+   * a single second without leaving it, and this is how it says so.
+   */
+  labelAt?: { from: number; label: string }[];
+  /**
    * The span of simulated time the whole scene covers, in seconds. The
    * fixed clock reads it out; the world uses it to know what it is
    * showing. One second, ten minutes, a year, a lifetime.
@@ -726,7 +733,11 @@ export const scenes: Scene[] = [
       from: { y: 1.6, z: 16, lookY: 3.0 },
       to: { y: 1.6, z: 16, lookY: 3.0 },
     },
-    instruments: [{ kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.55 }],
+    // The ramp spread across what one August afternoon holds: the lake
+    // at 24 °C sits low and blue, the sunned grass at 32 near the top.
+    instruments: [
+      { kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.55, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+    ],
   },
   {
     id: 'scene-02-ten-minutes',
@@ -778,7 +789,9 @@ export const scenes: Scene[] = [
     },
     instruments: [
       { kind: 'arc', from: 0.02, to: 1 },
-      { kind: 'thermal', from: 0.05, to: 1, strength: 0.6 },
+      // A day's spread: the grass falls to 14 °C by the small hours and
+      // climbs past 30 by afternoon, the lake barely moving under it.
+      { kind: 'thermal', from: 0.05, to: 1, strength: 0.6, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [10, 34] },
     ],
   },
   {
@@ -1017,15 +1030,39 @@ export const scenes: Scene[] = [
     label: '1 SECOND',
     lengthVh: 150,
     timeRate: 0.1,
-    // Not built: this is only the frame the fall lands in and stays in,
-    // the same held second scene 01 opens on, so the return has
-    // somewhere to arrive. The inward zoom — the spectrogram, the leaf
-    // as a network, the thermal of one hand — is still to make.
+    // The inward zoom. The same second the piece opened on, held: the
+    // clock does not move and neither does the world. What changes is
+    // how finely the second is divided — the label descends from one
+    // second to a hundredth — and how much of what was always there is
+    // being read. The instruments arrive one after another and none of
+    // them leaves, so the scene ends with every layer on at once: the
+    // absorbed state, which is what scene 08 then walks a corridor in.
     hold: { of: 'scene-04-year', at: 0 },
+    // Not a zoom into anything — there is nothing yet to zoom into — but
+    // a lean forward: the grass a little larger, the frame a little
+    // tighter, over the whole scene.
     camera: {
       from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.5, z: 12.4, lookY: 2.6 },
     },
+    labelAt: [
+      { from: 0, label: '1 SECOND' },
+      { from: 0.2, label: '½ SECOND' },
+      { from: 0.38, label: '¼ SECOND' },
+      { from: 0.56, label: '⅒ SECOND' },
+      { from: 0.78, label: '1/100 SECOND' },
+    ],
+    instruments: [
+      { kind: 'thermal', from: 0.08, to: 1, strength: 0.5, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+      { kind: 'flow', from: 0.3, to: 1 },
+      {
+        kind: 'radar',
+        from: 0.52,
+        to: 1,
+        period: 6,
+        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
+      },
+    ],
   },
   {
     id: 'scene-08-two-clocks',

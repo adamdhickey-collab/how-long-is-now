@@ -834,8 +834,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     uTempGround: { value: 0 },
     uTempWater: { value: 0 },
   };
+  // The ramp's ends, which the reading scene may set: a year's range
+  // (−10 to 36) puts an August grass and an August lake both at the top
+  // of it, and reads as one flat wash. A scene reading a single
+  // afternoon declares the spread that afternoon actually has.
+  let thermalLo = thermalRange[0];
+  let thermalHi = thermalRange[1];
   const thermalNorm = (celsius: number) =>
-    (celsius - thermalRange[0]) / Math.max(1e-3, thermalRange[1] - thermalRange[0]);
+    (celsius - thermalLo) / Math.max(1e-3, thermalHi - thermalLo);
 
   /**
    * The thermal pass on a plate: the image's own luminance stands in for
@@ -1578,8 +1584,20 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uFlowDir.value.set(Math.cos(toward), Math.sin(toward));
     waterMat.uniforms.uFlowSpeed.value = s.windSpeed;
     waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', readAt);
-    // The thermal instrument: the season's afternoon temperatures, as
-    // fractions of the ramp, on the banks and the lake.
+    // The thermal instrument: its ramp and its range are the reading
+    // scene's, where it declares them, so a scene reading one instant
+    // can spread the ramp across what that instant holds.
+    const thermalNow = reader.instruments?.find((i) => i.kind === 'thermal') ?? thermalDef;
+    const nowRamp = thermalNow?.ramp ?? thermalRamp;
+    thermalU.uRamp0.value.setHex(nowRamp[0]);
+    thermalU.uRamp1.value.setHex(nowRamp[1] ?? nowRamp[0]);
+    thermalU.uRamp2.value.setHex(nowRamp[2] ?? nowRamp[1] ?? nowRamp[0]);
+    thermalU.uRamp3.value.setHex(nowRamp[3] ?? nowRamp[2] ?? nowRamp[0]);
+    const nowRange = thermalNow?.range ?? thermalRange;
+    thermalLo = nowRange[0];
+    thermalHi = nowRange[1];
+    // The season's afternoon temperatures, as fractions of the ramp, on
+    // the banks and the lake.
     // The reading goes with the light: a thermal camera would not, but
     // the piece's night is dark, and the ramp's colours over it read as
     // day. It fades through dusk and comes back with the dawn.

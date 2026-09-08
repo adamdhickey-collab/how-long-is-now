@@ -114,17 +114,32 @@ function showCaption(up: boolean) {
   gsap.to(caption, { opacity: up ? 1 : 0, duration: reducedMotion ? 0 : up ? 1.4 : 0.6, ease: 'power2.out' });
 }
 
-function enterScene(index: number) {
-  const s = scenes[index];
-  activeIndex = index;
+let scaleShown = '';
 
-  // The label change is the only announcement a scene gets.
+/** The scale label, announced the one way a scale ever is: it arrives. */
+function setScale(text: string) {
+  if (text === scaleShown) return;
+  scaleShown = text;
   gsap.fromTo(
     scaleLabel,
     { opacity: 0, y: 8 },
-    { opacity: s.label ? 1 : 0, y: 0, duration: reducedMotion ? 0 : 0.8, ease: 'power2.out' },
+    { opacity: text ? 1 : 0, y: 0, duration: reducedMotion ? 0 : 0.8, ease: 'power2.out' },
   );
-  scaleLabel.textContent = s.label;
+  scaleLabel.textContent = text;
+}
+
+/** The scale a scene is at, for a scene that changes scale within itself. */
+function scaleOf(s: (typeof scenes)[number], local: number): string {
+  if (!s.labelAt) return s.label;
+  let text = s.label;
+  for (const step of s.labelAt) if (local >= step.from) text = step.label;
+  return text;
+}
+
+function enterScene(index: number) {
+  const s = scenes[index];
+  activeIndex = index;
+  setScale(s.label);
 
   // A caption is up for the whole scene unless the scene declares the
   // window it speaks in; then the loop raises it when local gets there.
@@ -173,6 +188,8 @@ function frame(now: number) {
   if (active.caption && active.captionAt) {
     showCaption(local >= active.captionAt.from && local <= active.captionAt.to);
   }
+  // A scene that subdivides its own scale says so as the scroll descends.
+  if (active.labelAt) setScale(scaleOf(active, local));
 
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
