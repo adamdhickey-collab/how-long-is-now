@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } from './manifest';
+import { mixHex, seasonAt, seasonWeights, type Instrument, type Plate, type Scene, type Season } from './manifest';
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened } from './loading';
@@ -620,6 +620,210 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       : null;
   // The survey resets the overlay when it is made, so the rings go in after it.
   if (ringsG && figureEl) figureEl.appendChild(ringsG);
+
+  // ---- the roots: a holder running decades cuts the far shore open and
+  // draws the stand's roots as a network under it, one hairline a root,
+  // each growing from its start to its tip with the years and branching
+  // as it goes, the trees joining underground late, as a stand's do.
+  // The instrument `roots`; built for the first reader that declares
+  // one, from that declaration.
+  const rootsVertex = /* glsl */ `
+    attribute float aBirth;
+    attribute float aTone;
+    varying float vBirth;
+    varying float vTone;
+    void main() {
+      vBirth = aBirth;
+      vTone = aTone;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+  const rootsFragment = /* glsl */ `
+    uniform float uGrow;
+    uniform float uOpacity;
+    uniform vec3 uInk;
+    varying float vBirth;
+    varying float vTone;
+    void main() {
+      // Birth runs along each root, so the years draw it in from its
+      // start to its tip rather than switching it on whole.
+      float a = smoothstep(vBirth - 0.012, vBirth, uGrow);
+      gl_FragColor = vec4(uInk, a * uOpacity * (0.35 + 0.65 * vTone));
+    }
+  `;
+  const nodesVertex = /* glsl */ `
+    attribute float aBirth;
+    uniform float uSize;
+    varying float vBirth;
+    void main() {
+      vBirth = aBirth;
+      gl_PointSize = uSize;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+  const nodesFragment = /* glsl */ `
+    uniform float uGrow;
+    uniform float uOpacity;
+    uniform vec3 uInk;
+    varying float vBirth;
+    void main() {
+      float r = length(gl_PointCoord - 0.5) * 2.0;
+      float dot = smoothstep(1.0, 0.2, r);
+      float a = smoothstep(vBirth, vBirth + 0.02, uGrow) * dot;
+      gl_FragColor = vec4(uInk, a * uOpacity);
+    }
+  `;
+  const rootsMat = new THREE.ShaderMaterial({
+    uniforms: { uGrow: { value: 0 }, uOpacity: { value: 0 }, uInk: { value: new THREE.Color(INK) } },
+    vertexShader: rootsVertex,
+    fragmentShader: rootsFragment,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const nodesMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uGrow: { value: 0 },
+      uOpacity: { value: 0 },
+      uInk: { value: new THREE.Color(INK) },
+      uSize: { value: 2.5 * Math.min(window.devicePixelRatio, 2) },
+    },
+    vertexShader: nodesVertex,
+    fragmentShader: nodesFragment,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  let roots: THREE.LineSegments | null = null;
+  let rootNodes: THREE.Points | null = null;
+  let rootsOf: Instrument | null = null;
+  function buildRoots(decl: Instrument): void {
+    if (roots) {
+      group.remove(roots);
+      roots.geometry.dispose();
+    }
+    if (rootNodes) {
+      group.remove(rootNodes);
+      rootNodes.geometry.dispose();
+    }
+    rootsOf = decl;
+    // A small seeded generator, so the stand is the same stand on every
+    // visit: the drawing is a record, not a shuffle.
+    let seed = 1917;
+    const rng = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const depth = decl.depth ?? 8;
+    const stand = Math.max(1, Math.round(decl.stand ?? 12));
+    // Just in front of the far bank's plate, at the ground line, across
+    // the stretch of shore the lifetime's camera holds in frame.
+    const z = farBankDef!.z + 0.3;
+    const top = farBankDef!.baseY + 0.15;
+    const span = 150;
+    const pos: number[] = [];
+    const birth: number[] = [];
+    const tone: number[] = [];
+    const nodeP: number[] = [];
+    const nodeB: number[] = [];
+    interface Tip {
+      x: number;
+      y: number;
+      t: number;
+    }
+    const tips: Tip[][] = [];
+    let tEnd = 0;
+    const segment = (x: number, y: number, nx: number, ny: number, t0: number, t1: number, tn: number) => {
+      pos.push(x, y, z, nx, ny, z);
+      birth.push(t0, t1);
+      tone.push(tn, tn);
+      nodeP.push(nx, ny, z);
+      nodeB.push(t1);
+      tEnd = Math.max(tEnd, t1);
+    };
+    for (let k = 0; k < stand; k++) {
+      const x0 = -span / 2 + ((k + 0.5 + (rng() - 0.5) * 0.6) * span) / stand;
+      const t0 = rng() * 0.12;
+      const treeTips: Tip[] = [];
+      nodeP.push(x0, top, z);
+      nodeB.push(t0);
+      // Angle is from straight down; a root never turns back up.
+      const grow = (x: number, y: number, t: number, angle: number, len: number, gen: number): void => {
+        const nx = x + Math.sin(angle) * len;
+        const ny = y - Math.cos(angle) * len;
+        // Deeper, finer roots grow slower.
+        const t1 = t + len * 0.035 * (1 + gen * 0.35);
+        segment(x, y, nx, ny, t, t1, Math.max(0, 1 - gen * 0.22));
+        if (gen >= 4 || len < 0.5) {
+          treeTips.push({ x: nx, y: ny, t: t1 });
+          return;
+        }
+        const n = gen === 0 ? 2 + Math.floor(rng() * 2) : 1 + Math.floor(rng() * 2);
+        for (let c = 0; c < n; c++) {
+          const spread = (rng() - 0.5) * (1.1 - gen * 0.1) + (c - (n - 1) / 2) * 0.55;
+          const a = Math.max(-1.35, Math.min(1.35, angle + spread));
+          grow(nx, ny, t1 + rng() * 0.02, a, len * (0.55 + rng() * 0.25), gen + 1);
+        }
+      };
+      const primaries = 2 + Math.floor(rng() * 2);
+      for (let c = 0; c < primaries; c++) {
+        const a = (c - (primaries - 1) / 2) * 0.7 + (rng() - 0.5) * 0.4;
+        grow(x0, top, t0, a, depth * (0.3 + rng() * 0.15), 0);
+      }
+      tips.push(treeTips);
+    }
+    // The joining: neighbours reach each other underground, late, by the
+    // roots nearest each other, bending down between them.
+    const treesEnd = tEnd;
+    for (let k = 0; k + 1 < stand; k++) {
+      const left = tips[k];
+      const right = tips[k + 1];
+      if (!left.length || !right.length) continue;
+      const links = 1 + Math.floor(rng() * 2);
+      const a = [...left].sort((p, q) => q.x - p.x);
+      const b = [...right].sort((p, q) => p.x - q.x);
+      for (let l = 0; l < links && l < a.length && l < b.length; l++) {
+        const p = a[l];
+        const q = b[l];
+        const t0 = Math.max(p.t, q.t) + (0.1 + rng() * 0.3) * treesEnd;
+        const mx = (p.x + q.x) / 2 + (rng() - 0.5) * 2;
+        const my = Math.min(p.y, q.y) - 0.6 - rng() * 1.2;
+        const d1 = Math.hypot(mx - p.x, my - p.y);
+        const d2 = Math.hypot(q.x - mx, q.y - my);
+        const t1 = t0 + d1 * 0.03;
+        const t2 = t1 + d2 * 0.03;
+        segment(p.x, p.y, mx, my, t0, t1, 0.9);
+        segment(mx, my, q.x, q.y, t1, t2, 0.9);
+      }
+    }
+    // Everything is grown by the time the years are: births in 0–1.
+    const scale = 1 / (tEnd * 1.02);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('aBirth', new THREE.Float32BufferAttribute(birth.map((b) => b * scale), 1));
+    geo.setAttribute('aTone', new THREE.Float32BufferAttribute(tone, 1));
+    roots = new THREE.LineSegments(geo, rootsMat);
+    roots.frustumCulled = false;
+    roots.renderOrder = 8;
+    roots.visible = false;
+    roots.name = 'roots';
+    group.add(roots);
+    const ngeo = new THREE.BufferGeometry();
+    ngeo.setAttribute('position', new THREE.Float32BufferAttribute(nodeP, 3));
+    ngeo.setAttribute('aBirth', new THREE.Float32BufferAttribute(nodeB.map((b) => b * scale), 1));
+    rootNodes = new THREE.Points(ngeo, nodesMat);
+    rootNodes.frustumCulled = false;
+    rootNodes.renderOrder = 9;
+    rootNodes.visible = false;
+    rootNodes.name = 'root-nodes';
+    group.add(rootNodes);
+  }
 
   // The sun itself: a glow on its own quad, moved to today's position.
   const sunMat = new THREE.ShaderMaterial({
@@ -1579,6 +1783,21 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         if (figureEl) figureEl.style.opacity = '1';
       }
       ringsG.style.opacity = String(alpha * ringsOn);
+    }
+
+    // The roots, for a reader that declares them: built once from that
+    // declaration, and grown with the years.
+    const rootsDecl = holder?.years ? reader.instruments?.find((i) => i.kind === 'roots') : undefined;
+    if (rootsDecl && rootsDecl !== rootsOf) buildRoots(rootsDecl);
+    const rootsOn = rootsDecl ? instrumentOn('roots', readAt) : 0;
+    if (roots && rootNodes) {
+      roots.visible = rootsOn > 0;
+      rootNodes.visible = rootsOn > 0;
+      const grown = holder?.local ?? 0;
+      rootsMat.uniforms.uGrow.value = grown;
+      rootsMat.uniforms.uOpacity.value = alpha * rootsOn;
+      nodesMat.uniforms.uGrow.value = grown;
+      nodesMat.uniforms.uOpacity.value = alpha * rootsOn;
     }
 
     skyMat.uniforms.uZenith.value.setHex(skyZenith);

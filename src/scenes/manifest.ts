@@ -142,11 +142,13 @@ export interface YearMark {
  * corner, a sweep lighting each mote and the short trail of where it has
  * been; `thermal` reads surface temperature; `ring` is the year as a
  * dial, the exposure filling it from the day the record opens, the
- * present as a tick, the scene's dated marks on its rim. Scroll switches
+ * present as a tick, the scene's dated marks on its rim; `roots` cuts the
+ * far shore open and draws the stand's roots as a network under it,
+ * growing with the years and joining tree to tree. Scroll switches
  * instruments on: each is on screen for a window
  * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc' | 'band' | 'rings';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc' | 'band' | 'rings' | 'roots';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
@@ -185,6 +187,10 @@ export interface Instrument {
    */
   ramp?: number[];
   range?: [number, number];
+  /** How far below the ground an instrument that draws underground
+   *  reaches, in world units; and how many trees the stand it draws has. */
+  depth?: number;
+  stand?: number;
 }
 
 /**
@@ -1043,6 +1049,11 @@ export const scenes: Scene[] = [
     instruments: [
       { kind: 'band', from: 0.02, to: 0.96 },
       { kind: 'rings', from: 0.05, to: 0.94 },
+      // The far shore cut open: the stand's roots, one hairline a root,
+      // growing with the years under the elms, and joining underground
+      // as a stand's do — the memory corridor's metaphor, made literal
+      // on the ground the piece was looking at all along.
+      { kind: 'roots', from: 0.04, to: 0.95, strength: 0.7, depth: 8, stand: 13 },
     ],
     fadeOut: 0.06,
   },
