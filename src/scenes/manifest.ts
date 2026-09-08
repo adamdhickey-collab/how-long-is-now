@@ -1315,6 +1315,10 @@ export const scenes: Scene[] = [
       { kind: 'flow', from: 0, to: 0.54, strength: 0.5 },
     ],
     hudOut: { from: 0.88, to: 0.98 },
+    // The same eye blinks in the same second, on the same count as it
+    // did at the opening: the one thing that happens here that also
+    // happened then.
+    blink: { after: 5.5, close: 0.1, open: 0.18 },
   },
 ];
 
