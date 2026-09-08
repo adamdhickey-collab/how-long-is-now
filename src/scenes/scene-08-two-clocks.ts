@@ -25,6 +25,9 @@
 import * as THREE from 'three';
 import type { Scene, TwoClocks } from './manifest';
 
+/** Local progress the dial spends coming on, and going off. */
+const DIAL_EDGE = 0.02;
+
 /** The HUD's ink and its dim, and the piece's ground. */
 const INK = 0xe8e6e1;
 const DIM = 0x8a877f;
@@ -440,6 +443,70 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     waitingEl.textContent = tc.labels.waiting;
     absorbedEl.textContent = tc.labels.absorbed;
   }
+  // ---- the waiting clock's one instrument: a seconds dial at the end
+  // of its corridor — a ring of sixty hairline ticks, a hand in the
+  // accent that jumps a second at a time, and the count so far beneath.
+  // Drawn in the overlay at the waiting view's vanishing point.
+  const dial = svg && tc.instrument ? document.createElementNS(NS, 'g') : null;
+  const dialFace = document.createElementNS(NS, 'g');
+  const dialRing = document.createElementNS(NS, 'circle');
+  const dialTicks = document.createElementNS(NS, 'path');
+  // The overlay's hairlines were drawn for the piece's near-black ground;
+  // over a lit corridor they need what its text already has, a halo of
+  // the ground beneath them. The halo is the same shapes, wider, under.
+  const dialRingHalo = document.createElementNS(NS, 'circle');
+  const dialTicksHalo = document.createElementNS(NS, 'path');
+  const dialHand = document.createElementNS(NS, 'line');
+  const dialPin = document.createElementNS(NS, 'circle');
+  const dialCount = document.createElementNS(NS, 'text');
+  let dialR = 0;
+  if (dial && svg) {
+    dial.setAttribute('class', 'two-clocks');
+    dial.style.opacity = '0';
+    for (const halo of [dialRingHalo, dialTicksHalo]) {
+      halo.setAttribute('class', 'halo');
+      halo.style.stroke = 'var(--figure-halo)';
+      halo.style.strokeWidth = '3px';
+    }
+    for (const line of [dialRing, dialTicks]) line.style.stroke = 'var(--ink)';
+    dialHand.setAttribute('class', 'now');
+    dialPin.setAttribute('class', 'figure__marker--now');
+    dialPin.setAttribute('r', '2');
+    dialCount.setAttribute('class', 'title');
+    dialCount.setAttribute('text-anchor', 'middle');
+    dialFace.append(dialRingHalo, dialTicksHalo, dialRing, dialTicks, dialHand, dialPin);
+    dial.append(dialFace, dialCount);
+    svg.appendChild(dial);
+  }
+  const placeDial = () => {
+    if (!dial || !tc.instrument) return;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const cx = W / 4;
+    const cy = H / 2;
+    const r = (tc.instrument.size * H) / 2;
+    dialFace.setAttribute('transform', `translate(${cx} ${cy})`);
+    dialCount.setAttribute('x', String(cx));
+    dialCount.setAttribute('y', String(cy + r + 24));
+    if (r !== dialR) {
+      dialR = r;
+      dialRing.setAttribute('r', String(r));
+      dialRingHalo.setAttribute('r', String(r));
+      let d = '';
+      for (let i = 0; i < 60; i++) {
+        const a = (i / 60) * Math.PI * 2;
+        const inner = r * (i % 5 === 0 ? 0.86 : 0.93);
+        d += `M${(Math.sin(a) * inner).toFixed(1)} ${(-Math.cos(a) * inner).toFixed(1)}L${(Math.sin(a) * r).toFixed(1)} ${(-Math.cos(a) * r).toFixed(1)}`;
+      }
+      dialTicks.setAttribute('d', d);
+      dialTicksHalo.setAttribute('d', d);
+      dialHand.setAttribute('x1', '0');
+      dialHand.setAttribute('y1', '0');
+      dialHand.setAttribute('x2', '0');
+      dialHand.setAttribute('y2', String(-r * 0.8));
+    }
+  };
+
   const placeLabels = () => {
     const W = window.innerWidth;
     const H = window.innerHeight;
@@ -467,6 +534,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       labels.style.opacity = '0';
       if (!on) svg.style.opacity = '0';
     }
+    if (dial) dial.style.opacity = '0';
   }
 
   function update(local: number): void {
@@ -514,6 +582,19 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
 
     camWaiting.position.z = pass.waiting.z;
     camAbsorbed.position.z = pass.absorbed.z;
+
+    // The dial: on for the window declared, counting the ten minutes as
+    // they happen. The hand jumps whole seconds; scroll is what ticks it.
+    if (dial && tc.instrument) {
+      const inst = tc.instrument;
+      const on = smooth((local - inst.from) / DIAL_EDGE) * (1 - smooth((local - inst.to) / DIAL_EDGE));
+      placeDial();
+      const seconds = Math.min(def.timeRate, Math.floor(clamp01(local / t0) * def.timeRate));
+      dialHand.setAttribute('transform', `rotate(${(seconds % 60) * 6})`);
+      const count = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+      if (dialCount.textContent !== count) dialCount.textContent = count;
+      dial.style.opacity = String(alpha * on);
+    }
 
     // The labels: the state across the top, crossfading at the turn.
     if (labels && svg) {

@@ -264,10 +264,27 @@ export interface Clock {
  * back at their remembered lengths. Every number here is choreography;
  * the scene module only draws it.
  */
+/**
+ * The one instrument the waiting clock has: a seconds dial hung at the
+ * end of the corridor, the only thing there is to look at. Sixty ticks,
+ * one hand that jumps a second at a time as the ten minutes pass, and
+ * the count so far. `size` is its diameter as a fraction of the frame's
+ * height; it is on screen for the window of local progress declared,
+ * which is the lived half — looking back, the stub is bare of it too.
+ */
+export interface SecondsDial {
+  kind: 'seconds';
+  size: number;
+  from: number;
+  to: number;
+}
+
 export interface TwoClocks {
   corridor: Corridor;
   turn: number;
   turnOver: number;
+  /** What the waiting clock stares at while it is happening. */
+  instrument?: SecondsDial;
   labels: { lived: string; remembered: string; waiting: string; absorbed: string };
   waiting: Clock;
   /** The absorbed ten minutes break into this many fragments, looking back. */
@@ -692,6 +709,9 @@ export const scenes: Scene[] = [
       },
       turn: 0.5,
       turnOver: 0.08,
+      // The waiting clock's one instrument, up from the first bay until
+      // the turn begins to dip.
+      instrument: { kind: 'seconds', size: 0.3, from: 0.03, to: 0.46 },
       labels: {
         lived: 'WHILE IT WAS HAPPENING',
         remembered: 'LOOKING BACK',
