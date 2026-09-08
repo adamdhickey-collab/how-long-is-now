@@ -61,6 +61,31 @@ export interface Plate {
    * close to, where one frame of imagery is only a slice of the plate.
    */
   imageRepeat?: number;
+  /**
+   * A plate that lies flat rather than standing: the ground itself, a
+   * plane at baseY running from z to z + depth, its image tiled across
+   * it both ways, mirrored at every seam. The lawn.
+   */
+  ground?: { depth: number; repeat: [number, number] };
+}
+
+/**
+ * People and boats: cutouts from one sheet, stood in the world. Each
+ * placement stands one cell of the atlas on the ground at x, z, a
+ * square `size` world units across with its feet at baseY. A placement
+ * with a speed walks the span the sheet declares, in metres per second
+ * of the world's real time, wrapping at the ends and facing the way it
+ * goes; a negative speed walks left. The present window is the year's,
+ * as a plate's: the people of one August are not there in the snow.
+ */
+export interface Figures {
+  id: string;
+  atlas: { image: string; cols: number; rows: number; count: number };
+  size: number;
+  baseY: number;
+  places: { id: string; cell: number; x: number; z: number; size?: number; speed?: number }[];
+  walk?: { from: number; to: number };
+  present?: { from: number; to: number; edge: number };
 }
 
 /**
@@ -559,6 +584,8 @@ export interface Scene {
   seasons?: Season[];
   /** The instruments this scene is read through, and when. */
   instruments?: Instrument[];
+  /** Who is in the world: sheets of cutouts, stood and walked. */
+  figures?: Figures[];
   /** The dated events of this place's year, for the ring to mark. */
   marks?: YearMark[];
   /**
@@ -618,6 +645,13 @@ export interface Scene {
     /** How much taller the elms stand at the end of the span, as a
      *  multiple of their height now: trees become enormous. */
     grow?: number;
+    /**
+     * Which of the world's walkers are on their way while this scene
+     * holds it, by placement id; absent, all of them. The held second
+     * has one jogger, so that one thing passing is what makes a second
+     * feel inhabited.
+     */
+    life?: string[];
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -761,10 +795,10 @@ export const scenes: Scene[] = [
     // world lives on its own — the air, the water, the clouds — and after
     // a moment the first thing is noticed: what the sun is doing to the
     // grass, as a thermal reading that arrives on its own time.
-    hold: { of: 'scene-04-year', at: 0 },
+    hold: { of: 'scene-04-year', at: 0, life: ['jogger'] },
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 1.9, z: 16, lookY: 0.5 },
     },
     // The ramp spread across what one August afternoon holds: the lake
     // at 24 °C sits low and blue, the sunned grass at 32 near the top.
@@ -786,8 +820,8 @@ export const scenes: Scene[] = [
     // wind on the water first, then the air, through the radar.
     hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5 },
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 1.9, z: 16, lookY: 0.5 },
     },
     instruments: [
       { kind: 'flow', from: 0.06, to: 1 },
@@ -820,8 +854,8 @@ export const scenes: Scene[] = [
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
     },
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 1.9, z: 16, lookY: 0.5 },
     },
     instruments: [
       { kind: 'arc', from: 0.02, to: 1 },
@@ -843,106 +877,144 @@ export const scenes: Scene[] = [
     // which is fixed to the sky and not to the ground, stays in the frame
     // for the whole year.
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
       to: { y: 9.5, z: 27, lookY: 9.5 },
     },
     plates: [
       { id: 'sky', z: -170, width: 620, height: 340, baseY: -90 },
-      // 2918 × 628 strip: one drawn panel per season, its own flanks
-      // mirrored outward. The shoreline sits 14 px above the strip's foot.
-      // The drawn elms fill more of their frame than the photographs did,
-      // so the plate is taller than it was and narrower, keeping the
-      // strip's own proportions: a tree is the shape it was drawn. It sits
-      // a little lower too, its foot behind the far bank, so the crowns
-      // stay under December's sun. 150 wide clears a 2:1 frame at the top
-      // of the rise; wider screens see the strip's ends.
+      // The park, in the reference's layers (LEDGER session 10), every
+      // one generated on white and keyed. The far shore: the treeline
+      // and the bandshell across the water as one strip, its foot just
+      // under the waterline. It keeps the canopy's id — the elms that
+      // grow through a lifetime and count its years are these. 1536 × 232.
       {
         id: 'canopy',
-        z: -46,
-        width: 150,
-        height: 32.3,
-        baseY: -2.6,
-        shade: 0.16,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/canopy-late-summer.webp',
-          AUTUMN: 'plates/scene-04/canopy-autumn.webp',
-          WINTER: 'plates/scene-04/canopy-winter.webp',
-          SPRING: 'plates/scene-04/canopy-spring.webp',
-        },
+        z: -90,
+        width: 290,
+        height: 43.8,
+        baseY: -1,
+        shade: 0.12,
+        images: { '*': 'plates/scene-04/park/far-shore.webp' },
       },
-      // 1536 × 320, the waterline as a thin strip: riprap and reeds, one
-      // frame mirrored forty times across, which keeps the reeds at reed
-      // height against the elms and the bandshell — a fringe for
-      // parallax, not a bank. Its rocks sit at the water, its foot just
-      // below, where the lake covers it.
+      // The near shore: the sea wall and the shrubs along the path, one
+      // short band tiled along the water's edge. Keeps the far bank's id.
       {
         id: 'far-bank',
-        z: -40,
-        width: 240,
-        height: 1.2,
-        baseY: -0.2,
+        z: 4,
+        width: 96,
+        height: 1.28,
+        baseY: -0.1,
         shade: 0.08,
         lip: 0.42,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/far-bank-late-summer.webp',
-          AUTUMN: 'plates/scene-04/far-bank-autumn.webp',
-          WINTER: 'plates/scene-04/far-bank-winter.webp',
-          SPRING: 'plates/scene-04/far-bank-spring.webp',
-        },
-        imageRepeat: 40,
+        images: { '*': 'plates/scene-04/park/shoreline.webp' },
+        imageRepeat: 12,
       },
-      // The bench, a cutout on its own patch of grass: not a band of
-      // scenery but one object, set left of centre so the bandshell is
-      // still seen past it, and near enough that the piece opens looking
-      // at it. It belongs to the park rather than to any one scene — the
-      // camera rises off it through the year, it is under the frame for
-      // the lifetime, and the fall in scene 06 lands back at it.
-      // It stands in the near foreground with its feet below the frame:
-      // the scene has no mid-ground — past the reed tops everything is
-      // lake — so a bench with a visible base floats wherever it is put,
-      // and one cropped by the frame's edge, as a photograph would crop
-      // the seat you are standing behind, is the honest placement. The
-      // cutout's own patch of grass is below the frame with the feet.
-      {
-        id: 'bench',
-        x: -2.4,
-        z: 11,
-        width: 5.2,
-        height: 2.63,
-        baseY: -1.55,
-        shade: 0.12,
-        // An August cutout: it belongs to the afternoon the piece opens
-        // and closes on, which every held scene sits in, and it leaves as
-        // the year begins to turn rather than sitting through a winter
-        // in summer grass. Four seasons of bench would let it stay.
-        // It goes exactly when the year does: the record and the seasons
-        // hold August until local 0.12, and the bench holds with them.
-        present: { from: 0, to: 0.12, edge: 0.04 },
-        images: { '*': 'plates/scene-04/bench-august.webp' },
-      },
-      // 1536 × 884, grass tips at the top edge, ground the rest of the way.
-      // One frame of it is a quarter of the plate: mirrored four times
-      // across, which puts the grass at about four units tall, and deep
-      // enough that ground is still under the frame once the camera has
-      // risen and looks down.
+      // The lawn: the ground itself, from the wall back past the seat,
+      // its tile mirrored across it. Keeps the near bank's id; the
+      // thermal reads it as the grass it is.
       {
         id: 'near-bank',
-        z: 0,
-        width: 110,
-        height: 15.8,
-        baseY: -14,
-        shade: 0.25,
-        lip: 0.16,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/near-bank-late-summer.webp',
-          AUTUMN: 'plates/scene-04/near-bank-autumn.webp',
-          WINTER: 'plates/scene-04/near-bank-winter.webp',
-          SPRING: 'plates/scene-04/near-bank-spring.webp',
-        },
-        imageRepeat: 4,
+        z: 4,
+        width: 200,
+        height: 40,
+        baseY: 0,
+        shade: 0.1,
+        ground: { depth: 40, repeat: [32, 6.5] },
+        images: { '*': 'plates/scene-04/park/lawn.webp' },
+      },
+      // The nearest people: the couple, the reader, the man with his dog,
+      // on their blanket just ahead of the seat, cropped by the frame's
+      // foot. An August cutout, as the bench was: there for the second
+      // and gone once the year turns. 1526 × 556.
+      {
+        id: 'foreground',
+        x: 0.3,
+        z: 12,
+        width: 5.2,
+        height: 1.9,
+        baseY: -0.9,
+        shade: 0.1,
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        images: { '*': 'plates/scene-04/park/foreground.webp' },
+      },
+      // The elms we sit under: two trunks at the frame's edges and their
+      // canopy across its top, a card just ahead of the camera. It goes
+      // with the seat: the rise leaves it below and the lifetime never
+      // has it. 1536 × 1024.
+      {
+        id: 'trees',
+        z: 13.5,
+        width: 6.4,
+        height: 4.27,
+        // High enough that only the canopy's fringe hangs into the top
+        // of the frame; the trunks run out of its foot.
+        baseY: 0.1,
+        shade: 0.08,
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        images: { '*': 'plates/scene-04/park/trees.webp' },
       },
     ],
-    water: { width: 420, depth: 140, z: 28 },
+    figures: [
+      // Who is on the lawn: nine groups from one sheet, placed by eye
+      // between the seat and the wall, two of them used twice further off.
+      {
+        id: 'sitters',
+        atlas: { image: 'plates/scene-04/park/sitters.webp', cols: 3, rows: 3, count: 9 },
+        size: 2.3,
+        baseY: 0,
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        places: [
+          { id: 'couple', cell: 0, x: -3.2, z: 9.4 },
+          { id: 'family', cell: 1, x: 4.6, z: 8.2 },
+          { id: 'reader', cell: 2, x: -7.5, z: 7.6, size: 1.6 },
+          { id: 'friends', cell: 3, x: 1.4, z: 6.4, size: 2.0 },
+          { id: 'man-dog', cell: 4, x: 7.8, z: 6.0, size: 2.2 },
+          { id: 'chair', cell: 5, x: -10.5, z: 5.6, size: 1.7 },
+          { id: 'stroller', cell: 6, x: 11.5, z: 9.0, size: 2.0 },
+          { id: 'three', cell: 7, x: -1.0, z: 11.2, size: 2.4 },
+          { id: 'lying', cell: 8, x: 5.0, z: 11.6, size: 2.0 },
+          { id: 'couple-far', cell: 0, x: 12.0, z: 5.2, size: 1.8 },
+          { id: 'reader-far', cell: 2, x: -5.0, z: 5.0, size: 1.5 },
+        ],
+      },
+      // Who is passing: on the path along the wall, each at their own
+      // pace, wrapping beyond the frame's edges.
+      {
+        id: 'movers',
+        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 3, rows: 2, count: 6 },
+        size: 2.0,
+        baseY: 0,
+        walk: { from: -34, to: 34 },
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        places: [
+          { id: 'jogger', cell: 0, x: -20, z: 4.7, speed: 2.6 },
+          { id: 'woman', cell: 1, x: 8, z: 4.8, speed: -1.25 },
+          { id: 'man', cell: 2, x: 24, z: 4.7, speed: 1.4 },
+          { id: 'cyclist', cell: 3, x: -30, z: 4.6, size: 2.1, speed: 4.4 },
+          { id: 'family', cell: 4, x: -4, z: 4.9, size: 2.1, speed: -0.9 },
+          { id: 'stroller', cell: 5, x: 16, z: 4.8, size: 2.1, speed: 1.1 },
+        ],
+      },
+      // The boats: sails across the lake, drifting. Not there in the ice.
+      {
+        id: 'boats',
+        atlas: { image: 'plates/scene-04/park/boats.webp', cols: 3, rows: 3, count: 9 },
+        size: 5,
+        baseY: -0.3,
+        walk: { from: -70, to: 70 },
+        present: { from: 0, to: 0.12, edge: 0.04 },
+        places: [
+          { id: 'boat-a', cell: 0, x: -30, z: -60, size: 5.5, speed: 0.5 },
+          { id: 'boat-b', cell: 4, x: 10, z: -44, size: 5, speed: -0.4 },
+          { id: 'boat-c', cell: 7, x: 40, z: -70, size: 6, speed: 0.35 },
+          { id: 'boat-d', cell: 2, x: -55, z: -30, size: 4.2, speed: 0.55 },
+          { id: 'boat-e', cell: 5, x: 25, z: -34, size: 4.4, speed: -0.6 },
+          { id: 'boat-f', cell: 8, x: 60, z: -52, size: 5.2, speed: -0.45 },
+        ],
+      },
+    ],
+    // From the far shore to the wall: the lawn, not the lake, is under the seat.
+    water: { width: 420, depth: 96, z: -44 },
     air: { count: 2600, spread: 90, height: 30, depth: 55, z: -18, fall: 3.2 },
     fogDensity: 0.006,
     skyRamp: 0.13,
@@ -1089,7 +1161,7 @@ export const scenes: Scene[] = [
     // left the eye. What is left is a drop: twenty units down to the seat.
     camera: {
       from: { y: 20, z: 28, lookY: 14 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.9, z: 16, lookY: 0.5 },
       ease: 'fall',
     },
     cameraAt: { from: 0.56, to: 1 },
@@ -1112,8 +1184,8 @@ export const scenes: Scene[] = [
     // a lean forward: the grass a little larger, the frame a little
     // tighter, over the whole scene.
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.5, z: 12.4, lookY: 2.6 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 1.8, z: 14.6, lookY: 0.45 },
     },
     labelAt: [
       { from: 0, label: '1 SECOND' },
@@ -1305,8 +1377,8 @@ export const scenes: Scene[] = [
     // and then the interface itself.
     hold: { of: 'scene-04-year', at: 0 },
     camera: {
-      from: { y: 1.6, z: 16, lookY: 3.0 },
-      to: { y: 1.6, z: 16, lookY: 3.0 },
+      from: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 1.9, z: 16, lookY: 0.5 },
     },
     instruments: [
       { kind: 'ring', from: 0, to: 0.18, strength: 0.5 },

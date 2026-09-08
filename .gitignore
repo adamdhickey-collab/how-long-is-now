@@ -7,3 +7,6 @@ assets/raw/
 # Local secrets: the image generator reads OPENAI_API_KEY from here.
 .env
 .env.*
+
+# Derived from the raws by scripts/plates.mjs (the white key).
+*.keyed.png

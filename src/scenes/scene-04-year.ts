@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { mixHex, seasonAt, seasonWeights, type Instrument, type Plate, type Scene, type Season } from './manifest';
+import { mixHex, seasonAt, seasonWeights, type Figures, type Instrument, type Plate, type Scene, type Season } from './manifest';
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened } from './loading';
@@ -126,6 +126,8 @@ export interface Hold {
    *  its end. */
   years?: number;
   grow?: number;
+  /** Which walkers are on their way, by placement id; absent, all. */
+  life?: string[];
 }
 
 /** The record's band holds at most this many years, one figure each. */
@@ -728,9 +730,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const stand = Math.max(1, Math.round(decl.stand ?? 12));
     // Just in front of the far bank's plate, at the ground line, across
     // the stretch of shore the lifetime's camera holds in frame.
-    const z = farBankDef!.z + 0.3;
-    const top = farBankDef!.baseY + 0.15;
-    const span = 150;
+    // The far shore is the canopy plate: the stand of elms across the
+    // water, whose roots these are.
+    const z = canopyDef!.z + 0.3;
+    const top = canopyDef!.baseY + 0.4;
+    const span = canopyDef!.width * 0.55;
     const pos: number[] = [];
     const birth: number[] = [];
     const tone: number[] = [];
@@ -1015,12 +1019,21 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     farMat,
   );
   farBank.position.set(0, farBankDef.baseY + farBankDef.height / 2, farBankDef.z);
+  // The near bank may be the ground itself: a plane lying flat from its
+  // z back over its depth, rather than a wall of grass standing at it.
+  const nearGround = nearBankDef.ground;
   const nearBank = new THREE.Mesh(
-    new THREE.PlaneGeometry(nearBankDef.width, nearBankDef.height),
+    new THREE.PlaneGeometry(nearBankDef.width, nearGround ? nearGround.depth : nearBankDef.height),
     nearMat,
   );
-  nearBank.position.set(0, nearBankDef.baseY + nearBankDef.height / 2, nearBankDef.z);
-  farBank.renderOrder = -6;
+  if (nearGround) {
+    nearBank.rotation.x = -Math.PI / 2;
+    nearBank.position.set(0, nearBankDef.baseY, nearBankDef.z + nearGround.depth / 2);
+  } else {
+    nearBank.position.set(0, nearBankDef.baseY + nearBankDef.height / 2, nearBankDef.z);
+  }
+  // The shore draws after the water it stands at the edge of.
+  farBank.renderOrder = -4.5;
   nearBank.renderOrder = -3;
   farBank.name = 'far-bank';
   nearBank.name = 'near-bank';
@@ -1132,6 +1145,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       if (thermal) thermalPlate(mat);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(p.x ?? 0, y, p.z + i * 0.05);
+      if (p.ground) {
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(p.x ?? 0, p.baseY + 0.01 + i * 0.01, p.z + p.ground.depth / 2);
+      }
       mesh.renderOrder = renderOrder + i * 0.01;
       mesh.visible = false;
       mesh.name = `${p.id}:${key}`;
@@ -1147,6 +1164,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           // Half a tile over, so no mirror seam sits on the centre line
           // where the eye would read the symmetry.
           tex.offset.x = 0.5;
+        }
+        if (p.ground) {
+          tex.wrapS = THREE.MirroredRepeatWrapping;
+          tex.wrapT = THREE.MirroredRepeatWrapping;
+          tex.repeat.set(p.ground.repeat[0], p.ground.repeat[1]);
+          tex.anisotropy = 8;
         }
         l.mat.map = tex;
         l.mat.needsUpdate = true;
@@ -1202,10 +1225,87 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     farBankDef,
     farBank.geometry as THREE.PlaneGeometry,
     farBank.position.y,
-    -6,
+    -4.5,
     [farBank],
     true,
   );
+  // The nearest people and the elms we sit under: cutouts just ahead of
+  // the seat, the people taking the thermal as the bench did, the trees
+  // nearest of all.
+  const foregroundDef = plate('foreground');
+  const treesDef = plate('trees');
+  const foregroundImg = foregroundDef
+    ? imagePlate(
+        foregroundDef,
+        new THREE.PlaneGeometry(foregroundDef.width, foregroundDef.height),
+        foregroundDef.baseY + foregroundDef.height / 2,
+        -2,
+        [],
+        true,
+      )
+    : null;
+  const treesImg = treesDef
+    ? imagePlate(
+        treesDef,
+        new THREE.PlaneGeometry(treesDef.width, treesDef.height),
+        treesDef.baseY + treesDef.height / 2,
+        -1.5,
+        [],
+      )
+    : null;
+
+  // ---- the figures: people and boats, cutouts from sheets stood in the
+  // world. Each placement is one square plane whose UVs are one cell of
+  // its sheet's atlas; walkers move along x in the world's real time.
+  interface Placed {
+    def: Figures['places'][number];
+    mesh: THREE.Mesh;
+    x0: number;
+  }
+  interface FigureSet {
+    def: Figures;
+    mat: THREE.MeshBasicMaterial;
+    placed: Placed[];
+    loaded: Promise<void>;
+  }
+  const figureSets: FigureSet[] = (def.figures ?? []).map((f) => {
+    const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaTest: 0.02, opacity: 0 });
+    thermalPlate(mat);
+    const { cols, rows } = f.atlas;
+    const placed = f.places.map((pl) => {
+      const size = pl.size ?? f.size;
+      const geo = new THREE.PlaneGeometry(size, size);
+      const col = pl.cell % cols;
+      const row = Math.floor(pl.cell / cols);
+      const u0 = col / cols;
+      const u1 = (col + 1) / cols;
+      const v1 = 1 - row / rows;
+      const v0 = 1 - (row + 1) / rows;
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v1, u1, v1, u0, v0, u1, v0], 2));
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(pl.x, f.baseY + size / 2, pl.z);
+      if ((pl.speed ?? 0) < 0) mesh.scale.x = -1;
+      // Nearer draws later, between the lawn and the nearest people.
+      mesh.renderOrder = -4.6 + ((pl.z + 46) / 60) * 2.4;
+      mesh.visible = false;
+      mesh.name = `${f.id}:${pl.id}`;
+      group.add(mesh);
+      return { def: pl, mesh, x0: pl.x };
+    });
+    const loaded = new THREE.TextureLoader()
+      .loadAsync(`${import.meta.env.BASE_URL}${f.atlas.image}`)
+      .then((tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        mat.map = tex;
+        mat.needsUpdate = true;
+        for (const p of placed) p.mesh.visible = true;
+      })
+      .catch((err) => {
+        console.warn(`[scene-04] ${f.id}: the sheet failed to load`, err);
+      });
+    return { def: f, mat, placed, loaded };
+  });
 
   // ---- the lake: haze toward the far shore, and the sun's path on it.
   const waterFarZ = lake.z - lake.depth / 2;
@@ -1615,10 +1715,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     return on;
   };
 
-  const imagePlates = [canopyImg, farImg, nearImg];
+  const imagePlates = [canopyImg, farImg, nearImg, foregroundImg, treesImg];
   // The other scenes fetch their imagery once the opening frame has its
   // own; the year says so whether or not every plate arrived.
-  Promise.all([...imagePlates, benchImg].map((p) => p?.opened)).then(opened, opened);
+  Promise.all([...imagePlates.map((p) => p?.opened), benchImg?.opened, ...figureSets.map((f) => f.loaded)]).then(
+    opened,
+    opened,
+  );
   let warmed = false;
   function warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean {
     if (warmed) return true;
@@ -1914,6 +2017,32 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       return clamp01(Math.min((local - w.from) / edge + 1, (w.to - local) / edge));
     };
     if (benchImg) setImage(benchImg, nightShade(benchDef!.shade ?? 0), presence(benchDef));
+    // What is only real from the seat — the elms we sit under, the people
+    // on the lawn — is a card seen from above once the camera leaves it,
+    // so it goes as the eye rises and is back by the time the fall lands.
+    const seated = clamp01((6 - camera.position.y) / 3);
+    if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
+    if (treesImg) setImage(treesImg, nightShade(treesDef!.shade ?? 0), presence(treesDef) * seated);
+
+    // The figures: there for their window of the year, dimmed with the
+    // night; the walkers on their way in the world's real time, wrapping
+    // at the ends of their span, and only the ones the holder names.
+    for (const set of figureSets) {
+      const f = set.def;
+      const there = presence(f as unknown as Plate) * (f.walk && f.baseY < 0 ? 1 : seated);
+      setTint(set.mat, 0xffffff, nightShade(0.1));
+      set.mat.opacity = alpha * there;
+      const life = holder?.life;
+      for (const p of set.placed) {
+        const walker = p.def.speed !== undefined && f.walk;
+        p.mesh.visible = !!set.mat.map && there > 0 && (!walker || !life || life.includes(p.def.id));
+        if (walker && f.walk && !reducedMotion) {
+          const span = f.walk.to - f.walk.from;
+          const travelled = (p.x0 - f.walk.from + (p.def.speed ?? 0) * elapsed) % span;
+          p.mesh.position.x = f.walk.from + (travelled < 0 ? travelled + span : travelled);
+        }
+      }
+    }
 
     setTint(airMat, airCol, night * 0.7);
     airMat.opacity = alpha * s.airCount;

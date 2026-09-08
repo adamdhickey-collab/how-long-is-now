@@ -312,6 +312,7 @@ function frame(now: number) {
           lens: active.hold.lens,
           years: active.hold.years,
           grow: active.hold.grow,
+          life: active.hold.life,
         }
       : undefined,
   );

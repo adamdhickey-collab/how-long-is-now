@@ -130,7 +130,27 @@ const SQUARES = {
  */
 const CUTOUT = { pad: 4 };
 
+/**
+ * The park (LEDGER session 10): the reference's pointillist Lake Harriet
+ * in layers, generated through scripts/generate.mjs on flat white and
+ * keyed here. Strips are trimmed to what is in them; sheets are cut by
+ * cell into atlases; the lawn is a tile; the rest are cutouts.
+ */
+const PARK = {
+  strip: { pad: 2 },
+};
+
 const SCENES = {
+  'scene-04/park': [
+    { id: 'far-shore', raw: 'far-shore-v1.png', recipe: 'strip', key: true },
+    { id: 'shoreline', raw: 'shoreline-v2.png', recipe: 'strip', key: true },
+    { id: 'lawn', raw: 'lawn-v1.png', recipe: 'plain' },
+    { id: 'trees', raw: 'trees-v1.png', recipe: 'cutout', key: true },
+    { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
+    { id: 'sitters', raw: ['sitters-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'boats', raw: ['boats-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'movers', raw: ['movers-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 2], cols: 3 },
+  ],
   'scene-09': [
     { id: 'days-same', raw: ['days-same-v2.png'], recipe: 'squares' },
     {
@@ -329,16 +349,18 @@ function alphaBox(data, width, x0, y0, w, h) {
   return maxX < 0 ? null : { left: x0 + minX, top: y0 + minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
-async function fragmentAtlas(files) {
-  const { grid, tile, margin, cols } = FRAGMENTS;
+async function fragmentAtlas(files, p = {}) {
+  const { tile, margin } = FRAGMENTS;
+  const cols = p.cols ?? FRAGMENTS.cols;
+  const [gridX, gridY] = Array.isArray(p.grid) ? p.grid : [p.grid ?? FRAGMENTS.grid, p.grid ?? FRAGMENTS.grid];
   const inner = Math.round(tile * (1 - margin * 2));
   const tiles = [];
   for (const file of files) {
     const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    const cw = Math.floor(info.width / grid);
-    const ch = Math.floor(info.height / grid);
-    for (let r = 0; r < grid; r++) {
-      for (let c = 0; c < grid; c++) {
+    const cw = Math.floor(info.width / gridX);
+    const ch = Math.floor(info.height / gridY);
+    for (let r = 0; r < gridY; r++) {
+      for (let c = 0; c < gridX; c++) {
         const box = alphaBox(data, info.width, c * cw, r * ch, cw, ch);
         if (!box || box.width < cw * 0.1 || box.height < ch * 0.1) {
           console.log(`  ${path.basename(file)} cell ${r},${c}: empty, skipped`);
@@ -349,10 +371,12 @@ async function fragmentAtlas(files) {
           .resize({ width: inner, height: inner, fit: 'inside' })
           .png()
           .toBuffer({ resolveWithObject: true });
+        // Centred, or stood on a common baseline so a sheet of figures
+        // all have their feet at the tile's foot.
         tiles.push({
           input: cut.data,
           left: Math.round((tile - cut.info.width) / 2),
-          top: Math.round((tile - cut.info.height) / 2),
+          top: p.align === 'bottom' ? tile - Math.round(tile * margin) - cut.info.height : Math.round((tile - cut.info.height) / 2),
         });
       }
     }
@@ -367,6 +391,102 @@ async function fragmentAtlas(files) {
   return sharp({
     create: { width: cols * tile, height: rows * tile, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   }).composite(composite);
+}
+
+/**
+ * Key the paper out of a layer drawn on flat white. The paper is found
+ * by flooding from the image's borders through near-white pixels, so a
+ * white shirt or sail enclosed by colour stays; the edge is feathered a
+ * pixel and its colour unmixed from the white beneath, so no halo. The
+ * keyed image is written beside the raw as a PNG the recipes then read.
+ */
+async function keyWhite(file) {
+  const out = file.replace(/\.png$/, '.keyed.png');
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const paper = (i) => {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    return r >= 222 && g >= 222 && b >= 218 && Math.max(r, g, b) - Math.min(r, g, b) <= 26;
+  };
+  const bg = new Uint8Array(w * h);
+  const queue = new Int32Array(w * h);
+  let head = 0;
+  let tail = 0;
+  const push = (i) => {
+    if (!bg[i] && paper(i)) {
+      bg[i] = 1;
+      queue[tail++] = i;
+    }
+  };
+  for (let x = 0; x < w; x++) {
+    push(x);
+    push((h - 1) * w + x);
+  }
+  for (let y = 0; y < h; y++) {
+    push(y * w);
+    push(y * w + w - 1);
+  }
+  while (head < tail) {
+    const i = queue[head++];
+    const x = i % w;
+    if (x > 0) push(i - 1);
+    if (x < w - 1) push(i + 1);
+    if (i >= w) push(i - w);
+    if (i < (h - 1) * w) push(i + w);
+  }
+  // Feather: a pixel's alpha is the share of its 3 × 3 neighbourhood
+  // that is not paper, then its colour is unmixed from the white.
+  const outData = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      let n = 0;
+      let fg = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          const yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          n++;
+          if (!bg[yy * w + xx]) fg++;
+        }
+      }
+      const a = bg[i] ? fg / n : 1;
+      const o = i * 4;
+      if (a <= 0) {
+        outData[o + 3] = 0;
+        continue;
+      }
+      for (let c = 0; c < 3; c++) {
+        const v = data[o + c];
+        const un = a < 1 ? (v - (1 - a) * 250) / a : v;
+        outData[o + c] = Math.max(0, Math.min(255, Math.round(un)));
+      }
+      outData[o + 3] = Math.round(a * 255);
+    }
+  }
+  await sharp(outData, { raw: { width: w, height: h, channels: 4 } }).png().toFile(out);
+  console.log(`  keyed ${path.basename(file)}: ${((tail / (w * h)) * 100).toFixed(0)}% paper`);
+  return out;
+}
+
+/** A strip: a keyed band trimmed to what is in it, full width kept. */
+async function strip(file) {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const box = alphaBox(data, info.width, 0, 0, info.width, info.height);
+  if (!box) throw new Error(`${file}: nothing in it`);
+  const pad = PARK.strip.pad;
+  const top = Math.max(0, box.top - pad);
+  const height = Math.min(info.height - top, box.height + pad * 2);
+  console.log(`  band rows ${box.top}–${box.top + box.height} of ${info.height}`);
+  return sharp(file).extract({ left: 0, top, width: info.width, height });
+}
+
+/** As drawn: a tile the renderer repeats. */
+async function plain(file) {
+  return sharp(file);
 }
 
 async function cutout(file) {
@@ -420,6 +540,8 @@ async function squaresAtlas(files, p) {
 const RECIPES = {
   canopy: canopyStrip,
   cutout,
+  strip,
+  plain,
   squares: squaresAtlas,
   'near-bank': nearBank,
   'far-bank': farBank,
@@ -452,7 +574,7 @@ async function run() {
     await mkdir(path.join(OUT, scene), { recursive: true });
     for (const p of plates) {
       const raws = Array.isArray(p.raw) ? p.raw : [p.raw];
-      const srcs = raws.map((r) => path.join(RAW, scene, r));
+      let srcs = raws.map((r) => path.join(RAW, scene, r));
       let missing = false;
       for (const f of srcs) if (!(await exists(f))) missing = true;
       const out = path.join(OUT, scene, p.variant ? `${p.id}-${p.variant}.webp` : `${p.id}.webp`);
@@ -461,6 +583,7 @@ async function run() {
         continue;
       }
       const ext = p.ext && (await exists(path.join(RAW, scene, p.ext))) ? path.join(RAW, scene, p.ext) : undefined;
+      if (p.key) srcs = await Promise.all(srcs.map(keyWhite));
       const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
       const { kb, quality, over } = await encode(pipeline, out);
