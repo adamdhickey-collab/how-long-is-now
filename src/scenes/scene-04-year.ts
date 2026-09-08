@@ -111,6 +111,9 @@ export interface Hold {
   scene: Scene;
   /** The holder's own progress, which its instruments are windowed on. */
   local: number;
+  /** The span of the world's own time the holder covers, in seconds, if
+   *  scroll is to run the world's clock through it. */
+  seconds?: number;
 }
 
 // ------------------------------------------------------------- ingredients
@@ -1229,6 +1232,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   let elapsed = 0;
+  /** The world's own clock: real time, plus whatever a holder's scroll
+   *  has run it forward by. What drifts, falls and ripples reads this;
+   *  an instrument's own motion, like the radar's sweep, reads `elapsed`. */
+  let worldTime = 0;
+  /** A holder's progress last frame, to run the world's clock by the
+   *  difference. */
+  let heldLocal: number | null = null;
   /** Seconds since the world was last shown, for instruments that come
    *  on after a while rather than at a point in the scroll. */
   let shown = 0;
@@ -1285,8 +1295,17 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     elapsed += dt;
     shown += dt;
     // Held by another scene, the world sits at the point it asks for and
-    // is read through that scene's instruments.
+    // is read through that scene's instruments. If the holder covers a
+    // span of the world's time, scroll runs the world's clock through it.
     const readAt = holder ? holder.local : local;
+    let step = dt;
+    if (holder?.seconds) {
+      if (heldLocal !== null) step += holder.seconds * (holder.local - heldLocal);
+      heldLocal = holder.local;
+    } else {
+      heldLocal = null;
+    }
+    worldTime += step;
     if (holder) local = holder.at;
     reader = holder ? holder.scene : def;
 
@@ -1299,6 +1318,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const day = turned * DAYS;
     const d0 = Math.min(Math.floor(day), DAYS - 1);
     sunDir.lerpVectors(apparent[d0], apparent[d0 + 1], day - d0).normalize();
+    // A holder running the world's clock moves the sun through its day:
+    // the real sun, so many seconds after the record's opening exposure,
+    // through the same lens.
+    if (holder?.seconds) {
+      const live = sunPosition(opensMs + holder.seconds * holder.local * 1000, sunDef!.lat, sunDef!.lon);
+      throughLens(live.altitude, live.azimuth, sunDir).normalize();
+    }
     // The water's glitter gathers under the sun at the far shore.
     onPlane(sunDir, waterFarZ, sunAt);
     const sunX = sunAt.x;
@@ -1343,7 +1369,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     cloudMat.uniforms.uSun.value.setHex(s.sun);
     cloudMat.uniforms.uCover.value = s.cloudCover;
     cloudMat.uniforms.uTime.value =
-      local * cloudChurn + (reducedMotion ? 0 : elapsed * cloudDrift);
+      local * cloudChurn + (reducedMotion ? 0 : worldTime * cloudDrift);
     cloudMat.uniforms.uOpacity.value = alpha;
 
     setTint(leafyMat, canopy, canopyDef!.shade ?? 0);
@@ -1362,7 +1388,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uSunX.value = sunX;
     waterMat.uniforms.uSunElev.value = elev;
     waterMat.uniforms.uOpacity.value = alpha;
-    if (!reducedMotion) waterMat.uniforms.uTime.value = elapsed;
+    if (!reducedMotion) waterMat.uniforms.uTime.value = worldTime;
     // The flow instrument: on for the window the manifest declares. The
     // wind blows from its bearing, so the water moves the other way; the
     // camera faces west, +x north and +z east.
@@ -1375,7 +1401,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     thermalU.uThermal.value = alpha * instrumentOn('thermal', readAt);
     thermalU.uTempGround.value = thermalNorm(s.tempGround);
     thermalU.uTempWater.value = thermalNorm(s.tempWater);
-    if (!reducedMotion) thermalU.uThermalTime.value = elapsed;
+    if (!reducedMotion) thermalU.uThermalTime.value = worldTime;
 
     // Image plates carry their own colour; only their declared shade
     // dims them. Every active layer is opaque except the frontmost, which
@@ -1409,12 +1435,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // where the manifest puts it, sized by the frame's shorter edge, or
     // fills the frame if it declares no scope.
     const radarOn = alpha * instrumentOn('radar', readAt);
-    const period = radarDef?.period ?? 6;
+    // The scope and the sweep are the reader's, where it declares them.
+    const radarNow = reader.instruments?.find((i) => i.kind === 'radar') ?? radarDef;
+    const period = radarNow?.period ?? 6;
     const sweep = reducedMotion ? 2.2 : -((elapsed / period) * Math.PI * 2) % (Math.PI * 2);
     const W = Math.max(1, window.innerWidth);
     const H = Math.max(1, window.innerHeight);
     const aspect = W / H;
-    const scope = radarDef?.scope;
+    const scope = radarNow?.scope;
     if (scope) {
       const short = Math.min(W, H);
       const rPx = (scope.size * short) / 2;
@@ -1474,16 +1502,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     // What is in the air falls at the rate the season asks for.
     const attr = airGeo.getAttribute('position') as THREE.BufferAttribute;
-    const fall = dt * airDef!.fall * s.airFall;
+    // The air falls by the world's clock, so a holder's scroll runs it too;
+    // a large step wraps as many times as it needs to.
+    const fall = step * airDef!.fall * s.airFall;
     const sway = s.airFall * 0.35;
+    const h = airDef!.height;
     for (let i = 0; i < airDef!.count; i++) {
       let y = attr.getY(i) - fall * airSpeed[i];
-      if (y < 0) y += airDef!.height;
+      if (y < 0) y = ((y % h) + h) % h;
       attr.setY(i, y);
       if (sway > 0) {
         attr.setX(
           i,
-          attr.getX(i) + Math.sin(elapsed * 0.8 + airPhase[i]) * sway * dt,
+          attr.getX(i) + Math.sin(worldTime * 0.8 + airPhase[i]) * sway * Math.min(step, 0.5),
         );
       }
     }

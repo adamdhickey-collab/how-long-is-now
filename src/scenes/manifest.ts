@@ -541,7 +541,18 @@ export interface Scene {
    * own instruments. The park at one second is the park of the year,
    * held at its opening frame: one world, declared once.
    */
-  hold?: { of: string; at: number };
+  hold?: {
+    of: string;
+    at: number;
+    /**
+     * The span of the held world's own time this scene covers, in
+     * seconds: scroll advances the world's clock through it, on top of
+     * the real time that always passes. Ten minutes of the park: the
+     * clouds drift, the air falls, the water moves, the sun creeps and
+     * its shadows crawl, all under the visitor's hand.
+     */
+    seconds?: number;
+  };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
@@ -689,6 +700,25 @@ export const scenes: Scene[] = [
     label: '10 MINUTES',
     lengthVh: 150,
     timeRate: 600,
+    // The same park, from the same bench, with time switched on: scroll
+    // runs ten minutes of the world's own motion. The camera does not
+    // move; the environment does. And the world starts to be read: the
+    // wind on the water first, then the air, through the radar.
+    hold: { of: 'scene-04-year', at: 0, seconds: 600 },
+    camera: {
+      from: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+    },
+    instruments: [
+      { kind: 'flow', from: 0.06, to: 1 },
+      {
+        kind: 'radar',
+        from: 0.4,
+        to: 1,
+        period: 6,
+        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
+      },
+    ],
   },
   {
     id: 'scene-03-day',

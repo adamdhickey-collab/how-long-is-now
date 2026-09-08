@@ -208,7 +208,12 @@ function frame(now: number) {
   // The world is read only once the camera stands where this frame puts
   // it: the year's figure is drawn in screen space and must project
   // through the same camera that renders the sun it annotates.
-  year.update(local, dt, camera, holdsYear && active.hold ? { at: active.hold.at, scene: active, local } : undefined);
+  year.update(
+    local,
+    dt,
+    camera,
+    holdsYear && active.hold ? { at: active.hold.at, scene: active, local, seconds: active.hold.seconds } : undefined,
+  );
   twoClocks.update(local);
   memory.update(local);
 
