@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } from './manifest';
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
+import { opened } from './loading';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
  *  itself a little behind that, so the cloud deck between them can pass
@@ -343,6 +344,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
   // An inert scene rather than a crash if the manifest is incomplete.
   if (!seasons || !plates || !lake || !airDef || !sunDef || !cloudDef) {
+    opened();
     return { setActive: () => {}, update: () => {}, warm: () => true };
   }
 
@@ -353,6 +355,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const nearBankDef = plate('near-bank');
   const benchDef = plate('bench');
   if (!skyDef || !canopyDef || !farBankDef || !nearBankDef) {
+    opened();
     return { setActive: () => {}, update: () => {}, warm: () => true };
   }
 
@@ -894,7 +897,16 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   interface ImagePlate {
     layers: ImageLayer[];
     ready: boolean;
+    /** Settles once the layers the opening frame needs are in, or failed. */
+    opened: Promise<void>;
   }
+  // The seasons with any weight at the year's opening: the imagery the
+  // piece's first frame is made of.
+  const opening = new Set(
+    Object.entries(seasonWeights(seasons, 0))
+      .filter(([, w]) => w > 0)
+      .map(([k]) => k),
+  );
   function imagePlate(
     p: Plate,
     geo: THREE.PlaneGeometry,
@@ -906,7 +918,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (!p.images) return null;
     const loader = new THREE.TextureLoader();
     const layers: ImageLayer[] = [];
-    const plate: ImagePlate = { layers, ready: false };
+    const plate: ImagePlate = { layers, ready: false, opened: Promise.resolve() };
     Object.keys(p.images).forEach((key, i) => {
       const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
       if (thermal) thermalPlate(mat);
@@ -918,26 +930,35 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       group.add(mesh);
       layers.push({ key, mat, mesh });
     });
-    Promise.all(
-      layers.map((l) =>
-        loader.loadAsync(`${import.meta.env.BASE_URL}${p.images![l.key]}`).then((tex) => {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          if (p.imageRepeat) {
-            tex.wrapS = THREE.MirroredRepeatWrapping;
-            tex.repeat.x = p.imageRepeat;
-            // Half a tile over, so no mirror seam sits on the centre line
-            // where the eye would read the symmetry.
-            tex.offset.x = 0.5;
-          }
-          l.mat.map = tex;
-          l.mat.needsUpdate = true;
-        }),
-      ),
-    )
+    const load = (l: ImageLayer) =>
+      loader.loadAsync(`${import.meta.env.BASE_URL}${p.images![l.key]}`).then((tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        if (p.imageRepeat) {
+          tex.wrapS = THREE.MirroredRepeatWrapping;
+          tex.repeat.x = p.imageRepeat;
+          // Half a tile over, so no mirror seam sits on the centre line
+          // where the eye would read the symmetry.
+          tex.offset.x = 0.5;
+        }
+        l.mat.map = tex;
+        l.mat.needsUpdate = true;
+        // A layer shows only once its image is in: an empty one would
+        // draw as a flat tinted plane the moment its season got weight.
+        l.mesh.visible = true;
+      });
+    // The season the piece opens on comes first, alone on the wire; the
+    // plate stands in only until that has arrived, and the rest of the
+    // year follows behind it. A season still on its way when the year
+    // reaches it leaves the opening layer showing until it lands.
+    const first = layers.filter((l) => l.key === '*' || opening.has(l.key));
+    const rest = layers.filter((l) => !first.includes(l));
+    plate.opened = Promise.all(first.map(load))
       .then(() => {
         plate.ready = true;
         for (const o of standIns) o.visible = false;
-        for (const l of layers) l.mesh.visible = true;
+        Promise.all(rest.map(load)).catch((err) => {
+          console.warn(`[scene-04] ${p.id}: a season's imagery failed to load`, err);
+        });
       })
       .catch((err) => {
         console.warn(`[scene-04] ${p.id}: imagery failed to load, stand-in stays`, err);
@@ -1387,6 +1408,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   const imagePlates = [canopyImg, farImg, nearImg];
+  // The other scenes fetch their imagery once the opening frame has its
+  // own; the year says so whether or not every plate arrived.
+  Promise.all([...imagePlates, benchImg].map((p) => p?.opened)).then(opened, opened);
   let warmed = false;
   function warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean {
     if (warmed) return true;

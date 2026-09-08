@@ -24,6 +24,7 @@
 
 import * as THREE from 'three';
 import type { AbsorbedLayer, Scene, TwoClocks } from './manifest';
+import { opening } from './loading';
 
 /** Local progress the dial spends coming on, and going off. */
 const DIAL_EDGE = 0.02;
@@ -533,12 +534,13 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   const camWaiting = makeCam();
   const camAbsorbed = makeCam();
 
-  // ---- the imagery, where the manifest has it: loaded behind the first
-  // frame, switched on only once every piece of a set has arrived, so
-  // the corridor never shows half-drawn. Until then the stand-in draws.
+  // ---- the imagery, where the manifest has it: fetched once the opening
+  // frame has its own, switched on only once every piece of a set has
+  // arrived, so the corridor never shows half-drawn. Until then the
+  // stand-in draws.
   const loader = new THREE.TextureLoader();
   const load = (path: string, wrap: THREE.Wrapping) =>
-    loader.loadAsync(`${import.meta.env.BASE_URL}${path}`).then((tex) => {
+    opening.then(() => loader.loadAsync(`${import.meta.env.BASE_URL}${path}`)).then((tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = wrap;
       tex.wrapT = wrap;

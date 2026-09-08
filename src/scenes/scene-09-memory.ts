@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import type { MemoryCorridor, Month, Scene } from './manifest';
+import { opening } from './loading';
 
 const INK = 0xe8e6e1;
 const DIM = 0x8a877f;
@@ -221,14 +222,14 @@ export function createMemoryScene(world: THREE.Scene, def: Scene, reducedMotion:
     uHas0: { value: 0 },
     uHas1: { value: 0 },
   };
-  // The months' images, loaded behind the first frame and switched on
-  // as each arrives; until then the panes carry their marks.
+  // The months' images, fetched once the opening frame has its own and
+  // switched on as each arrives; until then the panes carry their marks.
   const loader = new THREE.TextureLoader();
   months.slice(0, 2).forEach((m, mi) => {
     if (!m.atlas) return;
     const { image, cols, count } = m.atlas;
-    loader
-      .loadAsync(`${import.meta.env.BASE_URL}${image}`)
+    opening
+      .then(() => loader.loadAsync(`${import.meta.env.BASE_URL}${image}`))
       .then((tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.wrapS = THREE.ClampToEdgeWrapping;
