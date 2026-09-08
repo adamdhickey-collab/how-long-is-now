@@ -94,6 +94,11 @@ function resize() {
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  // The runway is sized in vh, so a resize moves the piece under the
+  // visitor's scroll; read where they are now rather than wait for the
+  // next scroll to learn it.
+  const max = document.documentElement.scrollHeight - h;
+  progress = max > 0 ? window.scrollY / max : 0;
 }
 resize();
 window.addEventListener('resize', resize);
@@ -113,7 +118,16 @@ let hudShown = 1;
 function showCaption(up: boolean) {
   if (captionUp === up) return;
   captionUp = up;
-  gsap.to(caption, { opacity: up ? 1 : 0, duration: reducedMotion ? 0 : up ? 1.4 : 0.6, ease: 'power2.out' });
+  // The newest fade owns the line: a raise still running when the lower
+  // starts would otherwise outlive it and leave the line up in a scene
+  // that has asked for it to go — a fast scroll through a window's edge
+  // is enough.
+  gsap.to(caption, {
+    opacity: up ? 1 : 0,
+    duration: reducedMotion ? 0 : up ? 1.4 : 0.6,
+    ease: 'power2.out',
+    overwrite: true,
+  });
 }
 
 let scaleShown = '';
@@ -125,7 +139,7 @@ function setScale(text: string) {
   gsap.fromTo(
     scaleLabel,
     { opacity: 0, y: 8 },
-    { opacity: text ? 1 : 0, y: 0, duration: reducedMotion ? 0 : 0.8, ease: 'power2.out' },
+    { opacity: text ? 1 : 0, y: 0, duration: reducedMotion ? 0 : 0.8, ease: 'power2.out', overwrite: true },
   );
   scaleLabel.textContent = text;
 }
