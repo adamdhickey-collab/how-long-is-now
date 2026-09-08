@@ -47,6 +47,10 @@
     <!-- Scene text, swapped by the manifest. -->
     <p class="caption" id="caption" aria-live="polite"></p>
 
+    <!-- The viewer's eyelids: off the frame until a scene declares a blink. -->
+    <div class="lid lid--upper" aria-hidden="true"></div>
+    <div class="lid lid--lower" aria-hidden="true"></div>
+
     <!-- Scroll runway: its height is set from the manifest's total duration. -->
     <div id="runway"></div>
 

@@ -115,10 +115,15 @@ const scaleLabel = document.getElementById('scale-label')!;
 const scrollHint = document.getElementById('scroll-hint')!;
 const clock = document.getElementById('clock')!;
 const caption = document.getElementById('caption')!;
+const lidUpper = document.querySelector('.lid--upper') as HTMLElement;
+const lidLower = document.querySelector('.lid--lower') as HTMLElement;
 
 let activeIndex = -1;
 let captionUp = false;
 let hudShown = 1;
+// The scene's own running time, and whether its blink has happened.
+let sceneShown = 0;
+let blinked = false;
 
 function showCaption(up: boolean) {
   if (captionUp === up) return;
@@ -157,9 +162,25 @@ function scaleOf(s: (typeof scenes)[number], local: number): string {
   return text;
 }
 
+/**
+ * The viewer's eye, blinking once: the lids close from the frame's edges
+ * and open again, on the manifest's timings. Everything the eye sees
+ * goes dark with them, the interface included.
+ */
+function blink(b: NonNullable<(typeof scenes)[number]['blink']>) {
+  gsap
+    .timeline()
+    .fromTo(lidUpper, { yPercent: -100 }, { yPercent: 0, duration: b.close, ease: 'power2.in' })
+    .fromTo(lidLower, { yPercent: 100 }, { yPercent: 0, duration: b.close, ease: 'power2.in' }, '<')
+    .to(lidUpper, { yPercent: -100, duration: b.open, ease: 'power2.out' })
+    .to(lidLower, { yPercent: 100, duration: b.open, ease: 'power2.out' }, '<');
+}
+
 function enterScene(index: number) {
   const s = scenes[index];
   activeIndex = index;
+  sceneShown = 0;
+  blinked = false;
   setScale(s.label);
 
   // A caption is up for the whole scene unless the scene declares the
@@ -188,6 +209,14 @@ function frame(now: number) {
 
   const { scene: active, local, index } = sceneAt(progress);
   if (index !== activeIndex) enterScene(index);
+  sceneShown += dt;
+
+  // A scene that declares a blink gets one, once, so many seconds into
+  // being sat in; under reduced motion the eye stays open.
+  if (active.blink && !blinked && !reducedMotion && sceneShown >= active.blink.after) {
+    blinked = true;
+    blink(active.blink);
+  }
 
   // Scroll depth drives the simulated clock through the active scene.
   // timeRate is the span the whole scene covers, so local reads it out.

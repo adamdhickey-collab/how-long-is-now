@@ -70,6 +70,30 @@ body {
   user-select: none;
 }
 
+/* The viewer's eyelids. Ground-coloured, over everything the eye sees —
+   the interface included — parked off the frame until a blink; the
+   inner edge of each is the lid's own arc. */
+.lid {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 60vh;
+  z-index: 3;
+  background: var(--ground);
+  pointer-events: none;
+  will-change: transform;
+}
+.lid--upper {
+  top: 0;
+  transform: translateY(-100%);
+  border-radius: 0 0 50% 50% / 0 0 22vh 22vh;
+}
+.lid--lower {
+  bottom: 0;
+  transform: translateY(100%);
+  border-radius: 50% 50% 0 0 / 22vh 22vh 0 0;
+}
+
 .caption {
   position: fixed;
   left: 50%;

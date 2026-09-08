@@ -622,6 +622,13 @@ export interface Scene {
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
+  /**
+   * The viewer's own eye: one blink, so many seconds after the scene is
+   * entered, the lids taking so long to close and to open. The small
+   * life of a held second, and the one thing in the piece the viewer
+   * does rather than watches. Under reduced motion the eye stays open.
+   */
+  blink?: { after: number; close: number; open: number };
 }
 
 // ---------------------------------------------------------------- scenes
@@ -764,6 +771,9 @@ export const scenes: Scene[] = [
     instruments: [
       { kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.55, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
     ],
+    // Someone blinks: the viewer, once, after the reading has settled
+    // and the second has been sat in long enough to forget the eye.
+    blink: { after: 5.5, close: 0.1, open: 0.18 },
   },
   {
     id: 'scene-02-ten-minutes',
