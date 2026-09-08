@@ -379,3 +379,15 @@ square above their readings, through the glass; the same month reuses
 its nine in turn. One correction on wiring: the atlas is packed
 top-down and the texture reads bottom-up, so the first draw put day 26's
 picture under day 2's reading until the row was flipped.
+
+### Session 8c · the same day, redrawn
+
+The first same-day sheet (15) read as a photograph beside the painted
+vivid days. Re-run once with the style spelled out.
+
+| # | File (once downloaded) | Prompt | Result |
+| --- | --- | --- | --- |
+| 15b | `scene-09/days-same-v2.png` | Session 8's same-day prompt, with "must be in the illustrated style of the park plates and the last three vivid sheets: clean clustered shapes, crisp edges, painted light, visible brushwork, muted colours, not photographic", and a plant added to the desk | **Accept.** Painted, nine near-identical desks. About two and a half minutes. |
+
+Downloaded and filed 2026-09-08; `scripts/plates.mjs` now packs the desk
+atlas from 15b. The first sheet stays in `assets/raw/` for the record.

@@ -125,7 +125,7 @@ const SQUARES = {
 
 const SCENES = {
   'scene-09': [
-    { id: 'days-same', raw: ['days-same-v1.png'], recipe: 'squares' },
+    { id: 'days-same', raw: ['days-same-v2.png'], recipe: 'squares' },
     {
       id: 'days-vivid',
       raw: ['days-vivid-a-v1.png', 'days-vivid-b-v1.png', 'days-vivid-c-v1.png', 'days-vivid-d-v1.png'],
