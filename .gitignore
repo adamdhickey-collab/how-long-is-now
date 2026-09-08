@@ -3,3 +3,7 @@ dist/
 .DS_Store
 *.log
 assets/raw/
+
+# Local secrets: the image generator reads OPENAI_API_KEY from here.
+.env
+.env.*
