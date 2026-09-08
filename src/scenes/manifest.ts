@@ -279,6 +279,40 @@ export interface SecondsDial {
   to: number;
 }
 
+/**
+ * A measurement called out over the absorbed clock's view: what someone
+ * absorbed in a corridor notices. `at` is where in the view it points,
+ * as fractions of the view's width and height; the text is the reading.
+ */
+export interface SurveyCallout {
+  text: string;
+  at: [number, number];
+  from: number;
+  to: number;
+}
+
+/**
+ * A layer the absorbed clock reads its corridor through while the ten
+ * minutes are happening — every layer on, the way scene 04's park is
+ * read through its instruments. `thermal` reads the surfaces' heat, in
+ * degrees Celsius through the ramp; `motes` draws what is in the air,
+ * lit by the lamps; `survey` calls out measurements. Each is on for its
+ * window of local progress; all are the lived half, since looking back
+ * the densities swap and the fragments take their place.
+ */
+export interface AbsorbedLayer {
+  kind: 'thermal' | 'motes' | 'survey';
+  from: number;
+  to: number;
+  /** Thermal: the ramp's colours, cold to hot, and its ends in °C. */
+  ramp?: number[];
+  range?: [number, number];
+  /** Motes: how many. */
+  count?: number;
+  /** Survey: what is called out. */
+  callouts?: SurveyCallout[];
+}
+
 export interface TwoClocks {
   corridor: Corridor;
   turn: number;
@@ -287,8 +321,9 @@ export interface TwoClocks {
   instrument?: SecondsDial;
   labels: { lived: string; remembered: string; waiting: string; absorbed: string };
   waiting: Clock;
-  /** The absorbed ten minutes break into this many fragments, looking back. */
-  absorbed: Clock & { fragments: number };
+  /** The absorbed ten minutes break into this many fragments, looking
+   *  back; while they happen, they are read through these layers. */
+  absorbed: Clock & { fragments: number; layers?: AbsorbedLayer[] };
   /** A fragment's world size: a pane hung in the corridor, and the
    *  cutouts that go on the panes, packed into one atlas of `count`
    *  tiles, `cols` across by `rows` down. Without it the panes carry
@@ -719,7 +754,33 @@ export const scenes: Scene[] = [
         absorbed: 'ABSORBED',
       },
       waiting: { livedBays: 1.5, rememberedBays: 1 },
-      absorbed: { livedBays: 30, rememberedBays: 20, fragments: 36 },
+      // The absorbed clock's layers come on one after another through
+      // the lived half, so the view thickens with noticing, and all go
+      // off as the turn begins to dip. Readings are a corridor's:
+      // fluorescent tubes, their hum, the doors, the air, a walk.
+      absorbed: {
+        livedBays: 30,
+        rememberedBays: 20,
+        fragments: 36,
+        layers: [
+          { kind: 'thermal', from: 0.06, to: 0.46, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [16, 30] },
+          { kind: 'motes', from: 0.1, to: 0.46, count: 700 },
+          {
+            kind: 'survey',
+            from: 0.12,
+            to: 0.46,
+            callouts: [
+              { text: 'LAMP · 2 × 32 W · 4100 K', at: [0.5, 0.12], from: 0.12, to: 0.46 },
+              { text: 'HUM · 120 HZ · 38 DB', at: [0.76, 0.22], from: 0.16, to: 0.46 },
+              { text: 'DOOR · 0.9 × 2.1 M · OAK VENEER', at: [0.13, 0.4], from: 0.2, to: 0.46 },
+              { text: 'AIR · 0.2 M/S · TOWARD YOU · 21 °C', at: [0.5, 0.5], from: 0.24, to: 0.46 },
+              { text: 'STEPS · 1.8 / S · 0.72 M', at: [0.5, 0.8], from: 0.28, to: 0.46 },
+              { text: 'FLOOR · TERRAZZO · 19 °C', at: [0.26, 0.9], from: 0.32, to: 0.46 },
+              { text: 'WALL · 22 °C · TWO COATS', at: [0.86, 0.58], from: 0.36, to: 0.46 },
+            ],
+          },
+        ],
+      },
       fragment: {
         width: 0.9,
         height: 1.2,

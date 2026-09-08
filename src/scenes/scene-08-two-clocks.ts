@@ -23,10 +23,17 @@
  */
 
 import * as THREE from 'three';
-import type { Scene, TwoClocks } from './manifest';
+import type { AbsorbedLayer, Scene, TwoClocks } from './manifest';
 
 /** Local progress the dial spends coming on, and going off. */
 const DIAL_EDGE = 0.02;
+/** How far ahead of the absorbed clock the motes are kept, world units,
+ *  how fast they drift toward it, and how far back a trail reaches. */
+const MOTE_REACH = 48;
+const MOTE_DRIFT = 0.35;
+const MOTE_TRAIL_S = 0.5;
+/** A mote, in CSS pixels. */
+const MOTE_PX = 2.2;
 
 /** The HUD's ink and its dim, and the piece's ground. */
 const INK = 0xe8e6e1;
@@ -95,9 +102,26 @@ const corridorFragment = `
   uniform float uWidth, uHeight, uBay, uLamp, uEnd, uBright, uFog;
   uniform sampler2D uWall, uCeiling, uFloor;
   uniform float uImages;
+  uniform float uThermal, uThermalTime, uTempLo, uTempHi;
+  uniform vec3 uRamp0, uRamp1, uRamp2, uRamp3;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vDepth;
+
+  // The thermal reading, as scene 04 draws it: a ramp from cold to hot
+  // and hairline isotherms every eighth of the range.
+  vec3 thermalRamp(float t) {
+    t = clamp(t, 0.0, 1.0) * 3.0;
+    if (t < 1.0) return mix(uRamp0, uRamp1, t);
+    if (t < 2.0) return mix(uRamp1, uRamp2, t - 1.0);
+    return mix(uRamp2, uRamp3, t - 2.0);
+  }
+  float isotherm(float t) {
+    float k = t * 8.0;
+    float d = min(fract(k), 1.0 - fract(k));
+    float w = max(fwidth(k), 1e-4);
+    return 1.0 - smoothstep(0.5 * w, 1.5 * w, d);
+  }
 
   // A hairline: 1 at the line, 0 a pixel away, from a signed distance.
   float hair(float d) {
@@ -121,6 +145,16 @@ const corridorFragment = `
     float lit = pool(p.z);
     // Beyond the end wall nothing is drawn: the corridor stops there.
     if (p.z < uEnd - 0.01) discard;
+    // The surfaces' heat, °C, read by the thermal layer: the tubes warm
+    // the ceiling around them and, less, everything under them; the
+    // floor is the coolest thing here, except where a lamp's light lies.
+    float lampZ = (floor(p.z / uLamp) + 0.5) * uLamp;
+    float panelH = (1.0 - smoothstep(0.55, 0.62, abs(p.z - lampZ))) * (1.0 - smoothstep(0.16, 0.2, abs(p.x)));
+    float reflH = exp(-pow(p.x / 0.42, 2.0)) * exp(-pow((p.z - lampZ) / 0.9, 2.0));
+    float heat = 21.0;
+    if (n.y < -0.5) heat = 22.0 + 7.0 * panelH + 2.5 * lit;
+    else if (n.y > 0.5) heat = 18.5 + 1.2 * lit + 2.0 * reflH;
+    else if (abs(n.x) > 0.5) heat = 20.5 + 1.8 * lit;
 
     if (uImages > 0.5) {
       // The drawn plates: one bay of each surface, tiled along the
@@ -174,6 +208,14 @@ const corridorFragment = `
       // hairline where it meets the floor and ceiling.
       col = wall * max(lit, 0.7);
       col = mix(col, uDim, max(hair(p.y - 0.02), hair(p.y - uHeight + 0.02)) * 0.5);
+    }
+    if (uThermal > 0.0) {
+      float t = (heat - uTempLo) / (uTempHi - uTempLo);
+      t += sin(p.z * 0.9 + uThermalTime * 0.17) * 0.02 + sin(p.y * 2.3 - uThermalTime * 0.11) * 0.02;
+      vec3 read = thermalRamp(t) * (0.55 + 0.45 * lit);
+      read = mix(read, uInk, isotherm(t) * 0.45);
+      // Not quite all the way: the corridor stays legible under its reading.
+      col = mix(col, read, uThermal * 0.82);
     }
     col = mix(col, uGround, 1.0 - exp(-vDepth * uFog));
     col *= uBright;
@@ -280,7 +322,30 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     uCeiling: { value: null as THREE.Texture | null },
     uFloor: { value: null as THREE.Texture | null },
     uImages: { value: 0 },
+    uThermal: { value: 0 },
+    uThermalTime: { value: 0 },
+    uTempLo: { value: 16 },
+    uTempHi: { value: 30 },
+    uRamp0: { value: new THREE.Color(0x24425f) },
+    uRamp1: { value: new THREE.Color(0x35566a) },
+    uRamp2: { value: new THREE.Color(0xe0b884) },
+    uRamp3: { value: new THREE.Color(0xffe6b0) },
   };
+  const layers = absorbed.layers ?? [];
+  const layer = (kind: AbsorbedLayer['kind']) => layers.find((l) => l.kind === kind);
+  const thermalDef = layer('thermal');
+  if (thermalDef) {
+    const ramp = thermalDef.ramp ?? [];
+    const stops = [uniforms.uRamp0, uniforms.uRamp1, uniforms.uRamp2, uniforms.uRamp3];
+    stops.forEach((u, i) => {
+      const c = ramp[Math.min(i, ramp.length - 1)];
+      if (c !== undefined) u.value.setHex(c);
+    });
+    if (thermalDef.range) {
+      uniforms.uTempLo.value = thermalDef.range[0];
+      uniforms.uTempHi.value = thermalDef.range[1];
+    }
+  }
   const corridorMat = new THREE.ShaderMaterial({
     uniforms,
     vertexShader: corridorVertex,
@@ -376,6 +441,87 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     frags.instanceMatrix.needsUpdate = true;
   }
   group.add(frags);
+
+  // ---- the motes: what is in the corridor's air, lit where the lamps
+  // pool their light, drifting toward the absorbed clock, each with a
+  // short trail of where it has just been. Kept in a reach ahead of the
+  // camera and wrapped as they pass; drawn only in the absorbed pass.
+  const motesDef = layer('motes');
+  const moteCount = motesDef?.count ?? 0;
+  const moteAhead = new Float32Array(moteCount);
+  const moteX = new Float32Array(moteCount);
+  const moteY = new Float32Array(moteCount);
+  const motePhase = new Float32Array(moteCount);
+  for (let i = 0; i < moteCount; i++) {
+    moteAhead[i] = Math.random() * MOTE_REACH;
+    moteX[i] = (Math.random() - 0.5) * (width - 0.3);
+    moteY[i] = 0.3 + Math.random() * (height - 0.6);
+    motePhase[i] = Math.random() * Math.PI * 2;
+  }
+  const motePos = new Float32Array(moteCount * 2 * 3);
+  const moteTail = new Float32Array(moteCount * 2);
+  for (let i = 0; i < moteCount; i++) moteTail[i * 2 + 1] = 1;
+  const moteGeo = new THREE.BufferGeometry();
+  moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3));
+  moteGeo.setAttribute('aTail', new THREE.BufferAttribute(moteTail, 1));
+  const moteUniforms = {
+    uInk: { value: new THREE.Color(INK) },
+    uOn: { value: 0 },
+    uLamp: { value: corridor.lamp },
+    uDot: { value: 0 },
+    uFog: { value: FOG },
+  };
+  const moteVertex = `
+      attribute float aTail;
+      uniform float uLamp, uDot;
+      varying float vLit, vTail, vDepth;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        float c = 0.5 - 0.5 * cos(6.2831853 * world.z / uLamp);
+        vLit = 0.15 + 0.85 * c * c;
+        vTail = aTail;
+        vec4 mvPosition = viewMatrix * world;
+        vDepth = -mvPosition.z;
+        gl_Position = projectionMatrix * mvPosition;
+        gl_PointSize = uDot * (1.0 - aTail);
+      }`;
+  const moteFace = `
+      uniform vec3 uInk;
+      uniform float uOn, uFog;
+      varying float vLit, vTail, vDepth;`;
+  const moteLineMat = new THREE.ShaderMaterial({
+    uniforms: moteUniforms,
+    vertexShader: moteVertex,
+    fragmentShader: `${moteFace}
+      void main() {
+        gl_FragColor = vec4(uInk, vLit * (1.0 - vTail * 0.85) * exp(-vDepth * uFog) * 0.7 * uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+  });
+  const moteDotMat = new THREE.ShaderMaterial({
+    uniforms: moteUniforms,
+    vertexShader: moteVertex,
+    fragmentShader: `${moteFace}
+      void main() {
+        if (vTail > 0.5) discard;
+        float d = length(gl_PointCoord - 0.5) * 2.0;
+        float dot = 1.0 - smoothstep(0.6, 1.0, d);
+        gl_FragColor = vec4(uInk, dot * vLit * exp(-vDepth * uFog) * uOn);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+  });
+  const moteLines = new THREE.LineSegments(moteGeo, moteLineMat);
+  const moteDots = new THREE.Points(moteGeo, moteDotMat);
+  for (const m of [moteLines, moteDots]) {
+    m.frustumCulled = false;
+    m.visible = false;
+    m.renderOrder = 3;
+    group.add(m);
+  }
 
   // ---- the cameras: one per clock, each standing in the corridor.
   const makeCam = () => {
@@ -507,6 +653,59 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     }
   };
 
+  // ---- the survey: measurements called out over the absorbed view, a
+  // marker at what is read, a leader, the reading. Each in its own
+  // window, so the view thickens with noticing as the minutes pass.
+  const surveyDef = layer('survey');
+  const survey = svg && surveyDef ? document.createElementNS(NS, 'g') : null;
+  const callouts = (surveyDef?.callouts ?? []).map((c) => {
+    const g = document.createElementNS(NS, 'g');
+    const mark = document.createElementNS(NS, 'circle');
+    mark.setAttribute('class', 'figure__marker');
+    mark.setAttribute('r', '2.5');
+    const lead = document.createElementNS(NS, 'line');
+    lead.style.stroke = 'var(--ink)';
+    const leadHalo = document.createElementNS(NS, 'line');
+    leadHalo.style.stroke = 'var(--figure-halo)';
+    leadHalo.style.strokeWidth = '3px';
+    const label = document.createElementNS(NS, 'text');
+    g.append(leadHalo, lead, mark, label);
+    g.style.opacity = '0';
+    survey?.appendChild(g);
+    label.textContent = c.text;
+    return { def: c, g, mark, lead, leadHalo, label };
+  });
+  if (survey && svg) {
+    survey.setAttribute('class', 'two-clocks');
+    survey.style.opacity = '0';
+    svg.appendChild(survey);
+  }
+  const placeSurvey = () => {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    for (const c of callouts) {
+      const x = W / 2 + c.def.at[0] * (W / 2);
+      const y = c.def.at[1] * H;
+      // The reading sits up and to the right of its mark, or the left
+      // when the mark is near the right edge, with a short leader.
+      const left = c.def.at[0] > 0.66;
+      const dx = left ? -18 : 18;
+      const lx = x + dx;
+      const ly = y - 16;
+      c.mark.setAttribute('cx', String(x));
+      c.mark.setAttribute('cy', String(y));
+      for (const l of [c.lead, c.leadHalo]) {
+        l.setAttribute('x1', String(x));
+        l.setAttribute('y1', String(y));
+        l.setAttribute('x2', String(lx));
+        l.setAttribute('y2', String(ly));
+      }
+      c.label.setAttribute('x', String(lx + (left ? -4 : 4)));
+      c.label.setAttribute('y', String(ly - 4));
+      c.label.setAttribute('text-anchor', left ? 'end' : 'start');
+    }
+  };
+
   const placeLabels = () => {
     const W = window.innerWidth;
     const H = window.innerHeight;
@@ -525,7 +724,15 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     absorbed: { z: 0, end: -depth },
     bright: 0,
     show: 0,
+    thermal: 0,
+    motes: 0,
   };
+  let lastNow = performance.now();
+  let elapsed = 0;
+  /** A layer's presence at this local progress: on over its window,
+   *  easing at the edges. */
+  const layerOn = (l: { from: number; to: number } | undefined, local: number) =>
+    l ? smooth((local - l.from) / DIAL_EDGE) * (1 - smooth((local - l.to) / DIAL_EDGE)) : 0;
 
   function setActive(on: boolean): void {
     if (group.visible === on) return;
@@ -535,6 +742,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       if (!on) svg.style.opacity = '0';
     }
     if (dial) dial.style.opacity = '0';
+    if (survey) survey.style.opacity = '0';
   }
 
   function update(local: number): void {
@@ -596,6 +804,43 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       dial.style.opacity = String(alpha * on);
     }
 
+    // The absorbed clock's layers, each on for its window.
+    const now = performance.now();
+    const dt = Math.min((now - lastNow) / 1000, 0.1);
+    lastNow = now;
+    if (!reducedMotion) elapsed += dt;
+    pass.thermal = alpha * layerOn(thermalDef, local);
+    uniforms.uThermalTime.value = elapsed;
+    pass.motes = alpha * layerOn(motesDef, local);
+    if (pass.motes > 0 && moteCount > 0) {
+      const camZ = pass.absorbed.z;
+      const back = MOTE_DRIFT * MOTE_TRAIL_S;
+      for (let i = 0; i < moteCount; i++) {
+        if (!reducedMotion) {
+          moteAhead[i] -= MOTE_DRIFT * dt;
+          if (moteAhead[i] < 0.5) moteAhead[i] += MOTE_REACH;
+        }
+        const sway = Math.sin(elapsed * 0.6 + motePhase[i]) * 0.08;
+        const x = moteX[i] + sway;
+        const y = moteY[i] + Math.cos(elapsed * 0.4 + motePhase[i]) * 0.05;
+        const z = camZ - moteAhead[i];
+        const o = i * 6;
+        motePos[o] = x;
+        motePos[o + 1] = y;
+        motePos[o + 2] = z;
+        motePos[o + 3] = x;
+        motePos[o + 4] = y;
+        motePos[o + 5] = z - back;
+      }
+      (moteGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+    }
+    if (survey) {
+      placeSurvey();
+      const on = alpha * layerOn(surveyDef, local);
+      survey.style.opacity = String(on);
+      for (const c of callouts) c.g.style.opacity = String(layerOn(c.def, local));
+    }
+
     // The labels: the state across the top, crossfading at the turn.
     if (labels && svg) {
       placeLabels();
@@ -627,20 +872,33 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     renderer.setClearColor(GROUND, 1);
 
     // Left: the waiting clock. Right: the absorbed one.
-    const draw = (x: number, w: number, cam: THREE.PerspectiveCamera, p: { end: number }, show: number) => {
+    const draw = (
+      x: number,
+      w: number,
+      cam: THREE.PerspectiveCamera,
+      p: { end: number },
+      show: number,
+      thermal: number,
+      motes: number,
+    ) => {
       uniforms.uEnd.value = p.end;
       uniforms.uBright.value = pass.bright;
+      uniforms.uThermal.value = thermal;
       fragUniforms.uShow.value = show;
       fragUniforms.uBright.value = pass.bright;
+      moteUniforms.uOn.value = motes * pass.bright;
+      moteUniforms.uDot.value = MOTE_PX * Math.min(window.devicePixelRatio, 2);
       endWall.position.z = p.end;
       endWall.visible = p.end > -depth + 1;
       frags.visible = show > 0;
+      moteLines.visible = motes > 0;
+      moteDots.visible = motes > 0;
       renderer.setViewport(x, 0, w, H);
       renderer.setScissor(x, 0, w, H);
       renderer.render(world, cam);
     };
-    draw(0, half - gutter, camWaiting, pass.waiting, 0);
-    draw(half + gutter, W - half - gutter, camAbsorbed, pass.absorbed, pass.show);
+    draw(0, half - gutter, camWaiting, pass.waiting, 0, 0, 0);
+    draw(half + gutter, W - half - gutter, camAbsorbed, pass.absorbed, pass.show, pass.thermal, pass.motes);
 
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);
