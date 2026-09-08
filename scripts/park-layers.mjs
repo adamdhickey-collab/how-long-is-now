@@ -46,6 +46,11 @@ export const layers = [
     prompt: `Layer 6, the people passing: a 3 by 3 grid of nine separate figures on flat pure white, each cell one moving figure seen from the side at eye level, all facing right, late-summer light from the left: a jogger, a woman walking, a man walking, a cyclist on a bike, a child running, a dog on a lead with its owner, two friends walking together, a person pushing a stroller, an older man strolling. White between the cells, no grid lines.`,
   },
   {
+    id: 'movers-b',
+    size: LANDSCAPE,
+    prompt: `Layer 6 again, more people passing: a 3 by 3 grid of nine separate figures on flat pure white, each cell one moving figure seen from the side at eye level, all facing right, late-summer light from the left: a man walking a golden dog on a lead, a small child running, a woman jogging, a teenager on a skateboard, an older woman walking with a small dog, a young man walking a bicycle beside him, a woman walking with a coffee cup, two children running together, a man walking with a toddler on his shoulders. White between the cells, no grid lines.`,
+  },
+  {
     id: 'foreground',
     size: LANDSCAPE,
     prompt: `Layer 7, the nearest people: three large figures seen from behind at close range, as if sitting beside them on the lawn: at left a woman reading a book with a sun hat on the grass beside her, at centre a couple sitting close on a picnic blanket, the woman in a straw hat, at right a bearded man in a cap propped on one elbow with a golden dog lying beside him. Only the figures, the blanket, a basket and a water bottle; everything else flat pure white.`,

@@ -169,7 +169,18 @@ const SCENES = {
     { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
     { id: 'sitters', raw: ['sitters-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'boats', raw: ['boats-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers', raw: ['movers-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 2], cols: 3 },
+    // The second walkers sheet came as three rows with the third cut off
+    // by the frame; its top two rows are kept and cut on the first's grid.
+    {
+      id: 'movers',
+      raw: ['movers-v1.png', 'movers-b-v1.png'],
+      keep: { 'movers-b-v1.png': 2 / 3 },
+      recipe: 'fragments',
+      key: true,
+      align: 'bottom',
+      grid: [3, 2],
+      cols: 3,
+    },
   ],
   'scene-09': [
     { id: 'days-same', raw: ['days-same-v2.png'], recipe: 'squares' },
@@ -593,6 +604,19 @@ async function run() {
         continue;
       }
       const ext = p.ext && (await exists(path.join(RAW, scene, p.ext))) ? path.join(RAW, scene, p.ext) : undefined;
+      // A raw kept only to some fraction of its height, from the top.
+      if (p.keep) {
+        srcs = await Promise.all(
+          srcs.map(async (f) => {
+            const frac = p.keep[path.basename(f)];
+            if (!frac) return f;
+            const meta = await sharp(f).metadata();
+            const out = f.replace(/\.png$/, '.crop.png');
+            await sharp(f).extract({ left: 0, top: 0, width: meta.width, height: Math.round(meta.height * frac) }).toFile(out);
+            return out;
+          }),
+        );
+      }
       if (p.key) srcs = await Promise.all(srcs.map(keyWhite));
       const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });

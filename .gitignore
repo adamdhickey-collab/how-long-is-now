@@ -10,3 +10,4 @@ assets/raw/
 
 # Derived from the raws by scripts/plates.mjs (the white key).
 *.keyed.png
+*.crop.png

@@ -511,7 +511,13 @@ below them, so the plate keeps one height and the cross-fades hold;
 the framing card keeps its whole canvas for the same reason. The
 framing trees now stay all year, in their season.
 
-Still to make in this style: the two missing walkers.
+The two missing walkers came on a second sheet (`movers-b-v1.png`):
+asked for nine, it drew nine but cut the bottom row off at the frame,
+so its top two rows — the dog on a lead with its owner, the running
+child, a woman jogging, a skateboarder, an older woman with a small
+dog, a young man walking his bicycle — are cut on the first sheet's
+grid into one atlas of twelve (`keep` in the recipe takes a fraction of
+a raw's height). Nothing in this style is still to make for the park.
 
 ### 10c · the sky and the water
 

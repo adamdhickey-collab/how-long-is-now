@@ -1003,7 +1003,7 @@ export const scenes: Scene[] = [
       // pace, wrapping beyond the frame's edges.
       {
         id: 'movers',
-        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 3, rows: 2, count: 6 },
+        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 3, rows: 4, count: 12 },
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
@@ -1015,6 +1015,12 @@ export const scenes: Scene[] = [
           { id: 'cyclist', cell: 3, x: -30, z: 4.6, size: 2.1, speed: 4.4 },
           { id: 'family', cell: 4, x: -4, z: 4.9, size: 2.1, speed: -0.9 },
           { id: 'stroller', cell: 5, x: 16, z: 4.8, size: 2.1, speed: 1.1 },
+          { id: 'dog-walker', cell: 6, x: 30, z: 4.7, size: 2.1, speed: 1.3 },
+          { id: 'child', cell: 7, x: -12, z: 4.9, size: 1.6, speed: 2.2 },
+          { id: 'runner', cell: 8, x: 2, z: 4.6, speed: -2.4 },
+          { id: 'skater', cell: 9, x: -26, z: 4.8, speed: 3.2 },
+          { id: 'small-dog', cell: 10, x: 20, z: 4.9, size: 1.9, speed: -0.9 },
+          { id: 'bike-walker', cell: 11, x: -18, z: 4.7, size: 2.1, speed: 1.2 },
         ],
       },
       // The boats: sails across the lake, drifting. Not there in the ice.
