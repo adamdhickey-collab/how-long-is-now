@@ -59,6 +59,32 @@ const RING_R = 0.2;
  * three-stop ramp from cold to hot, and hairline isotherms every eighth
  * of the range. `t` is the temperature as a fraction of the ramp.
  */
+/**
+ * A stipple for the procedural surfaces: the frame as a grid of dots
+ * the size of the plates' own, each dot the surface's colour pushed a
+ * little lighter, darker, or toward a neighbouring hue, as a pointillist
+ * would lay it down. The sky and the water sit with the painted layers
+ * instead of beside them. Screen-space, so the dots stay one size.
+ */
+const STIPPLE_GLSL = /* glsl */ `
+  float stippleHash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  vec3 stipple(vec3 col, vec2 fragCoord, float px, float amount) {
+    vec2 cell = floor(fragCoord / px);
+    vec2 f = fract(fragCoord / px) - 0.5;
+    float h = stippleHash(cell);
+    float h2 = stippleHash(cell + 17.3);
+    float dot = smoothstep(0.55, 0.3, length(f));
+    vec3 lighter = col * (1.0 + 0.4 * amount);
+    vec3 darker = col * (1.0 - 0.3 * amount);
+    vec3 cooler = col * vec3(0.88, 0.94, 1.12);
+    vec3 warmer = col * vec3(1.08, 1.06, 0.86);
+    vec3 dotCol = h < 0.25 ? lighter : h < 0.5 ? darker : h < 0.75 ? cooler : warmer;
+    return mix(col, dotCol, dot * amount * (0.6 + 0.4 * h2));
+  }
+`;
+
 const THERMAL_GLSL = `
   uniform float uThermal, uThermalTime;
   uniform vec3 uRamp0, uRamp1, uRamp2, uRamp3, uThermalInk;
@@ -370,6 +396,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uHorizonAt: { value: -skyDef.baseY / skyDef.height },
       uRamp: { value: def.skyRamp ?? 0.3 },
       uOpacity: { value: 1 },
+      uDotPx: { value: 4 * Math.min(window.devicePixelRatio, 2) },
     },
     vertexShader: `
       varying vec2 vUv;
@@ -380,10 +407,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     fragmentShader: `
       varying vec2 vUv;
       uniform vec3 uZenith, uHorizon;
-      uniform float uHorizonAt, uRamp, uOpacity;
+      uniform float uHorizonAt, uRamp, uOpacity, uDotPx;
+      ${STIPPLE_GLSL}
       void main() {
         float t = smoothstep(uHorizonAt, uHorizonAt + uRamp, vUv.y);
-        gl_FragColor = vec4(mix(uHorizon, uZenith, t), uOpacity);
+        vec3 col = stipple(mix(uHorizon, uZenith, t), gl_FragCoord.xy, uDotPx, 0.42);
+        gl_FragColor = vec4(col, uOpacity);
         #include <colorspace_fragment>
       }`,
     transparent: true,
@@ -1331,6 +1360,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       uRamp2: thermalU.uRamp2,
       uRamp3: thermalU.uRamp3,
       uTempWater: thermalU.uTempWater,
+      uDotPx: { value: 4 * Math.min(window.devicePixelRatio, 2) },
     },
     vertexShader: `
       varying vec3 vWorld;
@@ -1342,13 +1372,16 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     fragmentShader: `
       varying vec3 vWorld;
       uniform vec3 uWater, uHaze, uSun, uInk;
-      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity, uFlow, uFlowSpeed, uTempWater;
+      uniform float uSunX, uSunElev, uFarZ, uTime, uOpacity, uFlow, uFlowSpeed, uTempWater, uDotPx;
       uniform vec2 uFlowDir;
       ${THERMAL_GLSL}
+      ${STIPPLE_GLSL}
       void main() {
         // Distance haze: the lake dissolves into the air at the far shore.
         float far = 1.0 - smoothstep(uFarZ, uFarZ + 46.0, vWorld.z);
         vec3 col = mix(uWater, uHaze, far * 0.88);
+        // Laid down in dots, like the shore it runs to.
+        col = stipple(col, gl_FragCoord.xy, uDotPx, 0.6);
 
         // The sun's path: broken glitter, gathered toward the far shore.
         // Near water is steeply viewed and stays dark; that contrast is

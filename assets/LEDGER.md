@@ -512,3 +512,13 @@ the framing card keeps its whole canvas for the same reason. The
 framing trees now stay all year, in their season.
 
 Still to make in this style: the two missing walkers.
+
+### 10c · the sky and the water
+
+The season keyframes' sky, water, haze and cloud colours regraded to
+the reference by eye — a pointillist surface averages to grey, so a
+sampled mean is no guide; the perceived colour is the dots' — and the
+sky and water shaders given a screen-space stipple, four pixels a dot,
+each dot the surface's colour pushed lighter, darker, cooler or warmer.
+The instruments (glitter, thermal, flow) draw over the dots and stay
+crisp. Winter's water is ice.
