@@ -19,6 +19,7 @@ import { mixHex, seasonAt, seasonWeights, type Instrument, type Plate, type Scen
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened } from './loading';
+import { createLeaf, type LeafFigure } from './scene-07-leaf';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
  *  itself a little behind that, so the cloud deck between them can pass
@@ -620,6 +621,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       : null;
   // The survey resets the overlay when it is made, so the rings go in after it.
   if (ringsG && figureEl) figureEl.appendChild(ringsG);
+  // ---- the leaf: a reader dividing the second finely reads one elm leaf
+  // as the network it is, in the overlay. The instrument `leaf`.
+  const leaf: LeafFigure | null = figureEl instanceof SVGSVGElement ? createLeaf(figureEl) : null;
 
   // ---- the roots: a holder running decades cuts the far shore open and
   // draws the stand's roots as a network under it, one hairline a root,
@@ -1641,6 +1645,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       // Whatever the overlay was left showing goes with the world: a
       // holder that ran decades leaves nothing counted on the elm.
       if (ringsG) ringsG.style.opacity = '0';
+      leaf?.hide();
     }
     if (!fog || !fogWas) return;
     if (!on) {
@@ -1799,6 +1804,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       nodesMat.uniforms.uGrow.value = grown;
       nodesMat.uniforms.uOpacity.value = alpha * rootsOn;
     }
+    // The leaf, for a reader that declares it: drawn in across its window.
+    const leafDecl = reader.instruments?.find((i) => i.kind === 'leaf');
+    const leafOn = leafDecl ? instrumentOn('leaf', readAt) : 0;
+    const leafGrown = leafDecl ? clamp01((readAt - leafDecl.from) / Math.max(1e-6, leafDecl.to - leafDecl.from)) : 0;
+    leaf?.update(alpha * leafOn, leafGrown, leafDecl?.scope);
 
     skyMat.uniforms.uZenith.value.setHex(skyZenith);
     skyMat.uniforms.uHorizon.value.setHex(skyHorizon);

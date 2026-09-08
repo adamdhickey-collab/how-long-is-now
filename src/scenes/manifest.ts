@@ -144,11 +144,13 @@ export interface YearMark {
  * dial, the exposure filling it from the day the record opens, the
  * present as a tick, the scene's dated marks on its rim; `roots` cuts the
  * far shore open and draws the stand's roots as a network under it,
- * growing with the years and joining tree to tree. Scroll switches
+ * growing with the years and joining tree to tree; `leaf` reads one elm
+ * leaf as the network it is, its venation drawn vein by vein and lit
+ * node by node into a scope, across the instrument's window. Scroll switches
  * instruments on: each is on screen for a window
  * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc' | 'band' | 'rings' | 'roots';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc' | 'band' | 'rings' | 'roots' | 'leaf';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
@@ -1119,6 +1121,15 @@ export const scenes: Scene[] = [
         to: 1,
         period: 6,
         scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
+      },
+      // The finest division: one leaf read as the network it is, drawn
+      // in vein by vein as the label descends to a hundredth of a second,
+      // and still being drawn when the corridor takes the frame.
+      {
+        kind: 'leaf',
+        from: 0.66,
+        to: 1,
+        scope: { corner: 'bottom-right', size: 0.34, inset: { x: 0.04, y: 0.095 } },
       },
     ],
   },

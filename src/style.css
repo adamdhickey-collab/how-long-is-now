@@ -146,6 +146,8 @@ body {
 .figure text.title { font-size: 13px; letter-spacing: 0.22em; }
 
 .figure__marker { fill: var(--ink-dim); stroke: none; }
+/* The leaf's junctions, lit as the network reaches them. */
+.figure .leaf__node { fill: var(--ink); stroke: none; }
 .figure__marker--now { fill: var(--now); stroke: none; }
 
 @media (max-width: 720px) {
