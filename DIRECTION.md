@@ -74,7 +74,7 @@ drive the spectrogram.
 | **Spectrogram** | A bird's song unrolling across the sky as a ribbon of frequency bands; fainter songs from the far trees; the water's lap as a low band at the shore | The sky, above the treeline | Real recordings of Lake Harriet birds (red-winged blackbird, common loon, robin), rendered to spectrogram textures ahead of time | Nothing yet; waits for the sound phase |
 | **The record** | The sun at 4:17 every day for a year, as a figure of eight with a ribbon revealing it | The sky | NOAA solar position for Lake Harriet | Built: the analemma and its survey |
 | **Ring of seasons** | The year as a ring, ice-out and leaf-out marked on it, the present as a tick | The HUD, or the turn from scene 04 to 05 | DNR ice-out dates for Lake Harriet, phenology dates for elm leaf-out and fall | Nothing yet; small |
-| **Leaf as network** | A leaf's venation drawn as a network, lit node by node | The inward zoom | Venation is a real transport network; the drawing can follow one | Nothing yet |
+| **Leaf as network** | A leaf's venation drawn as a network, lit node by node | The inward zoom | Venation is a real transport network; the drawing can follow one | Built 2026-09-08: the `leaf` instrument in scene 07, an elm leaf drawn procedurally in the overlay, vein by vein across its window |
 | **Root network** | The stand's roots as a glowing network under the ground | The far shore, cut open | Trees of a stand share roots and fungal networks; the drawing is the memory corridor's metaphor made literal | Built 2026-09-08: the `roots` instrument in scene 05, procedural, seeded, growing tip by tip with the years |
 
 ## Scene by scene
