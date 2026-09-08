@@ -114,7 +114,27 @@ export interface Hold {
   /** The span of the world's own time the holder covers, in seconds, if
    *  scroll is to run the world's clock through it. */
   seconds?: number;
+  /** How far the clouds evolve across the holder's span. */
+  churn?: number;
+  /** The holder's own lens on the sky, if the year's will not do. */
+  lens?: { scale: number; altitude: number; west: number };
 }
+
+/** Where the night's colours go: the sky, the haze and the water at the
+ *  bottom of the dark, and what the setting sun warms the horizon to. */
+const NIGHT_ZENITH = 0x04060b;
+const NIGHT_HORIZON = 0x0c1119;
+const NIGHT_HAZE = 0x0a0e14;
+const NIGHT_WATER = 0x070b12;
+const DUSK_HORIZON = 0xd9924e;
+const DUSK_SUN = 0xffb26a;
+/** The day's arc is sampled this many times along the path so far. */
+const ARC_SAMPLES = 192;
+
+const smooth01 = (a: number, b: number, x: number) => {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
 
 // ------------------------------------------------------------- ingredients
 
@@ -382,9 +402,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   /** A real altitude and azimuth, seen through the lens, as a direction.
    *  The camera faces west: −z is west and +x is north, so the afternoon
    *  sun, in the south-west, stands ahead and to the left. */
-  const throughLens = (altitude: number, azimuth: number, out: THREE.Vector3): THREE.Vector3 => {
-    const alt = (lens.altitude + lens.scale * (altitude - firstSun.altitude)) * D2R;
-    const az = (270 - lens.west + lens.scale * (azimuth - firstSun.azimuth)) * D2R;
+  const throughLens = (
+    altitude: number,
+    azimuth: number,
+    out: THREE.Vector3,
+    l: { scale: number; altitude: number; west: number } = lens,
+  ): THREE.Vector3 => {
+    const alt = (l.altitude + l.scale * (altitude - firstSun.altitude)) * D2R;
+    const az = (270 - l.west + l.scale * (azimuth - firstSun.azimuth)) * D2R;
     return out.set(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az));
   };
   const real: SunPosition[] = [];
@@ -484,6 +509,25 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   trail.renderOrder = -9;
   trail.name = 'analemma';
   group.add(trail);
+
+  // ---- the day's arc: a holder running the world's clock through a day
+  // draws the sun's path so far as a hairline on the trail's plane, the
+  // instrument `arc`. Behind the plates, so the part below the elms is
+  // the ground's to hide.
+  const arcPos = new Float32Array((ARC_SAMPLES + 1) * 3);
+  const arcGeo = new THREE.BufferGeometry();
+  arcGeo.setAttribute('position', new THREE.BufferAttribute(arcPos, 3));
+  arcGeo.setDrawRange(0, 0);
+  const arcMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0, fog: false });
+  const arc = new THREE.Line(arcGeo, arcMat);
+  arc.position.set(0, 0, trailZ);
+  arc.renderOrder = -8;
+  arc.frustumCulled = false;
+  arc.visible = false;
+  arc.name = 'day-arc';
+  group.add(arc);
+  const arcDir = new THREE.Vector3();
+  const arcAt = new THREE.Vector2();
 
   // ---- the survey: the record annotated and measured, in the DOM over
   // the world. It reads the same record and the same lens, so its lines
@@ -1232,13 +1276,6 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   let elapsed = 0;
-  /** The world's own clock: real time, plus whatever a holder's scroll
-   *  has run it forward by. What drifts, falls and ripples reads this;
-   *  an instrument's own motion, like the radar's sweep, reads `elapsed`. */
-  let worldTime = 0;
-  /** A holder's progress last frame, to run the world's clock by the
-   *  difference. */
-  let heldLocal: number | null = null;
   /** Seconds since the world was last shown, for instruments that come
    *  on after a while rather than at a point in the scroll. */
   let shown = 0;
@@ -1296,16 +1333,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     shown += dt;
     // Held by another scene, the world sits at the point it asks for and
     // is read through that scene's instruments. If the holder covers a
-    // span of the world's time, scroll runs the world's clock through it.
+    // span of the world's time, scroll runs the sun and the light through
+    // it, and the clouds by the holder's churn; what ripples and falls
+    // keeps real time, since run by scroll it would only flicker.
     const readAt = holder ? holder.local : local;
-    let step = dt;
-    if (holder?.seconds) {
-      if (heldLocal !== null) step += holder.seconds * (holder.local - heldLocal);
-      heldLocal = holder.local;
-    } else {
-      heldLocal = null;
-    }
-    worldTime += step;
     if (holder) local = holder.at;
     reader = holder ? holder.scene : def;
 
@@ -1320,23 +1351,49 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     sunDir.lerpVectors(apparent[d0], apparent[d0 + 1], day - d0).normalize();
     // A holder running the world's clock moves the sun through its day:
     // the real sun, so many seconds after the record's opening exposure,
-    // through the same lens.
+    // through the holder's lens or the year's.
+    let realAlt = real[d0].altitude;
     if (holder?.seconds) {
       const live = sunPosition(opensMs + holder.seconds * holder.local * 1000, sunDef!.lat, sunDef!.lon);
-      throughLens(live.altitude, live.azimuth, sunDir).normalize();
+      throughLens(live.altitude, live.azimuth, sunDir, holder.lens ?? lens).normalize();
+      realAlt = live.altitude;
     }
+    // The day's arc, as far as the day has run.
+    const arcOn = holder?.seconds ? instrumentOn('arc', readAt) : 0;
+    arc.visible = arcOn > 0;
+    if (arcOn > 0 && holder?.seconds) {
+      const l = holder.lens ?? lens;
+      const span = holder.seconds * holder.local;
+      for (let i = 0; i <= ARC_SAMPLES; i++) {
+        const at = sunPosition(opensMs + (span * i) / ARC_SAMPLES * 1000, sunDef!.lat, sunDef!.lon);
+        onPlane(throughLens(at.altitude, at.azimuth, arcDir, l).normalize(), trailZ, arcAt);
+        arcPos[i * 3] = arcAt.x;
+        arcPos[i * 3 + 1] = arcAt.y;
+        arcPos[i * 3 + 2] = 0;
+      }
+      arcGeo.setDrawRange(0, ARC_SAMPLES + 1);
+      (arcGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+    }
+    // Night, from the real sun's altitude: full dark below civil twilight,
+    // and a warm horizon either side of the setting and rising.
+    const night = 1 - smooth01(-8, 12, realAlt);
+    const dusk = clamp01(1 - Math.abs(realAlt - 2) / 10);
+    const daylight = smooth01(-6, 30, realAlt);
     // The water's glitter gathers under the sun at the far shore.
     onPlane(sunDir, waterFarZ, sunAt);
     const sunX = sunAt.x;
     const elev = Math.asin(sunDir.y);
 
-    const skyZenith = s.skyZenith;
-    const skyHorizon = s.skyHorizon;
-    const haze = s.haze;
+    const skyZenith = mixHex(s.skyZenith, NIGHT_ZENITH, night);
+    const skyHorizon = mixHex(mixHex(s.skyHorizon, DUSK_HORIZON, dusk * 0.7), NIGHT_HORIZON, night);
+    const haze = mixHex(s.haze, NIGHT_HAZE, night);
     const canopy = s.canopy;
     const bank = s.bank;
-    const waterCol = s.water;
+    const waterCol = mixHex(s.water, NIGHT_WATER, night);
     const airCol = s.air;
+    const sunCol = mixHex(s.sun, DUSK_SUN, dusk);
+    /** A plate's declared shade, deepened by the night. */
+    const nightShade = (shade: number) => 1 - (1 - shade) * (1 - night * 0.9);
 
     // The scene fades its own world in and out at the edges the manifest
     // declares, so the placeholder field can hand over and take back.
@@ -1358,27 +1415,28 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     onPlane(sunDir, sunZ, sunAt);
     sun.position.set(sunAt.x, sunAt.y, sunZ);
-    sunMat.uniforms.uColor.value.setHex(s.sun);
-    sunMat.uniforms.uOpacity.value = alpha;
+    sunMat.uniforms.uColor.value.setHex(sunCol);
+    sunMat.uniforms.uOpacity.value = alpha * smooth01(-2, 2.5, realAlt);
+    arcMat.opacity = alpha * arcOn * 0.55;
 
     onPlane(sunDir, cloudZ, sunAt);
     cloudMat.uniforms.uSunPos.value.set(sunAt.x, sunAt.y - cloudCentreY);
-    cloudMat.uniforms.uLit.value.setHex(s.cloudLit);
-    cloudMat.uniforms.uShade.value.setHex(s.cloudShade);
+    cloudMat.uniforms.uLit.value.setHex(mixHex(mixHex(s.cloudLit, DUSK_SUN, dusk * 0.5), NIGHT_HORIZON, night));
+    cloudMat.uniforms.uShade.value.setHex(mixHex(s.cloudShade, NIGHT_ZENITH, night));
     cloudMat.uniforms.uHaze.value.setHex(haze);
-    cloudMat.uniforms.uSun.value.setHex(s.sun);
+    cloudMat.uniforms.uSun.value.setHex(sunCol);
     cloudMat.uniforms.uCover.value = s.cloudCover;
     cloudMat.uniforms.uTime.value =
-      local * cloudChurn + (reducedMotion ? 0 : worldTime * cloudDrift);
+      local * cloudChurn + (reducedMotion ? 0 : elapsed * cloudDrift) + (holder?.churn ? holder.churn * holder.local : 0);
     cloudMat.uniforms.uOpacity.value = alpha;
 
-    setTint(leafyMat, canopy, canopyDef!.shade ?? 0);
-    setTint(bareMat, canopy, canopyDef!.shade ?? 0);
+    setTint(leafyMat, canopy, nightShade(canopyDef!.shade ?? 0));
+    setTint(bareMat, canopy, nightShade(canopyDef!.shade ?? 0));
     leafyMat.opacity = alpha * s.canopyFill;
     bareMat.opacity = alpha;
 
-    setTint(farMat, bank, farBankDef!.shade ?? 0);
-    setTint(nearMat, bank, nearBankDef!.shade ?? 0);
+    setTint(farMat, bank, nightShade(farBankDef!.shade ?? 0));
+    setTint(nearMat, bank, nightShade(nearBankDef!.shade ?? 0));
     farMat.opacity = alpha;
     nearMat.opacity = alpha;
 
@@ -1388,7 +1446,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uSunX.value = sunX;
     waterMat.uniforms.uSunElev.value = elev;
     waterMat.uniforms.uOpacity.value = alpha;
-    if (!reducedMotion) waterMat.uniforms.uTime.value = worldTime;
+    if (!reducedMotion) waterMat.uniforms.uTime.value = elapsed;
     // The flow instrument: on for the window the manifest declares. The
     // wind blows from its bearing, so the water moves the other way; the
     // camera faces west, +x north and +z east.
@@ -1398,10 +1456,16 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', readAt);
     // The thermal instrument: the season's afternoon temperatures, as
     // fractions of the ramp, on the banks and the lake.
-    thermalU.uThermal.value = alpha * instrumentOn('thermal', readAt);
-    thermalU.uTempGround.value = thermalNorm(s.tempGround);
-    thermalU.uTempWater.value = thermalNorm(s.tempWater);
-    if (!reducedMotion) thermalU.uThermalTime.value = worldTime;
+    // The reading goes with the light: a thermal camera would not, but
+    // the piece's night is dark, and the ramp's colours over it read as
+    // day. It fades through dusk and comes back with the dawn.
+    thermalU.uThermal.value = alpha * instrumentOn('thermal', readAt) * (1 - night);
+    // Through a day the ground gives its heat back to the night — grass
+    // radiates fast, and an afternoon's 32 °C is a small hour's 14 — while
+    // the water barely moves; the reading swings with the light.
+    thermalU.uTempGround.value = thermalNorm(s.tempGround - 18 * (1 - daylight));
+    thermalU.uTempWater.value = thermalNorm(s.tempWater - 3 * (1 - daylight));
+    if (!reducedMotion) thermalU.uThermalTime.value = elapsed;
 
     // Image plates carry their own colour; only their declared shade
     // dims them. Every active layer is opaque except the frontmost, which
@@ -1421,11 +1485,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         l.mat.opacity = alpha * (w <= 0 ? 0 : i === front ? w : 1);
       });
     };
-    setImage(canopyImg, canopyDef!.shade ?? 0);
-    setImage(farImg, farBankDef!.shade ?? 0);
-    setImage(nearImg, nearBankDef!.shade ?? 0);
+    setImage(canopyImg, nightShade(canopyDef!.shade ?? 0));
+    setImage(farImg, nightShade(farBankDef!.shade ?? 0));
+    setImage(nearImg, nightShade(nearBankDef!.shade ?? 0));
 
-    setTint(airMat, airCol, 0);
+    setTint(airMat, airCol, night * 0.7);
     airMat.opacity = alpha * s.airCount;
     airMat.size = 0.05 + s.airFall * 0.07;
 
@@ -1502,9 +1566,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
 
     // What is in the air falls at the rate the season asks for.
     const attr = airGeo.getAttribute('position') as THREE.BufferAttribute;
-    // The air falls by the world's clock, so a holder's scroll runs it too;
-    // a large step wraps as many times as it needs to.
-    const fall = step * airDef!.fall * s.airFall;
+    const fall = dt * airDef!.fall * s.airFall;
     const sway = s.airFall * 0.35;
     const h = airDef!.height;
     for (let i = 0; i < airDef!.count; i++) {
@@ -1514,7 +1576,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       if (sway > 0) {
         attr.setX(
           i,
-          attr.getX(i) + Math.sin(worldTime * 0.8 + airPhase[i]) * sway * Math.min(step, 0.5),
+          attr.getX(i) + Math.sin(elapsed * 0.8 + airPhase[i]) * sway * dt,
         );
       }
     }

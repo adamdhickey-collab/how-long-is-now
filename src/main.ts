@@ -212,7 +212,9 @@ function frame(now: number) {
     local,
     dt,
     camera,
-    holdsYear && active.hold ? { at: active.hold.at, scene: active, local, seconds: active.hold.seconds } : undefined,
+    holdsYear && active.hold
+      ? { at: active.hold.at, scene: active, local, seconds: active.hold.seconds, churn: active.hold.churn, lens: active.hold.lens }
+      : undefined,
   );
   twoClocks.update(local);
   memory.update(local);

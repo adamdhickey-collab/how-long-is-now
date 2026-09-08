@@ -129,7 +129,7 @@ export interface YearMark {
  * instruments on: each is on screen for a window
  * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
@@ -552,6 +552,17 @@ export interface Scene {
      * its shadows crawl, all under the visitor's hand.
      */
     seconds?: number;
+    /** How far the cloud field evolves across the holder's span, in the
+     *  deck's own units (the year's deck declares 9 for its whole run).
+     *  Scroll runs it; the clouds are the one motion slow enough to. */
+    churn?: number;
+    /**
+     * The holder's own lens on the sky, where the held world's would not
+     * do: the year's lens keeps a figure of eight in the band above the
+     * elms, and through it the sun could never set. A day needs one that
+     * lets it. Same terms as the record's lens.
+     */
+    lens?: { scale: number; altitude: number; west: number };
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -704,7 +715,7 @@ export const scenes: Scene[] = [
     // runs ten minutes of the world's own motion. The camera does not
     // move; the environment does. And the world starts to be read: the
     // wind on the water first, then the air, through the radar.
-    hold: { of: 'scene-04-year', at: 0, seconds: 600 },
+    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5 },
     camera: {
       from: { y: 1.6, z: 16, lookY: 3.0 },
       to: { y: 1.6, z: 16, lookY: 3.0 },
@@ -725,6 +736,28 @@ export const scenes: Scene[] = [
     label: '1 DAY',
     lengthVh: 150,
     timeRate: 86_400,
+    // The same park, from the same bench, for a day: scroll runs the
+    // world's clock from 4:17 round to 4:17. The sun sets behind the
+    // elms, night falls, the sun comes back over the left of the frame
+    // and climbs past the top before it settles where it began — through
+    // a lens of its own, since the year's would never let it set. The
+    // day's arc is drawn as it happens, and the thermal reading swings
+    // with the light.
+    hold: {
+      of: 'scene-04-year',
+      at: 0,
+      seconds: 86_400,
+      churn: 24,
+      lens: { scale: 0.6, altitude: 25.5, west: 10 },
+    },
+    camera: {
+      from: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+    },
+    instruments: [
+      { kind: 'arc', from: 0.02, to: 1 },
+      { kind: 'thermal', from: 0.05, to: 1, strength: 0.6 },
+    ],
   },
   {
     id: 'scene-04-year',
