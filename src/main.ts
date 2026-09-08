@@ -170,9 +170,6 @@ function frame(now: number) {
   if (active.caption && active.captionAt) {
     showCaption(local >= active.captionAt.from && local <= active.captionAt.to);
   }
-  year.update(local, dt);
-  twoClocks.update(local);
-  memory.update(local);
 
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
@@ -204,6 +201,13 @@ function frame(now: number) {
     camera.position.z = 14;
     camera.lookAt(0, Math.max(1.6, camera.position.y * 0.4), 0);
   }
+
+  // The world is read only once the camera stands where this frame puts
+  // it: the year's figure is drawn in screen space and must project
+  // through the same camera that renders the sun it annotates.
+  year.update(local, dt, camera);
+  twoClocks.update(local);
+  memory.update(local);
 
   // The hint dissolves the moment the visitor commits to leaving now.
   scrollHint.style.opacity = progress > 0.005 ? '0' : '1';

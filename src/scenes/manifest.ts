@@ -218,6 +218,78 @@ export interface CloudDeck {
 }
 
 /**
+ * What a figure callout draws. Each kind is a drawing the scene knows how
+ * to make from its own sun record; the manifest decides which appear and
+ * when. The live kinds read the sun every frame; the event kinds anchor
+ * to an instant the solar arithmetic finds — an equinox, a solstice, the
+ * day the figure crosses itself.
+ */
+export type FigureKind =
+  /** Top-left: the survey's header. Place, date, clock. Live. */
+  | 'header'
+  /** Top-left, under the header: the plan. A compass, the bench, the
+   *  sightline to the sun swinging through its year. Live. */
+  | 'plan'
+  /** Bottom-right: the specimen block. Every measurement, live. */
+  | 'specimen'
+  /** The record itself as a hairline over the exposure, ticked by week
+   *  and labelled by month. */
+  | 'trace'
+  /** The horizon through the lens: the datum every altitude is measured
+   *  from, with compass bearings ticked along it. */
+  | 'datum'
+  /** A crosshair on today's sun, and its readout. The one use of the
+   *  accent. Live. */
+  | 'now'
+  /** A dimension from the datum up to today's sun. Live. */
+  | 'altitude'
+  /** A dimension along the datum from due west to the sun's foot. Live. */
+  | 'azimuth'
+  /** The name of the figure. */
+  | 'title'
+  /** The sun crosses the equator, going south. */
+  | 'equinox-autumn'
+  /** The sundial runs furthest ahead of the clock. */
+  | 'eot-fast'
+  /** The low point. */
+  | 'solstice-winter'
+  /** The sundial runs furthest behind the clock. */
+  | 'eot-slow'
+  /** The sun crosses the equator, going north. */
+  | 'equinox-spring'
+  /** The figure crosses itself: two days, one place in the sky. */
+  | 'node'
+  /** The high point. */
+  | 'solstice-summer'
+  /** The figure's full width, dimensioned: the year's azimuth span. */
+  | 'width'
+  /** The figure's full height, dimensioned: the year's altitude span. */
+  | 'height';
+
+export interface FigureCallout {
+  kind: FigureKind;
+  /** The window of the scene's local progress this callout is on screen.
+   *  It draws itself in over `Figure.enter` at the start and leaves over
+   *  `Figure.exit` at the end. A kind may be declared more than once. */
+  from: number;
+  to: number;
+}
+
+/**
+ * A drafting overlay on the scene: hairlines, dimensions, ticks and
+ * monospace labels drawn in screen space over the world, measuring what
+ * the world is doing in real units. Scroll is the exposure here too —
+ * every callout is a timeline scrubbed by progress, so scrolling back
+ * takes a measurement off the page the way it went on.
+ */
+export interface Figure {
+  /** Local progress a callout spends drawing itself in, and leaving. */
+  enter: number;
+  exit: number;
+  callouts: FigureCallout[];
+}
+
+/**
  * Scene 08's corridor. Both clocks run down the same one — a long
  * institutional corridor, doors receding, a light in the ceiling every
  * few bays — because the point is that the ten minutes are identical and
@@ -447,6 +519,8 @@ export interface Scene {
   sun?: SunRecord;
   /** What the sky is doing above the sun. */
   clouds?: CloudDeck;
+  /** The survey drawn over the sun's record. */
+  figure?: Figure;
   /** Scene 08: the two clocks. A scene that declares this owns the world. */
   twoClocks?: TwoClocks;
   /** Scene 09: the memory corridor. Owns the world too. */
@@ -740,6 +814,41 @@ export const scenes: Scene[] = [
     // year of weather passes in the scene; the field churns enough that
     // no cloud survives a season, and drifts a little on its own.
     clouds: { z: -158, width: 620, height: 250, baseY: 6, scale: 1.7, churn: 9, drift: 0.02, wind: 0.6 },
+    // The survey. Once the year turns (local 0.12), a day of the record is
+    // 0.0024 of local progress; the events below fall where the real sun
+    // puts them — equinox 23 Sep (0.21), sundial fastest 2 Nov (0.31),
+    // solstice 21 Dec (0.43), sundial slowest 11 Feb (0.55), equinox
+    // 20 Mar (0.64), the figure crosses itself mid-April (0.70), solstice
+    // 21 Jun (0.87). Each callout opens a little ahead of its instant and
+    // stays a few weeks. The live blocks are up before the year turns, so
+    // the survey is set before there is anything to measure; everything
+    // is off the page before the scene's own fade at 0.95.
+    figure: {
+      enter: 0.02,
+      exit: 0.012,
+      callouts: [
+        { kind: 'header', from: 0.04, to: 0.955 },
+        { kind: 'plan', from: 0.06, to: 0.955 },
+        { kind: 'specimen', from: 0.08, to: 0.955 },
+        { kind: 'datum', from: 0.1, to: 0.95 },
+        { kind: 'trace', from: 0.12, to: 0.95 },
+        { kind: 'now', from: 0.125, to: 0.95 },
+        { kind: 'altitude', from: 0.14, to: 0.2 },
+        { kind: 'equinox-autumn', from: 0.2, to: 0.25 },
+        { kind: 'azimuth', from: 0.25, to: 0.36 },
+        { kind: 'title', from: 0.3, to: 0.95 },
+        { kind: 'eot-fast', from: 0.3, to: 0.37 },
+        { kind: 'solstice-winter', from: 0.41, to: 0.5 },
+        { kind: 'altitude', from: 0.42, to: 0.5 },
+        { kind: 'eot-slow', from: 0.54, to: 0.61 },
+        { kind: 'equinox-spring', from: 0.63, to: 0.7 },
+        { kind: 'node', from: 0.695, to: 0.78 },
+        { kind: 'solstice-summer', from: 0.85, to: 0.94 },
+        { kind: 'altitude', from: 0.86, to: 0.9 },
+        { kind: 'height', from: 0.89, to: 0.95 },
+        { kind: 'width', from: 0.9, to: 0.95 },
+      ],
+    },
     fadeIn: 0.035,
     fadeOut: 0.05,
   },

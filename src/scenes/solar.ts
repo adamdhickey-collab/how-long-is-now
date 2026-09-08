@@ -15,6 +15,12 @@ export interface SunPosition {
   altitude: number;
   /** Degrees clockwise from north: east 90, south 180, west 270. */
   azimuth: number;
+  /** The sun's angle above the celestial equator, degrees: +23.44° at the
+   *  June solstice, −23.44° in December, zero at the equinoxes. */
+  declination: number;
+  /** Minutes the sundial runs ahead of the clock. Positive in November,
+   *  when the sun is early; negative in February, when it is late. */
+  equationOfTime: number;
 }
 
 /** Sun position for an instant (ms since the Unix epoch, UTC) at a latitude
@@ -63,5 +69,5 @@ export function sunPosition(utcMs: number, lat: number, lon: number): SunPositio
       360) %
     360;
 
-  return { altitude, azimuth };
+  return { altitude, azimuth, declination: decl * R2D, equationOfTime: eot };
 }

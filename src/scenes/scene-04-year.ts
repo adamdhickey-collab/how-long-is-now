@@ -16,7 +16,8 @@
 
 import * as THREE from 'three';
 import { mixHex, seasonAt, seasonWeights, type Plate, type Scene, type Season } from './manifest';
-import { sunPosition } from './solar';
+import { sunPosition, type SunPosition } from './solar';
+import { createFigure, type FigureOverlay } from './scene-04-figure';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
  *  itself a little behind that, so the cloud deck between them can pass
@@ -93,8 +94,10 @@ export interface YearScene {
    * frame until then.
    */
   warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean;
-  /** local: 0–1 through the scene. dt: seconds since the last frame. */
-  update(local: number, dt: number): void;
+  /** local: 0–1 through the scene. dt: seconds since the last frame.
+   *  camera: where the world is seen from this frame, already placed —
+   *  the figure is drawn in screen space and projects through it. */
+  update(local: number, dt: number, camera: THREE.Camera): void;
 }
 
 // ------------------------------------------------------------- ingredients
@@ -360,16 +363,20 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const opensMs = Date.UTC(openY, openM - 1, openD, clockH - sunDef.utcOffset, clockM);
   const firstSun = sunPosition(opensMs, sunDef.lat, sunDef.lon);
   const lens = sunDef.lens;
+  /** A real altitude and azimuth, seen through the lens, as a direction.
+   *  The camera faces west: −z is west and +x is north, so the afternoon
+   *  sun, in the south-west, stands ahead and to the left. */
+  const throughLens = (altitude: number, azimuth: number, out: THREE.Vector3): THREE.Vector3 => {
+    const alt = (lens.altitude + lens.scale * (altitude - firstSun.altitude)) * D2R;
+    const az = (270 - lens.west + lens.scale * (azimuth - firstSun.azimuth)) * D2R;
+    return out.set(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az));
+  };
+  const real: SunPosition[] = [];
   const apparent: THREE.Vector3[] = [];
   for (let i = 0; i <= DAYS; i++) {
-    const real = sunPosition(opensMs + i * 86_400_000, sunDef.lat, sunDef.lon);
-    const alt = (lens.altitude + lens.scale * (real.altitude - firstSun.altitude)) * D2R;
-    const az = (270 - lens.west + lens.scale * (real.azimuth - firstSun.azimuth)) * D2R;
-    // The camera faces west: −z is west and +x is north, so the
-    // afternoon sun, in the south-west, stands ahead and to the left.
-    apparent.push(
-      new THREE.Vector3(Math.cos(alt) * Math.cos(az), Math.sin(alt), Math.cos(alt) * Math.sin(az)),
-    );
+    const r = sunPosition(opensMs + i * 86_400_000, sunDef.lat, sunDef.lon);
+    real.push(r);
+    apparent.push(throughLens(r.altitude, r.azimuth, new THREE.Vector3()));
   }
 
   /** Where a direction from the eye meets the plane at world z. */
@@ -422,6 +429,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     uniforms: {
       uNow: { value: 0 },
       uOpacity: { value: 1 },
+      uInk: { value: new THREE.Color(INK) },
     },
     vertexShader: `
       attribute float aSide;
@@ -460,6 +468,25 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   trail.renderOrder = -9;
   trail.name = 'analemma';
   group.add(trail);
+
+  // ---- the survey: the record annotated and measured, in the DOM over
+  // the world. It reads the same record and the same lens, so its lines
+  // land on the sun they describe.
+  const figureEl = document.getElementById('figure');
+  const lensDir = new THREE.Vector3();
+  const figure: FigureOverlay | null =
+    def.figure && figureEl instanceof SVGSVGElement
+      ? createFigure(figureEl, def.figure, {
+          sun: sunDef,
+          opensMs,
+          real,
+          trail: trailPts,
+          trailZ,
+          onTrail: (altitude, azimuth, out) =>
+            onPlane(throughLens(altitude, azimuth, lensDir), trailZ, out),
+          reducedMotion,
+        })
+      : null;
 
   // The sun itself: a glow on its own quad, moved to today's position.
   const sunMat = new THREE.ShaderMaterial({
@@ -1223,6 +1250,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   function setActive(on: boolean): void {
     if (group.visible === on) return;
     group.visible = on;
+    if (!on) figure?.hide();
     if (!fog || !fogWas) return;
     if (!on) {
       fog.color.setHex(fogWas.color);
@@ -1232,7 +1260,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     }
   }
 
-  function update(local: number, dt: number): void {
+  function update(local: number, dt: number, camera: THREE.Camera): void {
     if (!group.visible) return;
     elapsed += dt;
 
@@ -1407,6 +1435,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     }
 
     if (fog) fog.color.setHex(haze);
+
+    // The survey reads the day the record has reached, and fades with the
+    // world. Before the year turns it measures the opening exposure.
+    figure?.update(local, day, alpha, camera);
 
     if (reducedMotion) return;
 
