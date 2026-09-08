@@ -148,6 +148,16 @@ export interface Instrument {
   kind: InstrumentKind;
   from: number;
   to: number;
+  /**
+   * Seconds of the scene's own running time before the instrument comes
+   * on, for a reading that is noticed rather than switched on: scroll
+   * may sit still and the instrument still arrives. Under reduced motion
+   * it is on from the start.
+   */
+  after?: number;
+  /** How far the reading goes, 0–1, when fully on: 1 replaces the world
+   *  with the reading, less leaves the world legible beneath it. */
+  strength?: number;
   /** Seconds per revolution, for an instrument that sweeps. */
   period?: number;
   scope?: Scope;
@@ -525,6 +535,13 @@ export interface Scene {
   twoClocks?: TwoClocks;
   /** Scene 09: the memory corridor. Owns the world too. */
   memory?: MemoryCorridor;
+  /**
+   * A scene that shows another scene's world, held at that scene's local
+   * progress, seen through this scene's own camera and read through its
+   * own instruments. The park at one second is the park of the year,
+   * held at its opening frame: one world, declared once.
+   */
+  hold?: { of: string; at: number };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
@@ -655,6 +672,17 @@ export const scenes: Scene[] = [
     label: '1 SECOND',
     lengthVh: 150,
     timeRate: 1,
+    // The park, at the bench, at the second the year opens on. Nothing
+    // the scroll does moves it: the second is inhabited, not crossed. The
+    // world lives on its own — the air, the water, the clouds — and after
+    // a moment the first thing is noticed: what the sun is doing to the
+    // grass, as a thermal reading that arrives on its own time.
+    hold: { of: 'scene-04-year', at: 0 },
+    camera: {
+      from: { y: 1.6, z: 16, lookY: 3.0 },
+      to: { y: 1.6, z: 16, lookY: 3.0 },
+    },
+    instruments: [{ kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.55 }],
   },
   {
     id: 'scene-02-ten-minutes',

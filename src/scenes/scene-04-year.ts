@@ -97,7 +97,20 @@ export interface YearScene {
   /** local: 0–1 through the scene. dt: seconds since the last frame.
    *  camera: where the world is seen from this frame, already placed —
    *  the figure is drawn in screen space and projects through it. */
-  update(local: number, dt: number, camera: THREE.Camera): void;
+  update(local: number, dt: number, camera: THREE.Camera, hold?: Hold): void;
+}
+
+/**
+ * Another scene showing this world held at a point: `at` is the local
+ * progress of the year to hold, `scene` the scene doing the holding,
+ * whose instruments are read over it. Held, the world does not fade and
+ * the survey stays off the page.
+ */
+export interface Hold {
+  at: number;
+  scene: Scene;
+  /** The holder's own progress, which its instruments are windowed on. */
+  local: number;
 }
 
 // ------------------------------------------------------------- ingredients
@@ -1216,15 +1229,21 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   let elapsed = 0;
+  /** Seconds since the world was last shown, for instruments that come
+   *  on after a while rather than at a point in the scroll. */
+  let shown = 0;
+  /** Whose instruments are read this frame: the year's, or a holder's. */
+  let reader: Scene = def;
 
   /** How far on an instrument is at this point in the scene, 0–1. */
   const instrumentOn = (kind: string, local: number): number => {
     let on = 0;
-    for (const i of def.instruments ?? []) {
+    for (const i of reader.instruments ?? []) {
       if (i.kind !== kind) continue;
       const rise = clamp01((local - i.from) / INSTRUMENT_EDGE);
       const fall = clamp01((i.to - local) / INSTRUMENT_EDGE);
-      on = Math.max(on, Math.min(rise, fall));
+      const after = i.after === undefined || reducedMotion ? 1 : clamp01((shown - i.after) / 1.5);
+      on = Math.max(on, Math.min(rise, fall) * after * (i.strength ?? 1));
     }
     return on;
   };
@@ -1250,6 +1269,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   function setActive(on: boolean): void {
     if (group.visible === on) return;
     group.visible = on;
+    shown = 0;
     if (!on) figure?.hide();
     if (!fog || !fogWas) return;
     if (!on) {
@@ -1260,9 +1280,15 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     }
   }
 
-  function update(local: number, dt: number, camera: THREE.Camera): void {
+  function update(local: number, dt: number, camera: THREE.Camera, holder?: Hold): void {
     if (!group.visible) return;
     elapsed += dt;
+    shown += dt;
+    // Held by another scene, the world sits at the point it asks for and
+    // is read through that scene's instruments.
+    const readAt = holder ? holder.local : local;
+    if (holder) local = holder.at;
+    reader = holder ? holder.scene : def;
 
     const s = seasonAt(seasons!, local);
 
@@ -1291,8 +1317,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const fadeIn = def.fadeIn ?? 0;
     const fadeOut = def.fadeOut ?? 0;
     let alpha = 1;
-    if (fadeIn > 0) alpha = Math.min(alpha, local / fadeIn);
-    if (fadeOut > 0) alpha = Math.min(alpha, (1 - local) / fadeOut);
+    if (!holder) {
+      if (fadeIn > 0) alpha = Math.min(alpha, local / fadeIn);
+      if (fadeOut > 0) alpha = Math.min(alpha, (1 - local) / fadeOut);
+    }
     alpha = clamp01(alpha);
 
     skyMat.uniforms.uZenith.value.setHex(skyZenith);
@@ -1341,10 +1369,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const toward = ((s.windFrom + 180) * Math.PI) / 180;
     waterMat.uniforms.uFlowDir.value.set(Math.cos(toward), Math.sin(toward));
     waterMat.uniforms.uFlowSpeed.value = s.windSpeed;
-    waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', local);
+    waterMat.uniforms.uFlow.value = alpha * instrumentOn('flow', readAt);
     // The thermal instrument: the season's afternoon temperatures, as
     // fractions of the ramp, on the banks and the lake.
-    thermalU.uThermal.value = alpha * instrumentOn('thermal', local);
+    thermalU.uThermal.value = alpha * instrumentOn('thermal', readAt);
     thermalU.uTempGround.value = thermalNorm(s.tempGround);
     thermalU.uTempWater.value = thermalNorm(s.tempWater);
     if (!reducedMotion) thermalU.uThermalTime.value = elapsed;
@@ -1380,7 +1408,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // echoes trail back along each mote's fall and sway. The scope sits
     // where the manifest puts it, sized by the frame's shorter edge, or
     // fills the frame if it declares no scope.
-    const radarOn = alpha * instrumentOn('radar', local);
+    const radarOn = alpha * instrumentOn('radar', readAt);
     const period = radarDef?.period ?? 6;
     const sweep = reducedMotion ? 2.2 : -((elapsed / period) * Math.PI * 2) % (Math.PI * 2);
     const W = Math.max(1, window.innerWidth);
@@ -1410,7 +1438,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     echoUniforms.uAspect.value = aspect;
     echoUniforms.uDot.value = ECHO_DOT_PX * Math.min(window.devicePixelRatio, 2);
     // The ring of seasons: the year's turn so far, from the record.
-    const ringOn = alpha * instrumentOn('ring', local);
+    const ringOn = alpha * instrumentOn('ring', readAt);
     ring.visible = ringOn > 0;
     ringMat.uniforms.uOn.value = ringOn;
     ringMat.uniforms.uDay.value = clamp01(day / DAYS);
@@ -1437,8 +1465,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (fog) fog.color.setHex(haze);
 
     // The survey reads the day the record has reached, and fades with the
-    // world. Before the year turns it measures the opening exposure.
-    figure?.update(local, day, alpha, camera);
+    // world. Before the year turns it measures the opening exposure. A
+    // holder's second has no survey.
+    if (holder) figure?.hide();
+    else figure?.update(local, day, alpha, camera);
 
     if (reducedMotion) return;
 

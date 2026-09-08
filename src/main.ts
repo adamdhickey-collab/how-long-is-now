@@ -162,9 +162,12 @@ function frame(now: number) {
   clock.textContent = `${hh}:${mm}`;
 
   // A scene that builds its own world owns it; the placeholder stands down.
-  const ownsWorld = !!active.plates || !!active.twoClocks || !!active.memory;
+  const ownsWorld = !!active.plates || !!active.twoClocks || !!active.memory || !!active.hold;
   field.visible = !ownsWorld;
-  year.setActive(active.id === 'scene-04-year');
+  // A scene may hold the year's world at a point, seen through its own
+  // camera and instruments; the world is then shown for it too.
+  const holdsYear = active.hold?.of === 'scene-04-year';
+  year.setActive(active.id === 'scene-04-year' || holdsYear);
   twoClocks.setActive(active.id === 'scene-08-two-clocks');
   memory.setActive(active.id === 'scene-09-memory-compression');
   if (active.caption && active.captionAt) {
@@ -205,7 +208,7 @@ function frame(now: number) {
   // The world is read only once the camera stands where this frame puts
   // it: the year's figure is drawn in screen space and must project
   // through the same camera that renders the sun it annotates.
-  year.update(local, dt, camera);
+  year.update(local, dt, camera, holdsYear && active.hold ? { at: active.hold.at, scene: active, local } : undefined);
   twoClocks.update(local);
   memory.update(local);
 
