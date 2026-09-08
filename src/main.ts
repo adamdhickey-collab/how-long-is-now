@@ -145,7 +145,9 @@ function enterScene(index: number) {
 
   // A caption is up for the whole scene unless the scene declares the
   // window it speaks in; then the loop raises it when local gets there.
-  if (s.caption) caption.textContent = s.caption;
+  // A scene with none clears the last one's text outright, so a jump
+  // between scenes never shows another scene's line fading over this.
+  caption.textContent = s.caption ?? '';
   showCaption(!!s.caption && !s.captionAt);
 }
 
