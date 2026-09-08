@@ -129,7 +129,7 @@ export interface YearMark {
  * instruments on: each is on screen for a window
  * of the scene's local progress, easing in and out at its edges.
  */
-export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc';
+export type InstrumentKind = 'flow' | 'radar' | 'thermal' | 'ring' | 'arc' | 'band' | 'rings';
 
 /**
  * Where an instrument that draws into a scope sits: which corner of the
@@ -563,6 +563,15 @@ export interface Scene {
      * lets it. Same terms as the record's lens.
      */
     lens?: { scale: number; altitude: number; west: number };
+    /**
+     * The years the holder's span covers, for a hold that runs decades
+     * rather than a day: the record stacks a figure per year into a band
+     * (the instrument `band`), and an elm counts them as rings (`rings`).
+     */
+    years?: number;
+    /** How much taller the elms stand at the end of the span, as a
+     *  multiple of their height now: trees become enormous. */
+    grow?: number;
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -948,6 +957,21 @@ export const scenes: Scene[] = [
     label: 'A LIFETIME',
     lengthVh: 200,
     timeRate: 2_524_608_000,
+    // The year's world, held at the August it closed on, seen from
+    // higher and further back as eighty years pass: the elms grow
+    // enormous, the sun's record stacks year on year into a band, and an
+    // elm counts the years as rings. The starting afternoon becomes one
+    // coordinate. Then the world fades, for the turn.
+    hold: { of: 'scene-04-year', at: 1, years: 80, grow: 1.7 },
+    camera: {
+      from: { y: 9.5, z: 27, lookY: 9.5 },
+      to: { y: 20, z: 44, lookY: 16 },
+    },
+    instruments: [
+      { kind: 'band', from: 0.02, to: 0.96 },
+      { kind: 'rings', from: 0.05, to: 0.94 },
+    ],
+    fadeOut: 0.06,
   },
   {
     id: 'scene-06-return',

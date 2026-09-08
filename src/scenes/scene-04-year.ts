@@ -118,7 +118,16 @@ export interface Hold {
   churn?: number;
   /** The holder's own lens on the sky, if the year's will not do. */
   lens?: { scale: number; altitude: number; west: number };
+  /** The years the holder's span covers, and how tall the elms stand at
+   *  its end. */
+  years?: number;
+  grow?: number;
 }
+
+/** The record's band holds at most this many years, one figure each. */
+const BAND_YEARS = 120;
+/** Ring spacing of the counting elm, CSS px per year. */
+const RING_PX = 2.1;
 
 /** Where the night's colours go: the sky, the haze and the water at the
  *  bottom of the dark, and what the setting sun warms the horizon to. */
@@ -510,6 +519,37 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   trail.name = 'analemma';
   group.add(trail);
 
+  // ---- the band: a holder running decades stacks the record a figure
+  // per year, each set down a hair from the last, until the sky above
+  // the elms carries a band of eighty Augusts. The instrument `band`.
+  const bandMat = new THREE.MeshBasicMaterial({
+    color: AMBER.clone().multiplyScalar(0.9),
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending,
+    fog: false,
+  });
+  const band = new THREE.InstancedMesh(trailGeo, bandMat, BAND_YEARS);
+  {
+    const r = rng(0x1f_e7_1a_8e);
+    const m = new THREE.Matrix4();
+    for (let i = 0; i < BAND_YEARS; i++) {
+      // A slow drift across the years and a little scatter about it.
+      m.makeTranslation((r() - 0.5) * 2.4 + i * 0.07, (r() - 0.5) * 1.8 - i * 0.05, 0);
+      band.setMatrixAt(i, m);
+    }
+    band.instanceMatrix.needsUpdate = true;
+  }
+  band.count = 0;
+  band.position.set(0, 0, trailZ - 0.5);
+  band.renderOrder = -10;
+  band.frustumCulled = false;
+  band.visible = false;
+  band.name = 'record-band';
+  group.add(band);
+
   // ---- the day's arc: a holder running the world's clock through a day
   // draws the sun's path so far as a hairline on the trail's plane, the
   // instrument `arc`. Behind the plates, so the part below the elms is
@@ -533,6 +573,31 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   // the world. It reads the same record and the same lens, so its lines
   // land on the sun they describe.
   const figureEl = document.getElementById('figure');
+  // ---- the rings: a holder running decades counts them on an elm, one
+  // hairline ring a year, in the overlay. The instrument `rings`.
+  const ringsG = figureEl instanceof SVGSVGElement ? document.createElementNS('http://www.w3.org/2000/svg', 'g') : null;
+  const ringEls: SVGCircleElement[] = [];
+  const ringsLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  if (ringsG && figureEl) {
+    ringsG.setAttribute('class', 'rings');
+    ringsG.style.opacity = '0';
+    // Hairlines only — a halo under eighty rings makes a disc. Every
+    // tenth year is drawn a shade stronger, so the decades can be counted.
+    for (let i = 0; i < BAND_YEARS; i++) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.style.stroke = 'var(--ink)';
+      c.style.strokeOpacity = (i + 1) % 10 === 0 ? '0.95' : '0.42';
+      c.style.display = 'none';
+      ringsG.appendChild(c);
+      ringEls.push(c);
+    }
+    ringsLabel.setAttribute('class', 'title');
+    ringsLabel.setAttribute('text-anchor', 'middle');
+    ringsG.appendChild(ringsLabel);
+  }
+  /** Where the counting elm stands: a crown left of the bandshell. */
+  const ringsAt = new THREE.Vector3(-14, canopyDef.baseY + canopyDef.height * 0.62, canopyDef.z);
+  let ringsShown = 0;
   const lensDir = new THREE.Vector3();
   const figure: FigureOverlay | null =
     def.figure && figureEl instanceof SVGSVGElement
@@ -547,6 +612,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           reducedMotion,
         })
       : null;
+  // The survey resets the overlay when it is made, so the rings go in after it.
+  if (ringsG && figureEl) figureEl.appendChild(ringsG);
 
   // The sun itself: a glow on its own quad, moved to today's position.
   const sunMat = new THREE.ShaderMaterial({
@@ -1403,8 +1470,60 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (!holder) {
       if (fadeIn > 0) alpha = Math.min(alpha, local / fadeIn);
       if (fadeOut > 0) alpha = Math.min(alpha, (1 - local) / fadeOut);
+    } else {
+      // A holder fades the world at its own edges, if it declares them.
+      const hIn = holder.scene.fadeIn ?? 0;
+      const hOut = holder.scene.fadeOut ?? 0;
+      if (hIn > 0) alpha = Math.min(alpha, readAt / hIn);
+      if (hOut > 0) alpha = Math.min(alpha, (1 - readAt) / hOut);
     }
     alpha = clamp01(alpha);
+
+    // Decades: the years so far, the elms' growth, the band and the rings.
+    const years = holder?.years ? holder.years * holder.local : 0;
+    const grow = holder?.grow ? 1 + (holder.grow - 1) * (holder.local * holder.local) : 1;
+    for (const mesh of [leafy, bare, ...canopyImg!.layers.map((l) => l.mesh)]) {
+      mesh.scale.set(grow, grow, 1);
+      mesh.position.y = canopyDef!.baseY + (canopyDef!.height / 2) * grow;
+    }
+    const bandOn = holder?.years ? instrumentOn('band', readAt) : 0;
+    band.visible = bandOn > 0;
+    band.count = Math.min(BAND_YEARS, Math.floor(years));
+    bandMat.opacity = alpha * bandOn * 0.035;
+    const ringsOn = holder?.years && ringsG ? instrumentOn('rings', readAt) : 0;
+    if (ringsG) {
+      const n = Math.min(BAND_YEARS, Math.floor(years));
+      if (ringsOn > 0) {
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        camera.updateMatrixWorld();
+        const p = ringsAt.clone();
+        p.y = canopyDef!.baseY + canopyDef!.height * 0.62 * grow;
+        p.project(camera);
+        const cx = ((p.x + 1) / 2) * W;
+        const cy = ((1 - p.y) / 2) * H;
+        for (let i = 0; i < BAND_YEARS; i++) {
+          const show = i < n;
+          if (show !== i < ringsShown || show) {
+            const r = String((i + 1) * RING_PX);
+            const c = ringEls[i];
+            c.style.display = show ? '' : 'none';
+            if (show) {
+              c.setAttribute('cx', String(cx));
+              c.setAttribute('cy', String(cy));
+              c.setAttribute('r', r);
+            }
+          }
+        }
+        ringsShown = n;
+        ringsLabel.setAttribute('x', String(cx));
+        ringsLabel.setAttribute('y', String(cy + n * RING_PX + 22));
+        const text = `${n} YEARS`;
+        if (ringsLabel.textContent !== text) ringsLabel.textContent = text;
+        if (figureEl) figureEl.style.opacity = '1';
+      }
+      ringsG.style.opacity = String(alpha * ringsOn);
+    }
 
     skyMat.uniforms.uZenith.value.setHex(skyZenith);
     skyMat.uniforms.uHorizon.value.setHex(skyHorizon);
