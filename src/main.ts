@@ -18,6 +18,7 @@ import Lenis from 'lenis';
 import { scenes, sceneAt, totalLengthVh } from './scenes/manifest';
 import { createYearScene } from './scenes/scene-04-year';
 import { createTwoClocksScene } from './scenes/scene-08-two-clocks';
+import { createMemoryScene } from './scenes/scene-09-memory';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -83,6 +84,10 @@ let yearWarm = false;
 // corridor, side by side, each through its own camera.
 const twoClocksDef = scenes.find((s) => s.id === 'scene-08-two-clocks')!;
 const twoClocks = createTwoClocksScene(scene, twoClocksDef, reducedMotion);
+
+// Scene 09 likewise: the memory corridor, seen through its own eye.
+const memoryDef = scenes.find((s) => s.id === 'scene-09-memory-compression')!;
+const memory = createMemoryScene(scene, memoryDef, reducedMotion);
 
 function resize() {
   const { innerWidth: w, innerHeight: h } = window;
@@ -157,15 +162,17 @@ function frame(now: number) {
   clock.textContent = `${hh}:${mm}`;
 
   // A scene that builds its own world owns it; the placeholder stands down.
-  const ownsWorld = !!active.plates || !!active.twoClocks;
+  const ownsWorld = !!active.plates || !!active.twoClocks || !!active.memory;
   field.visible = !ownsWorld;
   year.setActive(active.id === 'scene-04-year');
   twoClocks.setActive(active.id === 'scene-08-two-clocks');
+  memory.setActive(active.id === 'scene-09-memory-compression');
   if (active.caption && active.captionAt) {
     showCaption(local >= active.captionAt.from && local <= active.captionAt.to);
   }
   year.update(local, dt);
   twoClocks.update(local);
+  memory.update(local);
 
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
@@ -203,7 +210,7 @@ function frame(now: number) {
 
   // A scene that splits the frame renders it; otherwise the world is
   // drawn once through the one camera.
-  if (!twoClocks.render(renderer)) renderer.render(scene, camera);
+  if (!twoClocks.render(renderer) && !memory.render(renderer)) renderer.render(scene, camera);
   if (stepping) return;
   requestAnimationFrame(frame);
 }

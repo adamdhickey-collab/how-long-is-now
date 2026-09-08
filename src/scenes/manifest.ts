@@ -335,6 +335,45 @@ export interface TwoClocks {
   };
 }
 
+/**
+ * One month of scene 09's corridor: thirty days, each a pane of glass,
+ * seen for the window of local progress declared. As the days pass the
+ * panes recede one `spacing` apart and the eye pulls back from them; at
+ * the month's end a month of the same day has aligned into what looks
+ * like one thin sheet, and a month of different days has scattered —
+ * every pane pushed and tilted by its own `scatter` — into a field that
+ * makes the same thirty days look enormous. `readings` is what the
+ * panes carry: one line, for every day the same; or one per day.
+ */
+export interface Month {
+  id: string;
+  label: string;
+  from: number;
+  to: number;
+  scatter: { x: number; y: number; z: number; tilt: number };
+  readings: string[];
+}
+
+/**
+ * Scene 09: memory as a spatial material. The corridor floats in the
+ * dark; the panes are its only matter. `eye` is where the month is
+ * watched from — above the panes' axis by `y`, `z` in front of the first
+ * day — `pull` how far it draws back over the month, and `fov` the lens
+ * it watches through, in degrees. The lens is long: seen from far off
+ * through a narrow field, thirty aligned panes flatten into what looks
+ * like one sheet while staying large in the frame, and thirty scattered
+ * ones spread across it. A dimension between the first pane and the
+ * latest is drawn in the overlay and counts the days.
+ */
+export interface MemoryCorridor {
+  days: number;
+  spacing: number;
+  pane: { width: number; height: number };
+  eye: { y: number; z: number; pull: number; fov: number };
+  months: Month[];
+  dimension: { label: string };
+}
+
 export interface Scene {
   /** Stable id — also the name used in asset folders and discussions. */
   id: string;
@@ -405,6 +444,8 @@ export interface Scene {
   clouds?: CloudDeck;
   /** Scene 08: the two clocks. A scene that declares this owns the world. */
   twoClocks?: TwoClocks;
+  /** Scene 09: the memory corridor. Owns the world too. */
+  memory?: MemoryCorridor;
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
   fadeOut?: number;
@@ -795,6 +836,68 @@ export const scenes: Scene[] = [
     label: '30 DAYS',
     lengthVh: 200,
     timeRate: 2_592_000,
+    // Two months, thirty days each, the same scroll for both so the
+    // comparison is fair. The first is the same day thirty times and
+    // aligns; the second is thirty different days and scatters. Between
+    // them the frame dips to black and the label changes.
+    memory: {
+      days: 30,
+      spacing: 0.2,
+      pane: { width: 1.6, height: 1.1 },
+      eye: { y: 0.45, z: 9, pull: 27, fov: 14 },
+      months: [
+        {
+          id: 'same',
+          label: 'A MONTH OF THE SAME DAY',
+          from: 0.03,
+          to: 0.46,
+          scatter: { x: 0, y: 0, z: 0, tilt: 0 },
+          readings: ['DESK · 4:17 · 21 °C · 6,204 STEPS'],
+        },
+        {
+          id: 'vivid',
+          label: 'A MONTH OF DIFFERENT DAYS',
+          from: 0.54,
+          to: 0.97,
+          scatter: { x: 4, y: 2.4, z: 10, tilt: 30 },
+          readings: [
+            'NEW CITY · 7:50 · 12 °C · 14,210 STEPS',
+            'TRAIN · 9:14 · 15 °C · 3,020 STEPS',
+            'A NAME LEARNED · 4:17 · 19 °C · 8,900 STEPS',
+            'WRONG TURN · 2:35 · 23 °C · 11,480 STEPS',
+            'RAIN ALL DAY · 11:02 · 9 °C · 2,110 STEPS',
+            'FIRST SWIM · 6:40 · 26 °C · 5,300 STEPS',
+            'HARD NEWS · 8:21 · 17 °C · 4,760 STEPS',
+            'LONG WALK · 3:05 · 20 °C · 22,640 STEPS',
+            'BORROWED KITCHEN · 7:12 · 18 °C · 6,015 STEPS',
+            'FOG · 6:58 · 8 °C · 7,340 STEPS',
+            'AN ARGUMENT · 10:47 · 24 °C · 5,880 STEPS',
+            'MARKET · 9:30 · 22 °C · 12,970 STEPS',
+            'FIRST TRY · 5:15 · 16 °C · 3,410 STEPS',
+            'HAIL · 1:20 · 4 °C · 6,650 STEPS',
+            'OLD FRIEND · 8:05 · 21 °C · 9,180 STEPS',
+            'LOST KEYS · 11:59 · 19 °C · 10,230 STEPS',
+            'HIGH WIND · 2:44 · 13 °C · 7,890 STEPS',
+            'A LETTER · 4:17 · 20 °C · 4,120 STEPS',
+            'NIGHT BUS · 12:31 · 11 °C · 8,470 STEPS',
+            'A DOG FOLLOWED US · 3:52 · 25 °C · 13,560 STEPS',
+            'HEAT · 4:17 · 33 °C · 2,930 STEPS',
+            'THE WRONG TRAIN · 8:44 · 14 °C · 9,730 STEPS',
+            'SOMEONE SANG · 10:10 · 18 °C · 6,290 STEPS',
+            'THUNDER · 5:33 · 22 °C · 3,870 STEPS',
+            'A DOOR HELD OPEN · 9:03 · 17 °C · 11,140 STEPS',
+            'A NEW WORD · 7:26 · 15 °C · 5,510 STEPS',
+            'FLOOD WARNING · 6:12 · 10 °C · 4,980 STEPS',
+            'A LONG DINNER · 8:58 · 23 °C · 7,060 STEPS',
+            'SNOW IN APRIL · 7:41 · 1 °C · 6,720 STEPS',
+            'HOME · 4:17 · 21 °C · 6,204 STEPS',
+          ],
+        },
+      ],
+      dimension: { label: 'DAYS' },
+    },
+    fadeIn: 0.03,
+    fadeOut: 0.03,
   },
   {
     id: 'scene-10-return-to-now',
