@@ -13,6 +13,18 @@
 // ---------------------------------------------------------------- types
 
 /**
+ * A window of a scene's progress something is there for, with the
+ * distance it takes to arrive and to go. A plate or a sheet of figures
+ * may declare several: the summer crowd is there at the year's opening
+ * and again at its close.
+ */
+export interface Window {
+  from: number;
+  to: number;
+  edge: number;
+}
+
+/**
  * A parallax layer. The whole cheat, stated plainly: no depth maps and no
  * modelled forest — a few planes at honest distances, and a camera that
  * moves. Nearer plates slide faster than far ones and the eye supplies
@@ -32,7 +44,7 @@ export interface Plate {
    * the bench is an August cutout, so it is there in the second the
    * piece sits in and gone by the time the year has turned.
    */
-  present?: { from: number; to: number; edge: number };
+  present?: Window | Window[];
   /** World size of the plate. */
   width: number;
   height: number;
@@ -85,7 +97,7 @@ export interface Figures {
   baseY: number;
   places: { id: string; cell: number; x: number; z: number; size?: number; speed?: number }[];
   walk?: { from: number; to: number };
-  present?: { from: number; to: number; edge: number };
+  present?: Window | Window[];
 }
 
 /**
@@ -952,7 +964,10 @@ export const scenes: Scene[] = [
         height: 1.9,
         baseY: -0.9,
         shade: 0.1,
-        present: { from: 0, to: 0.12, edge: 0.04 },
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1, edge: 0.04 },
+        ],
         images: { '*': 'plates/scene-04/park/foreground.webp' },
       },
       // The elms we sit under: two trunks at the frame's edges and their
@@ -977,26 +992,30 @@ export const scenes: Scene[] = [
       },
     ],
     figures: [
-      // Who is on the lawn: nine groups from one sheet, placed by eye
-      // between the seat and the wall, two of them used twice further off.
+      // Who is on the lawn: two sheets of nine, each group placed at most
+      // once and spaced so the lawn is company, not a crowd; the second
+      // sheet is Minneapolis without saying so. The couple and the reader
+      // of the first sheet are the foreground's own and are not placed.
       {
         id: 'sitters',
-        atlas: { image: 'plates/scene-04/park/sitters.webp', cols: 3, rows: 3, count: 9 },
+        atlas: { image: 'plates/scene-04/park/sitters.webp', cols: 3, rows: 6, count: 18 },
         size: 2.3,
         baseY: 0,
-        present: { from: 0, to: 0.12, edge: 0.04 },
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1, edge: 0.04 },
+        ],
         places: [
-          { id: 'couple', cell: 0, x: -3.2, z: 9.4 },
-          { id: 'family', cell: 1, x: 4.6, z: 8.2 },
-          { id: 'reader', cell: 2, x: -7.5, z: 7.6, size: 1.6 },
-          { id: 'friends', cell: 3, x: 1.4, z: 6.4, size: 2.0 },
-          { id: 'man-dog', cell: 4, x: 7.8, z: 6.0, size: 2.2 },
-          { id: 'chair', cell: 5, x: -10.5, z: 5.6, size: 1.7 },
-          { id: 'stroller', cell: 6, x: 11.5, z: 9.0, size: 2.0 },
-          { id: 'three', cell: 7, x: -1.0, z: 11.2, size: 2.4 },
-          { id: 'lying', cell: 8, x: 5.0, z: 11.6, size: 2.0 },
-          { id: 'couple-far', cell: 0, x: 12.0, z: 5.2, size: 1.8 },
-          { id: 'reader-far', cell: 2, x: -5.0, z: 5.0, size: 1.5 },
+          { id: 'family', cell: 1, x: 5.2, z: 8.6 },
+          { id: 'man-dog', cell: 4, x: -6.4, z: 6.8, size: 2.1 },
+          { id: 'chair', cell: 5, x: -9.2, z: 5.6, size: 1.8 },
+          { id: 'lying', cell: 8, x: 1.2, z: 11.4, size: 2.1 },
+          { id: 'somali-family', cell: 9, x: -4.6, z: 9.2, size: 2.2 },
+          { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6, size: 2.2 },
+          { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4, size: 1.9 },
+          { id: 'grandmother', cell: 13, x: -1.6, z: 6.4, size: 2.0 },
+          { id: 'paddle', cell: 16, x: 3.4, z: 5.6, size: 1.7 },
+          { id: 'growler', cell: 17, x: -13, z: 9.8, size: 2.0 },
         ],
       },
       // Who is passing: on the path along the wall, each at their own
@@ -1007,7 +1026,10 @@ export const scenes: Scene[] = [
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        present: { from: 0, to: 0.12, edge: 0.04 },
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1, edge: 0.04 },
+        ],
         places: [
           { id: 'jogger', cell: 0, x: -20, z: 4.7, speed: 2.6 },
           { id: 'woman', cell: 1, x: 8, z: 4.8, speed: -1.25 },
@@ -1030,7 +1052,10 @@ export const scenes: Scene[] = [
         size: 5,
         baseY: -0.3,
         walk: { from: -70, to: 70 },
-        present: { from: 0, to: 0.12, edge: 0.04 },
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1, edge: 0.04 },
+        ],
         places: [
           { id: 'boat-a', cell: 0, x: -30, z: -60, size: 5.5, speed: 0.5 },
           { id: 'boat-b', cell: 4, x: 10, z: -44, size: 5, speed: -0.4 },

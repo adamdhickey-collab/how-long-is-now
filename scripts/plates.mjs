@@ -167,7 +167,9 @@ const SCENES = {
     { id: 'trees', variant: 'winter', raw: 'trees-winter-v1.png', recipe: 'plain', key: true },
     { id: 'trees', variant: 'spring', raw: 'trees-spring-v1.png', recipe: 'plain', key: true },
     { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
-    { id: 'sitters', raw: ['sitters-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    // Two sheets of sitters into one atlas of eighteen; the world places
+    // each group at most once, so nobody is on the lawn twice.
+    { id: 'sitters', raw: ['sitters-v1.png', 'sitters-b-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'boats', raw: ['boats-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     // The second walkers sheet came as three rows with the third cut off
     // by the frame; its top two rows are kept and cut on the first's grid.

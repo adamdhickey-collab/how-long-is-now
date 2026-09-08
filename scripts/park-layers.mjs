@@ -41,6 +41,11 @@ export const layers = [
     prompt: `Layer 5, the people on the lawn: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left: a couple on a picnic blanket, a family with a small child, a woman reading, two friends with a cooler, a man with a dog lying down, a person in a folding chair, a woman with a stroller beside her, three people talking, a man lying back on his elbows. Each group on its own small patch of blanket or grass only, white between the cells, no grid lines.`,
   },
   {
+    id: 'sitters-b',
+    size: LANDSCAPE,
+    prompt: `Layer 5 again, more people on the lawn, and this is Minneapolis: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left. Clothes in the colours the city wears — navy and red, purple and gold, forest green and cream — with no logos, lettering or emblems anywhere. The nine: a Somali family on a blanket, the mother in a bright hijab; an older Scandinavian-looking couple in folding chairs sharing a thermos; a man in a navy cap reading a paperback; a woman in a purple hoodie lying back on her elbows; a Hmong grandmother with two small grandchildren and a picnic; two friends in green and red plaid shirts with a cooler; a teenager in a light-blue basketball jersey lying on the grass with headphones; a woman with a wooden canoe paddle beside her blanket, looking at the water; a Black man with a bike helmet on the grass beside him and a growler. Each group on its own small patch of blanket or grass only, white between the cells, no grid lines.`,
+  },
+  {
     id: 'movers',
     size: LANDSCAPE,
     prompt: `Layer 6, the people passing: a 3 by 3 grid of nine separate figures on flat pure white, each cell one moving figure seen from the side at eye level, all facing right, late-summer light from the left: a jogger, a woman walking, a man walking, a cyclist on a bike, a child running, a dog on a lead with its owner, two friends walking together, a person pushing a stroller, an older man strolling. White between the cells, no grid lines.`,
@@ -89,3 +94,46 @@ export const seasonLayers = Object.entries(SEASONS).flatMap(([season, when]) =>
     prompt: `The first image is one layer of the scene in late summer; the second is the style reference. Redraw the first image in ${when}. Keep ${t.keep}, and keep the second image's pointillist dots, palette and dot size. Change only what the season changes.`,
   })),
 );
+
+/**
+ * The crowd through the year, planned: who is in the park in each
+ * season, as sheets to generate when the graphics are wanted. Each is
+ * placed by the manifest in its own window of the year (see the
+ * ledger's plan, 10d), so the summer crowd leaves with the leaves and a
+ * different, thinner life takes the park until it comes back. Run with
+ * `--crowd`; the manifest entries follow once the sheets are looked at.
+ */
+const CROWD_STYLE = `The same pointillist style, the same white ground, the same 3 by 3 grid of separate cells with white between them and no grid lines, no logos or lettering anywhere; this is Minneapolis, in the colours the city wears — navy and red, purple and gold, forest green and cream — and its people. Every couple is a man and a woman.`;
+
+export const crowdLayers = [
+  {
+    id: 'sitters-autumn',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Late October, people who stay on the lawn in the cold: a man and a woman on a blanket in wool sweaters with a thermos; two children throwing themselves into a raked pile of leaves; a man in a flannel jacket with a paperback and a coffee; a woman photographing the far shore with a camera; an older man in a folding chair wrapped in a plaid blanket; a family on a blanket with a pumpkin; a student cross-legged with a laptop; a woman in a knit hat with a dog curled beside her; a father and small daughter making a leaf crown. Each group seen from behind or the side at seated eye level, autumn light low from the left.`,
+  },
+  {
+    id: 'movers-autumn',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Late October, people passing on the path, each cell one moving figure or pair seen from the side, all facing right: a runner in long sleeves and a knit hat; a woman walking a dog, both in scarves; a cyclist in a windbreaker; a man raking leaves at the path's edge; two friends walking with coffee cups in jackets; a child on a small bike in a helmet; an older man and woman walking arm in arm in wool coats; a jogger with a stroller; a man carrying a canoe paddle and a life vest.`,
+  },
+  {
+    id: 'ice-winter',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Mid January on the frozen lake, things that stay put, each cell one: a small square ice-fishing house with a stovepipe; a man sitting on an upturned bucket over a hole in the ice with a short rod; a snowman on the shore with a scarf; a pair of skates left on a bench; a cleared rink's edge marked by a shovel and a small orange cone; a bonfire barrel with two people warming their hands; a sled at rest; a hockey net; a child kneeling to look into a hole in the ice. Winter light pale and low.`,
+  },
+  {
+    id: 'movers-winter',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Mid January, people moving, each cell one figure or pair seen from the side, all facing right: a skater gliding on one foot; a man and a woman skating holding hands; a cross-country skier in a bright shell; a parent pulling a child on a sled; a dog walker in a long parka and boots with a dog in a coat; a hockey player stickhandling a puck; a runner in tights, a headband and mittens; a woman on a fat-tire bike; a man carrying an auger and a bucket.`,
+  },
+  {
+    id: 'sitters-spring',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Late April, the first people back on the lawn, in light jackets: a man and a woman on a blanket with takeout cups; a man lying on his back in a hoodie with his face to the sun; a mother with a baby on a blanket; two friends sitting on their bike helmets; a woman reading in a folding chair with a scarf; a goose and four goslings on the grass; a student with a sketchbook; an older woman feeding nothing to the geese and being watched by one; a boy holding a kite string, the kite out of frame. Spring light clear from the left.`,
+  },
+  {
+    id: 'movers-spring',
+    size: LANDSCAPE,
+    prompt: `${CROWD_STYLE} Late April, people passing on the path, each cell one moving figure or pair seen from the side, all facing right: a runner in a light jacket; a rollerblader; a woman walking with a coffee and a dog; a child learning to ride a bike with a parent running behind; a cyclist on a road bike; a man walking with an umbrella under his arm; two teenagers walking with a basketball; a woman with a stroller in a rain shell; a pair of geese walking with the traffic.`,
+  },
+];

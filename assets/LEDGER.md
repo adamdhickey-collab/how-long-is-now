@@ -528,3 +528,32 @@ sky and water shaders given a screen-space stipple, four pixels a dot,
 each dot the surface's colour pushed lighter, darker, cooler or warmer.
 The instruments (glitter, thermal, flow) draw over the dots and stay
 crisp. Winter's water is ice.
+
+### 10d · the crowd through the year — the plan
+
+The lawn was too full and too much the same: eleven placements from
+nine cells, two of them the foreground's own couple and reader again.
+Now two sheets of nine cut into one atlas of eighteen, each group
+placed at most once, ten in all, spaced; the second sheet is
+Minneapolis without a logo in it — a Somali family, an older
+Scandinavian-looking couple with a thermos, a Hmong grandmother with
+grandchildren, a paddle, a growler, purple and gold and navy and red,
+forest green plaid.
+
+How the crowd turns with the year, as windows of the year's progress
+(the seasons peak at 0.32, 0.54, 0.78; late summer holds 0–0.12 and
+returns at 1). A plate or a sheet may now declare several windows.
+
+| Who | Window | Where | Sheets (prompts in `park-layers.mjs`, `--crowd`) |
+| --- | --- | --- | --- |
+| The summer crowd, the blanket, the sails | 0–0.12 and 0.93–1 | lawn, path, lake | done: `sitters`, `sitters-b`, `movers`, `movers-b`, `boats`, `foreground` |
+| Autumn's few | 0.2–0.42 | lawn (4 groups), path (6 walkers) | `sitters-autumn`, `movers-autumn` |
+| Winter's | 0.46–0.64 | the ice: house, fisherman, rink, bonfire; skaters and a skier on the lake, a parka walker on the path, a sled on the lawn | `ice-winter` (still), `movers-winter` |
+| Spring's first | 0.68–0.88 | lawn (3–4 groups, geese), path (5 walkers) | `sitters-spring`, `movers-spring` |
+
+Skaters walk a span on the lake (`walk` with negative z); the still
+winter things are a sheet with no speeds. Sails have no winter window.
+Once a sheet is generated and looked at, its manifest entry is a
+`figures` declaration with the window above; nothing in the code
+changes. The lifetime (scene 05, held at 1) sees the summer crowd's
+return window, which is where people as appearances begins.

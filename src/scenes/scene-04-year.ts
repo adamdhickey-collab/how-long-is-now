@@ -2046,8 +2046,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const presence = (p: Plate | undefined) => {
       const w = p?.present;
       if (!w) return 1;
-      const edge = Math.max(1e-6, w.edge);
-      return clamp01(Math.min((local - w.from) / edge + 1, (w.to - local) / edge));
+      let there = 0;
+      for (const win of Array.isArray(w) ? w : [w]) {
+        const edge = Math.max(1e-6, win.edge);
+        there = Math.max(there, clamp01(Math.min((local - win.from) / edge + 1, (win.to - local) / edge)));
+      }
+      return there;
     };
     if (benchImg) setImage(benchImg, nightShade(benchDef!.shade ?? 0), presence(benchDef));
     // What is only real from the seat — the elms we sit under, the people
