@@ -2222,9 +2222,30 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         // seat a card, from the year's height a person seen from above.
         p.mesh.quaternion.copy(camera.quaternion);
         const size = p.def.size ?? f.size;
+        const phase = i * 2.399;
+        // A stepping figure: with a sheet drawn in both phases of its
+        // stride and its gait on, a walker advances one stride's length
+        // in the instant it swaps pose — over the first sixth of a step —
+        // and stands planted for the rest, so a foot never slides while
+        // it is down. Wheels and blades glide instead.
+        let stepFrame = 0;
         if (walker && f.walk && !reducedMotion) {
           const span = f.walk.to - f.walk.from;
-          const travelled = (p.x0 - f.walk.from + (p.def.speed ?? 0) * elapsed) % span;
+          const speed = p.def.speed ?? 0;
+          let travelled: number;
+          if (f.life?.gait && p.other && !p.def.ride) {
+            const pace = Math.min(Math.abs(speed), 3);
+            const cadence = 1.4 + pace * 0.5;
+            const stride = Math.abs(speed) / cadence;
+            const beat = cadence * elapsed + phase;
+            const k = Math.floor(beat);
+            const frac = beat - k;
+            const ease = smooth01(0, 0.17, frac);
+            travelled = (p.x0 - f.walk.from + Math.sign(speed) * stride * (k + ease)) % span;
+            stepFrame = k % 2;
+          } else {
+            travelled = (p.x0 - f.walk.from + speed * elapsed) % span;
+          }
           p.mesh.position.x = f.walk.from + (travelled < 0 ? travelled + span : travelled);
           p.shadow.position.x = p.mesh.position.x + size * 0.06;
         }
@@ -2260,9 +2281,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         let lift = 0;
         let tilt = 0;
         let breathe = 1;
-        let blend = 0;
+        let blend = stepFrame;
         if (l && !reducedMotion && !ap) {
-          const phase = i * 2.399;
           if (l.breath) breathe = 1 + l.breath * Math.sin(elapsed * 1.5 + phase);
           if (l.sway) tilt += l.sway * Math.sin(elapsed * 0.45 + phase);
           const speed = p.def.speed ?? 0;
@@ -2272,10 +2292,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
             const step = Math.sin(Math.PI * cadence * elapsed + phase);
             lift = ((l.bob ?? 0) * pace * step * step) / 1.4;
             tilt -= ((l.lean ?? 0) * Math.sign(speed) * pace) / 3;
-            if (l.gait) blend = 0.5 - 0.5 * Math.cos(Math.PI * cadence * elapsed + phase);
           } else if (pace > 0 && p.def.ride) {
             tilt += (l.wobble ?? 0) * Math.sin(elapsed * 1.7 + phase);
-            if (l.gait) blend = 0.5 - 0.5 * Math.cos(elapsed * 4.0 + phase);
           }
           if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
         }

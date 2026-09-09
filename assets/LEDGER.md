@@ -776,3 +776,15 @@ off. The way to a real walk is a drawn cycle of six or more frames per
 figure, which the image model does not produce consistently; a
 stop-motion step, the figure advancing a stride's length as it swaps
 pose and standing between, is the one untried alternative.
+
+### 13e · the stop-motion step
+
+Tried. With `life.gait` on, a walker advances one stride's length in
+the instant it swaps pose — the move eased over the first sixth of a
+step — and stands planted for the rest, so a foot never slides while
+it is down: a paper puppet's walk, at the figure's real cadence and
+pace (stride = pace / cadence, so the jogger covers his metre in a
+tenth of a second and stands for a third). Wheels, skates and skis
+glide as before. The trace of the jogger reads swap-and-advance,
+hold, swap-and-advance, hold. Whether it looks deliberate or broken is
+for a pair of eyes; it is one switch per sheet either way.
