@@ -163,3 +163,48 @@ export const crowdLayers = [
     prompt: `${CROWD_STYLE} Late April, people passing on the path, each cell one moving figure or pair seen from the side, all facing right: a runner in a light jacket; a rollerblader; a woman walking with a coffee and a dog; a child learning to ride a bike with a parent running behind; a cyclist on a road bike; a man walking with an umbrella under his arm; two teenagers walking with a basketball; a woman with a stroller in a rain shell; a pair of geese walking with the traffic.`,
   },
 ];
+
+/**
+ * Scene 08's corridor in the same dots (LEDGER session 11): one bay of
+ * each surface, flat and orthographic, filling its frame and continuing
+ * into itself at the edges, since the corridor tiles them mirrored; and
+ * the absorbed ten minutes' eighteen fragments on white, as before. Run
+ * with `--corridor`; they land under assets/raw/scene-08.
+ */
+const TILE_STYLE = `The attached image is the style reference: pointillist, small dots of pure colour. Keep exactly its dot size and its way of building every surface from dots, with its palette taken only as far as the corridor's own materials allow. The image you make is one flat, orthographic tile that fills the frame edge to edge with no white, no border, no vignette and no perspective, and whose left edge continues into its right edge.`;
+
+export const corridorLayers = [
+  {
+    id: 'corridor-wall',
+    dir: 'scene-08',
+    size: LANDSCAPE,
+    preamble: TILE_STYLE,
+    prompt: `ONE BAY of a long institutional corridor's wall seen exactly front-on: a single closed oak-veneer door centred, with a narrow wired-glass pane and a small brass number plate; the wall painted in two tones, cream above and sage green below a dado band, with a dark skirting along the foot, all running the full width; flat, even fluorescent light. Nothing but the wall, the door and the paint: no ceiling, no floor, no people, no text.`,
+  },
+  {
+    id: 'corridor-ceiling',
+    dir: 'scene-08',
+    size: LANDSCAPE,
+    preamble: TILE_STYLE,
+    prompt: `ONE BAY of the corridor's ceiling seen from directly below: a grid of acoustic tiles in pale off-white, near-white grey with a fine speckle, and thin pale-grey T-bar joins, and exactly one recessed rectangular fluorescent panel centred, glowing an even warm white. Nothing brown, nothing dark: an institutional ceiling. Flat and orthographic, filling the frame.`,
+  },
+  {
+    id: 'corridor-floor',
+    dir: 'scene-08',
+    size: LANDSCAPE,
+    preamble: TILE_STYLE,
+    prompt: `ONE BAY of the corridor's floor seen from directly above: large square speckled terrazzo tiles in greys and warm stone flecks, thin grout lines, matte, evenly lit with no reflections. Flat and orthographic, filling the frame.`,
+  },
+  {
+    id: 'fragments-a',
+    dir: 'scene-08',
+    size: LANDSCAPE,
+    prompt: `Nine separate small objects in a 3 by 3 grid on flat pure white, each one thing seen close and alone as a cutout, in muted warm colours, with no background of any kind in any cell — no tinted panel, no wall, no sky, nothing beneath or behind the object, only the flat pure white — and white between the cells, no grid lines: a hand on an open page; a cup of coffee with steam; a window with rain on it; a face turned away; a shoe on a step; a pencil mid-line on paper; a phone face down; a leaf on a desk; a clock face with no hands.`,
+  },
+  {
+    id: 'fragments-b',
+    dir: 'scene-08',
+    size: LANDSCAPE,
+    prompt: `Nine separate small pictures in a 3 by 3 grid on flat pure white, each one thing seen close and alone, in muted warm colours, with nothing beneath or behind it and white between the cells, no grid lines: two hands around a warm mug; an open doorway with light coming through; a ring of keys; a small bird on a windowsill; a wristwatch with its strap undone; a folded note; reading glasses on a closed book; a potted plant on a sill; a torn ticket stub.`,
+  },
+];

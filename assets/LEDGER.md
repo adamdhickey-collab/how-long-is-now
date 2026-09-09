@@ -677,3 +677,27 @@ height; the recipe scales each second frame to its first's height so
 nothing pops in size; a rider's wheels dissolve on a slower count; the
 sway is half as large and half as fast. Still a judgement for a pair
 of eyes in a real browser.
+
+
+## Session 11 · the corridor in dots · 2026-09-08
+
+Scene 08's corridor and fragments in the park's pointillist style,
+through the generator (`--corridor`, prompts in `park-layers.mjs`,
+landing under `assets/raw/scene-08`). Tiles use a preamble of their
+own: a flat orthographic tile filling the frame, its left edge
+continuing into its right, since the corridor tiles each surface
+mirrored.
+
+| # | File | What | Result |
+| --- | --- | --- | --- |
+| 1 | `corridor-wall-v2.png` | One bay, front-on: oak door with wired glass and a number plate, cream over sage with a dado, dark skirting | **Accept.** Drawn without the ceiling and floor strips the illustrated wall carried, so the recipe crops nothing. |
+| 2 | `corridor-ceiling-v2.png` | Acoustic tiles, one lamp | Reject: cork-brown tiles. |
+| 3 | `corridor-ceiling-v3.png` | The same, "pale off-white, nothing brown" | **Accept.** |
+| 4 | `corridor-floor-v2.png` | Terrazzo from above | **Accept.** |
+| 5 | `fragments-a-v2.png` | The first nine fragments | Reject: six sat on cream cell backgrounds the key would not lift. |
+| 6 | `fragments-a-v3.png` | The same, "no background of any kind in any cell" | **Accept.** |
+| 7 | `fragments-b-v2.png` | The second nine | **Accept** first time. |
+
+The fragments are keyed now (they were drawn on white, not with
+alpha) and cut at one scale like the park's sheets. Both clocks of the
+corridor and the remembered half hung with fragments were looked at.

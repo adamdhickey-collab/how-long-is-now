@@ -88,9 +88,10 @@ const FAR_BANK = {
  * seamless here.
  */
 const CORRIDOR = {
-  // 1448 × 1086: a strip of ceiling to row 55, the floor from row 922.
-  wall: { crop: { top: 55, height: 867 } },
-  // 1536 × 1024, the bay edge to edge.
+  // 1536 × 1024 each, one bay edge to edge (session 11: the dotted
+  // corridor's wall is drawn without the ceiling and floor strips the
+  // illustrated one carried, so nothing is cropped).
+  wall: { crop: { top: 0, height: 1024 } },
   ceiling: { crop: { top: 0, height: 1024 } },
   floor: { crop: { top: 0, height: 1024 } },
 };
@@ -203,10 +204,11 @@ const SCENES = {
     },
   ],
   'scene-08': [
-    { id: 'corridor-wall', raw: 'corridor-wall-v1.png', recipe: 'corridor', surface: 'wall' },
-    { id: 'corridor-ceiling', raw: 'corridor-ceiling-v1.png', recipe: 'corridor', surface: 'ceiling' },
-    { id: 'corridor-floor', raw: 'corridor-floor-v1.png', recipe: 'corridor', surface: 'floor' },
-    { id: 'fragments', raw: ['fragments-a-v1.png', 'fragments-b-v1.png'], recipe: 'fragments' },
+    { id: 'corridor-wall', raw: 'corridor-wall-v2.png', recipe: 'corridor', surface: 'wall' },
+    { id: 'corridor-ceiling', raw: 'corridor-ceiling-v3.png', recipe: 'corridor', surface: 'ceiling' },
+    { id: 'corridor-floor', raw: 'corridor-floor-v2.png', recipe: 'corridor', surface: 'floor' },
+    // Drawn on white now, so keyed; a fragment is one thing alone.
+    { id: 'fragments', raw: ['fragments-a-v3.png', 'fragments-b-v2.png'], recipe: 'fragments', key: true },
   ],
 };
 
