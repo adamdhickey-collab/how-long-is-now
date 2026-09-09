@@ -807,3 +807,18 @@ Not done, noted: `public/og.png`, the share card, still shows the
 illustrated park — a screenshot of the new seat at 1200 × 630 replaces
 it. The plates total ten megabytes, of which the opening frame needs
 about 1.7; the rest loads behind it.
+
+### 13g · arrival, and the invitation
+
+The one interaction is scroll as time, and its feedback was already
+shaped: captions and labels ease, the blink is a curve, the interface
+leaves by scroll. Two things were not. The piece arrived as a cut, the
+park fully formed the instant it loaded; now the world comes up out of
+the ground over 1.6 s once the opening frame's imagery is in and its
+first frame is drawn, and the interface follows 0.7 s later, the
+transitions coming off once settled so the interface follows the
+scroll without lag. And the hint, the one invitation the piece makes,
+sat still until it was taken; it breathes now, over four and a half
+seconds, and dissolves when the scroll begins. Both stilled under
+reduced motion. The arrival was seen to fire in the pane: the classes
+land after the first drawn frame.

@@ -35,6 +35,24 @@ body {
   width: 100vw;
   height: 100vh;
   display: block;
+  /* Arrival: the world comes up out of the ground once the opening
+     frame's imagery is in, and the interface follows it. */
+  opacity: 0;
+  transition: opacity 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body.is-arrived #world { opacity: 1; }
+.hud,
+.clock {
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.7s;
+}
+body:not(.is-arrived) .hud,
+body:not(.is-arrived) .clock {
+  opacity: 0;
+}
+/* Once settled, the interface follows the scroll without lag. */
+body.is-settled .hud,
+body.is-settled .clock {
+  transition: none;
 }
 
 .hud {
@@ -70,6 +88,17 @@ body {
   color: var(--ink-dim);
   letter-spacing: 0.08em;
   transition: opacity 1.2s ease;
+  /* The one invitation the piece makes breathes, slowly, until it is
+     taken; then it dissolves and does not come back. */
+  animation: hint-breathe 4.4s ease-in-out infinite;
+}
+.hud__hint.is-gone {
+  animation: none;
+  opacity: 0;
+}
+@keyframes hint-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 .clock {
@@ -131,7 +160,8 @@ body {
 #runway { width: 1px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .hud__hint { transition: none; }
+  .hud__hint { transition: none; animation: none; }
+  #world, .hud, .clock { transition: none; }
 }
 
 /* ---- the figure: a drafting overlay on the world. Fixed and full-frame

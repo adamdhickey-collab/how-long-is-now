@@ -19,6 +19,7 @@ import { scenes, sceneAt, totalLengthVh } from './scenes/manifest';
 import { createYearScene } from './scenes/scene-04-year';
 import { createTwoClocksScene } from './scenes/scene-08-two-clocks';
 import { createMemoryScene } from './scenes/scene-09-memory';
+import { opening } from './scenes/loading';
 
 // Reduced motion is the visitor's setting; in development a query flag
 // stands in for it, so the still essay can be looked at without changing
@@ -345,7 +346,7 @@ function frame(now: number) {
   memory.update(local);
 
   // The hint dissolves the moment the visitor commits to leaving now.
-  scrollHint.style.opacity = progress > 0.005 ? '0' : '1';
+  scrollHint.classList.toggle('is-gone', progress > 0.005);
 
   // A scene that splits the frame renders it; otherwise the world is
   // drawn once through the one camera.
@@ -354,6 +355,17 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+// Arrival: the world comes up once the opening frame's imagery is in
+// and the first frame has been drawn with it, the interface after; the
+// transitions come off once settled so the interface follows the
+// scroll without lag.
+opening.then(() => {
+  requestAnimationFrame(() => {
+    document.body.classList.add('is-arrived');
+    window.setTimeout(() => document.body.classList.add('is-settled'), 2000);
+  });
+});
 
 // A dev-only handle: park the piece at an exact point and render one frame,
 // so screenshot tooling can look at a scene without waiting on the
