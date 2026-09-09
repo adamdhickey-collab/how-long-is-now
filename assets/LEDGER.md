@@ -922,3 +922,22 @@ frame: whether the plates want a different crop in portrait (the far
 shore's bandshell sits at the right edge at 375 wide), and whether the
 year's callouts near the analemma's top still collide with the title
 as the sun passes it.
+
+### 14f · the order, and the roots
+
+The critique's order, taken whole: the year, the turn, and then the
+two clocks — the argument straight after the line, at 45 % of the
+runway instead of 62 — with the inward second, the month of panes and
+the lifetime following it before the return. The manifest array is
+the order; the scene ids keep the numbers they were built under. What
+the joins needed: the turn loses its fall (it was a drop to the bench
+for a scene that now comes later; the corridor comes out of the black
+instead, and the scene is declared `black`, a new one-line flag so the
+placeholder field stands down); the inward second fades in from the
+corridor's black and out to the panes'; the lifetime fades in from
+the panes' black. Runway 1610 vh.
+
+And the roots withdrawn from the lifetime, under the rule now written
+into DIRECTION.md: an instrument has to change how long something
+feels, not only show what is there. The reader stays built; one line
+in the manifest brings it back.

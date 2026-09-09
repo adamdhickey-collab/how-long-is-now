@@ -138,12 +138,17 @@ camera, duration, text, assets, audio state, shader state and transition:
 | 02 | `ten-minutes` | Environment accelerates; the fixed clock appears. |
 | 03 | `day` | Sun arcs, light rotates, the first rise. |
 | 04 | `year` | Seasons as one continuous organism. |
-| 05 | `lifetime` | People become appearances; the afternoon becomes a coordinate. |
-| 06 | `return` | Black. "But that isn't how you experienced it." The fall. |
-| 07 | `attention` | The inward zoom — resolving experience more finely. |
+| 06 | `return` | Black. "But that isn't how you experienced it." |
 | 08 | `two-clocks` | The prospective/retrospective reversal. Centerpiece. |
+| 07 | `attention` | The inward zoom — resolving experience more finely. |
 | 09 | `memory-compression` | Thirty days as panes of glass. |
+| 05 | `lifetime` | People become appearances; the afternoon becomes a coordinate. |
 | 10 | `return-to-now` | The same lake, seen closer. The interface disappears. |
+
+Listed in the order they play since 2026-09-09: the argument comes
+straight after the turn, and the inward journey, the month and the
+lifetime follow it before the return. The numbers are the scenes'
+names from when they were built.
 
 ## Sound
 

@@ -725,6 +725,11 @@ export interface Scene {
    */
   hint?: { after: number };
   /**
+   * A black scene: nothing is drawn, the placeholder field included.
+   * The turn is one — the frame goes dark and a line is said in it.
+   */
+  black?: boolean;
+  /**
    * What the scene shows, for whoever cannot see it: read into a hidden
    * live region as the scene is entered, the way the caption is spoken,
    * so the argument reaches a screen reader and not only the lines. A
@@ -858,14 +863,16 @@ const lakeHarrietSeasons: Season[] = [
 ];
 
 /**
- * The runway's proportion (2026-09-09). The outward journey — the second,
- * ten minutes, a day, a year, a lifetime, the turn, the descent — is
- * the piece's setup, and the two clocks are its argument; a first cut
- * gave the setup seven tenths of the scroll and the argument arrived
- * late. The setup now takes 1030 of 1650 vh, so the two clocks begin
- * a little past six tenths and have the longest scene in the piece.
- * The order is kept: the turn's line needs the journey before it, and
- * the descent needs to land in the corridor.
+ * The order, and its proportion (2026-09-09, after the second critique).
+ * The outward journey — the second, ten minutes, a day, a year — is the
+ * piece's setup and the two clocks are its argument, so the argument
+ * comes straight after the turn: the year, black and the line, then
+ * the corridor walked twice. What was learned there is then taken back
+ * to the bench — the second subdivided, the month as panes of glass, a
+ * lifetime seen from above — before the return to the same second. The
+ * setup is 640 of 1610 vh; the two clocks begin at 45 % and are the
+ * longest scene. Scene ids keep the numbers they were built under; the
+ * array is the order.
  */
 export const scenes: Scene[] = [
   {
@@ -1377,118 +1384,20 @@ export const scenes: Scene[] = [
     fadeOut: 0.05,
   },
   {
-    id: 'scene-05-lifetime',
-    label: 'A LIFETIME',
-    lengthVh: 150,
-    describe:
-      'Eighty years pass over the same park, seen from higher and further back. The elms grow enormous, roots spread under the far shore, an elm counts the years as rings, and the people flicker as brief appearances. Then the world fades to black.',
-    timeRate: 2_524_608_000,
-    // The year's world, held at the August it closed on, seen from
-    // higher and further back as eighty years pass: the elms grow
-    // enormous, the sun's record stacks year on year into a band, and an
-    // elm counts the years as rings. The starting afternoon becomes one
-    // coordinate. Then the world fades, for the turn.
-    // The afternoon's people, over eighty years: appearances. Each is
-    // there for a third of a second every couple of seconds, leaving a
-    // trace, and by the end three times rarer.
-    hold: {
-      of: 'scene-04-year',
-      at: 1,
-      years: 80,
-      grow: 1.7,
-      appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
-    },
-    camera: {
-      from: { y: 9.5, z: 27, lookY: 9.5 },
-      to: { y: 20, z: 44, lookY: 16 },
-    },
-    instruments: [
-      { kind: 'band', from: 0.02, to: 0.96 },
-      { kind: 'rings', from: 0.05, to: 0.94 },
-      // The far shore cut open: the stand's roots, one hairline a root,
-      // growing with the years under the elms, and joining underground
-      // as a stand's do — the memory corridor's metaphor, made literal
-      // on the ground the piece was looking at all along.
-      { kind: 'roots', from: 0.04, to: 0.95, strength: 0.7, depth: 8, stand: 13 },
-    ],
-    fadeOut: 0.06,
-  },
-  {
     id: 'scene-06-return',
     label: '',
-    describe: 'Black. Then, from the dark, the eye falls back down to the bench in the park.',
+    describe: 'Black. A line is spoken in it. Then a corridor.',
     // Long enough that the stop is a stop: the black has to be sat in
-    // before the line arrives, and the line before the fall.
-    lengthVh: 120,
+    // before the line arrives, and after it, before the corridor.
+    lengthVh: 80,
     caption: 'But that isn’t how you experienced it.',
-    captionAt: { from: 0.12, to: 0.52 },
+    captionAt: { from: 0.18, to: 0.72 },
     timeRate: 0,
-    // Everything stops. Black, the line, and then the fall: the park
-    // comes back — the same August afternoon the piece opened on, the
-    // elms their own size again — from where the lifetime left the eye,
-    // all the way down to the bench.
-    hold: { of: 'scene-04-year', at: 0, from: 0.56 },
-    // The fall starts high but no further back than the treeline can
-    // fill — beyond about z 28 the strip shows its ends — and the black
-    // before it hides the join, so it need not begin where the lifetime
-    // left the eye. What is left is a drop: twenty units down to the seat.
-    camera: {
-      from: { y: 20, z: 28, lookY: 14 },
-      to: { y: 2.5, z: 16, lookY: 0.35 },
-      ease: 'fall',
-    },
-    cameraAt: { from: 0.56, to: 1 },
-    fadeIn: 0.2,
-  },
-  {
-    id: 'scene-07-attention',
-    label: '1 SECOND',
-    lengthVh: 120,
-    describe:
-      'Back inside the single second the piece opened on. The clock does not move; the scale label divides the second finer and finer, down to a hundredth, and the readings arrive one after another and stay: heat, wind, the air, and an elm leaf drawn vein by vein as a network.',
-    timeRate: 0.1,
-    // The inward zoom. The same second the piece opened on, held: the
-    // clock does not move and neither does the world. What changes is
-    // how finely the second is divided — the label descends from one
-    // second to a hundredth — and how much of what was always there is
-    // being read. The instruments arrive one after another and none of
-    // them leaves, so the scene ends with every layer on at once: the
-    // absorbed state, which is what scene 08 then walks a corridor in.
-    hold: { of: 'scene-04-year', at: 0 },
-    // Not a zoom into anything — there is nothing yet to zoom into — but
-    // a lean forward: the grass a little larger, the frame a little
-    // tighter, over the whole scene.
-    camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
-      to: { y: 2.4, z: 14.6, lookY: 0.3 },
-    },
-    labelAt: [
-      { from: 0, label: '1 SECOND' },
-      { from: 0.2, label: '½ SECOND' },
-      { from: 0.38, label: '¼ SECOND' },
-      { from: 0.56, label: '⅒ SECOND' },
-      { from: 0.78, label: '1/100 SECOND' },
-    ],
-    instruments: [
-      { kind: 'thermal', from: 0.08, to: 1, strength: 0.5, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
-      { kind: 'flow', from: 0.3, to: 1 },
-      {
-        kind: 'radar',
-        from: 0.52,
-        to: 1,
-        period: 6,
-        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
-      },
-      // The finest division: one leaf read as the network it is, drawn
-      // in vein by vein as the label descends to a hundredth of a second,
-      // and still being drawn when the corridor takes the frame.
-      {
-        kind: 'leaf',
-        from: 0.66,
-        to: 1,
-        scope: { corner: 'bottom-right', size: 0.34, inset: { x: 0.04, y: 0.095 } },
-      },
-    ],
+    // Everything stops. Black, and the line; the corridor follows out of
+    // the dark. (The fall back to the bench that used to follow the line
+    // was withdrawn 2026-09-09 when the two clocks moved to this side of
+    // the turn: the eye no longer goes home here, it goes indoors.)
+    black: true,
   },
   {
     id: 'scene-08-two-clocks',
@@ -1573,6 +1482,59 @@ export const scenes: Scene[] = [
     fadeOut: 0.03,
   },
   {
+    id: 'scene-07-attention',
+    label: '1 SECOND',
+    lengthVh: 120,
+    describe:
+      'Back inside the single second the piece opened on. The clock does not move; the scale label divides the second finer and finer, down to a hundredth, and the readings arrive one after another and stay: heat, wind, the air, and an elm leaf drawn vein by vein as a network.',
+    timeRate: 0.1,
+    // The inward zoom. The same second the piece opened on, held: the
+    // clock does not move and neither does the world. What changes is
+    // how finely the second is divided — the label descends from one
+    // second to a hundredth — and how much of what was always there is
+    // being read. The instruments arrive one after another and none of
+    // them leaves, so the scene ends with every layer on at once: the
+    // absorbed state the corridor was just walked in, found again at the
+    // bench. Out of the corridor's black, and into the panes' after.
+    hold: { of: 'scene-04-year', at: 0 },
+    fadeIn: 0.08,
+    fadeOut: 0.05,
+    // Not a zoom into anything — there is nothing yet to zoom into — but
+    // a lean forward: the grass a little larger, the frame a little
+    // tighter, over the whole scene.
+    camera: {
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.4, z: 14.6, lookY: 0.3 },
+    },
+    labelAt: [
+      { from: 0, label: '1 SECOND' },
+      { from: 0.2, label: '½ SECOND' },
+      { from: 0.38, label: '¼ SECOND' },
+      { from: 0.56, label: '⅒ SECOND' },
+      { from: 0.78, label: '1/100 SECOND' },
+    ],
+    instruments: [
+      { kind: 'thermal', from: 0.08, to: 1, strength: 0.5, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+      { kind: 'flow', from: 0.3, to: 1 },
+      {
+        kind: 'radar',
+        from: 0.52,
+        to: 1,
+        period: 6,
+        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
+      },
+      // The finest division: one leaf read as the network it is, drawn
+      // in vein by vein as the label descends to a hundredth of a second,
+      // and still being drawn when the corridor takes the frame.
+      {
+        kind: 'leaf',
+        from: 0.66,
+        to: 1,
+        scope: { corner: 'bottom-right', size: 0.34, inset: { x: 0.04, y: 0.095 } },
+      },
+    ],
+  },
+  {
     id: 'scene-09-memory-compression',
     label: '30 DAYS',
     lengthVh: 200,
@@ -1649,6 +1611,46 @@ export const scenes: Scene[] = [
     },
     fadeIn: 0.03,
     fadeOut: 0.03,
+  },
+  {
+    id: 'scene-05-lifetime',
+    label: 'A LIFETIME',
+    lengthVh: 150,
+    describe:
+      'Eighty years pass over the same park, seen from higher and further back. The elms grow enormous, an elm counts the years as rings, the sun\u2019s yearly figures stack into a band, and the people flicker as brief appearances. Then the world fades to black.',
+    timeRate: 2_524_608_000,
+    // The year's world, held at the August it closed on, seen from
+    // higher and further back as eighty years pass: the elms grow
+    // enormous, the sun's record stacks year on year into a band, and an
+    // elm counts the years as rings. The starting afternoon becomes one
+    // coordinate. Then the world fades, for the return. It comes out of
+    // the memory corridor's black, so it fades in as well as out.
+    // The afternoon's people, over eighty years: appearances. Each is
+    // there for a third of a second every couple of seconds, leaving a
+    // trace, and by the end three times rarer.
+    hold: {
+      of: 'scene-04-year',
+      at: 1,
+      years: 80,
+      grow: 1.7,
+      appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
+    },
+    camera: {
+      from: { y: 9.5, z: 27, lookY: 9.5 },
+      to: { y: 20, z: 44, lookY: 16 },
+    },
+    // Two instruments, both about the years: the band and the rings.
+    // The roots — the far shore cut open, the stand's network under it —
+    // were withdrawn 2026-09-09: beautiful, but they showed a property
+    // of the place, not a property of time, and the rule now is that
+    // every instrument has to change how long something feels. The
+    // `roots` reader is still built; one line here brings it back.
+    instruments: [
+      { kind: 'band', from: 0.02, to: 0.96 },
+      { kind: 'rings', from: 0.05, to: 0.94 },
+    ],
+    fadeIn: 0.06,
+    fadeOut: 0.06,
   },
   {
     id: 'scene-10-return-to-now',

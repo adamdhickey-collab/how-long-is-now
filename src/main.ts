@@ -286,7 +286,7 @@ function frame(now: number) {
   clock.textContent = `${hh}:${mm}`;
 
   // A scene that builds its own world owns it; the placeholder stands down.
-  const ownsWorld = !!active.plates || !!active.twoClocks || !!active.memory || !!active.hold;
+  const ownsWorld = !!active.plates || !!active.twoClocks || !!active.memory || !!active.hold || !!active.black;
   field.visible = !ownsWorld;
   // A scene may hold the year's world at a point, seen through its own
   // camera and instruments; the world is then shown for it too.

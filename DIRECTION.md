@@ -85,12 +85,23 @@ drive the spectrogram.
 | 02 | `ten-minutes` | Flow field on the water and wind in the canopy; radar over the air. The world starts to be read. |
 | 03 | `day` | One day's sun arc drawn as it happens; the thermal ramp swinging with it. |
 | 04 | `year` | The record and its survey (built); radar tracking pollen, then leaves, then snow; the ring of seasons closing. |
-| 05 | `lifetime` | The root network spreading; the elms' rings; the record stacking year on year into a band. |
-| 06 | `return` | Black. Every instrument switches off. |
+| 05 | `lifetime` | The elms' rings; the record stacking year on year into a band. (The root network: built, withdrawn 2026-09-09 — see the rule below.) |
+| 06 | `return` | Black. Every instrument switches off. (Since 2026-09-09 the two clocks follow directly, then 07, 09, 05, 10: the numbers are the scenes' names, not their order.) |
 | 07 | `attention` | The spectrogram of one sound; the leaf as network; the thermal of one hand on the bench. Instruments as the inward zoom. |
 | 08 | `two-clocks` | The same corridor twice: the waiting one with a single bare instrument ticking; the absorbed one with every layer on. When the label turns to *looking back*, the densities swap. |
 | 09 | `memory-compression` | Each pane of glass carries that day's readings. Identical days, identical panes. |
 | 10 | `return-to-now` | Every instrument faintly on at once, then gone, one by one, as the interface disappears. |
+
+## The rule, sharpened
+
+Every instrument has to change how long something feels, not only
+show a property of the place. Thermal earns its frame where the heat
+reads the day's or the second's span; the record and the ring of
+seasons are the year itself; the leaf is the inward resolution. The
+roots showed the stand's network under the shore — true, beautiful,
+and about the place — and were withdrawn (2026-09-09). The landscape
+stays the subject; an instrument appears, makes one observation, and
+goes.
 
 ## Order of work
 
