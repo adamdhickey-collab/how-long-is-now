@@ -92,7 +92,10 @@ export interface Plate {
  */
 export interface Figures {
   id: string;
-  atlas: { image: string; cols: number; rows: number; count: number };
+  /** The sheet's cells, and how many frames each figure has in them: a
+   *  figure with two is drawn in both phases of its stride, its second
+   *  frame `count / frames` cells on from its first. */
+  atlas: { image: string; cols: number; rows: number; count: number; frames?: number };
   size: number;
   baseY: number;
   places: { id: string; cell: number; x: number; z: number; size?: number; speed?: number; ride?: boolean }[];
@@ -1036,7 +1039,7 @@ export const scenes: Scene[] = [
       // pace, wrapping beyond the frame's edges.
       {
         id: 'movers',
-        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 3, rows: 4, count: 12 },
+        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 6, rows: 4, count: 24, frames: 2 },
         size: 2.6,
         baseY: 0,
         walk: { from: -34, to: 34 },

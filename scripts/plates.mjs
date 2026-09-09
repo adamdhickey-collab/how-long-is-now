@@ -179,15 +179,17 @@ const SCENES = {
     { id: 'movers-spring', raw: ['movers-spring-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     // The second walkers sheet came as three rows with the third cut off
     // by the frame; its top two rows are kept and cut on the first's grid.
+    // Then the same twelve in the other phase of their stride, as the
+    // second twelve cells: frame two of each is its cell plus twelve.
     {
       id: 'movers',
-      raw: ['movers-v1.png', 'movers-b-v1.png'],
-      keep: { 'movers-b-v1.png': 2 / 3 },
+      raw: ['movers-v1.png', 'movers-b-v1.png', 'movers-stride-v1.png', 'movers-b-stride-v1.png'],
+      keep: { 'movers-b-v1.png': 2 / 3, 'movers-b-stride-v1.png': 2 / 3 },
       recipe: 'fragments',
       key: true,
       align: 'bottom',
       grid: [3, 2],
-      cols: 3,
+      cols: 6,
     },
   ],
   'scene-09': [

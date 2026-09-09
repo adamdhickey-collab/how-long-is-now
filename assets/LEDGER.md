@@ -635,3 +635,15 @@ bob with a stride whose cadence follows their pace and lean into it,
 more at a run, the shadow pooling smaller under a foot that has left
 the ground; placements that ride — bikes, skates, a skateboard —
 wobble instead; sails heel. Real time, stilled under reduced motion.
+
+### 10h · the other stride
+
+The image model cannot draw a walk cycle, but it can redraw a whole
+sheet with every figure in the opposite phase of its stride, because it
+sees all nine at once: `movers-stride-v1.png` and `movers-b-stride-v1.png`,
+one edit each, near-perfect. Cut into the walkers' atlas as a second
+twelve cells (`frames: 2` on the atlas; a figure's second frame is its
+cell plus twelve) and swapped with each step, in time with the bob, so
+the feet land as the body dips; a rider's wheels turn on their own
+count. Two frames and a bob read as hand-drawn animation, and the dots
+changing between frames is the boil.

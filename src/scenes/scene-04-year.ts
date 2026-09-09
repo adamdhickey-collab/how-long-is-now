@@ -1325,7 +1325,24 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     mesh: THREE.Mesh;
     shadow: THREE.Mesh;
     x0: number;
+    frame: number;
   }
+  /** One cell's rectangle of a sheet's atlas, as a quad's UVs. */
+  const cellUv = (geo: THREE.PlaneGeometry, cell: number, cols: number, rows: number) => {
+    // The cell's rectangle, pulled a little inside the tile: at its
+    // very edge a texel is half the neighbour's, and a wide neighbour
+    // shows as a sliver down the quad's side.
+    const col = cell % cols;
+    const row = Math.floor(cell / cols);
+    const inset = 0.03;
+    const u0 = (col + inset) / cols;
+    const u1 = (col + 1 - inset) / cols;
+    const v1 = 1 - (row + inset) / rows;
+    const v0 = 1 - (row + 1 - inset) / rows;
+    const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
+    uv.set([u0, v1, u1, v1, u0, v0, u1, v0]);
+    uv.needsUpdate = true;
+  };
   interface FigureSet {
     def: Figures;
     mat: THREE.MeshBasicMaterial;
@@ -1359,17 +1376,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const placed = f.places.map((pl) => {
       const size = pl.size ?? f.size;
       const geo = new THREE.PlaneGeometry(size, size);
-      // The cell's rectangle, pulled a little inside the tile: at its
-      // very edge a texel is half the neighbour's, and a wide neighbour
-      // shows as a sliver down the quad's side.
-      const col = pl.cell % cols;
-      const row = Math.floor(pl.cell / cols);
-      const inset = 0.03;
-      const u0 = (col + inset) / cols;
-      const u1 = (col + 1 - inset) / cols;
-      const v1 = 1 - (row + inset) / rows;
-      const v0 = 1 - (row + 1 - inset) / rows;
-      geo.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v1, u1, v1, u0, v0, u1, v0], 2));
+      cellUv(geo, pl.cell, cols, rows);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(pl.x, f.baseY + size / 2, pl.z);
       if ((pl.speed ?? 0) < 0) mesh.scale.x = -1;
@@ -1386,7 +1393,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       shadow.renderOrder = mesh.renderOrder - 0.005;
       shadow.visible = false;
       group.add(shadow);
-      return { def: pl, mesh, shadow, x0: pl.x };
+      return { def: pl, mesh, shadow, x0: pl.x, frame: 0 };
     });
     const loaded = new THREE.TextureLoader()
       .loadAsync(plateUrl(f.atlas.image))
@@ -2174,14 +2181,25 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           if (l.sway) tilt += l.sway * Math.sin(elapsed * 0.45 + phase);
           const speed = p.def.speed ?? 0;
           const pace = Math.min(Math.abs(speed), 3);
+          // A figure drawn in both phases of its stride swaps them with
+          // each step, in time with the bob; a rider's wheels turn on
+          // their own count.
+          const frames = f.atlas.frames ?? 1;
+          let frame = 0;
           if (pace > 0 && !p.def.ride) {
             const cadence = 1.4 + pace * 0.5;
             lift = ((l.bob ?? 0) * pace * Math.abs(Math.sin(Math.PI * cadence * elapsed + phase))) / 1.4;
             tilt -= ((l.lean ?? 0) * Math.sign(speed) * pace) / 3;
+            frame = Math.floor(cadence * elapsed + phase / Math.PI) % frames;
           } else if (pace > 0 && p.def.ride) {
             tilt += (l.wobble ?? 0) * Math.sin(elapsed * 1.7 + phase);
+            frame = Math.floor(2.5 * elapsed + phase) % frames;
           }
           if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
+          if (frame !== p.frame) {
+            p.frame = frame;
+            cellUv(p.mesh.geometry as THREE.PlaneGeometry, p.def.cell + frame * (f.atlas.count / frames), f.atlas.cols, f.atlas.rows);
+          }
         }
         p.mesh.scale.y = breathe;
         p.mesh.position.y = f.baseY + (size / 2) * breathe + lift;
