@@ -19,12 +19,15 @@ import { mixHex, seasonAt, seasonWeights, type Figures, type Instrument, type Pl
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened, plateUrl } from './loading';
+import { buildComposition } from './park-composition';
 import { createLeaf, type LeafFigure } from './scene-07-leaf';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
  *  itself a little behind that, so the cloud deck between them can pass
  *  in front of the sun and never in front of the record. */
 const TRAIL_AHEAD = 18;
+/** The lens the world was made for, when no painting says otherwise. */
+const BASE_FOV = 55;
 const SUN_AHEAD = 8;
 /** The record samples the sun once a day. */
 const DAYS = 365;
@@ -130,6 +133,10 @@ export interface YearScene {
    *  camera: where the world is seen from this frame, already placed —
    *  the figure is drawn in screen space and projects through it. */
   update(local: number, dt: number, camera: THREE.Camera, hold?: Hold): void;
+  /** The vertical field of view that shows the park's painting whole
+   *  at this viewport aspect — its own when the scene declares no
+   *  composition. */
+  fovFor(aspect: number): number;
 }
 
 /**
@@ -380,7 +387,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   // An inert scene rather than a crash if the manifest is incomplete.
   if (!seasons || !plates || !lake || !airDef || !sunDef || !cloudDef) {
     opened();
-    return { setActive: () => {}, update: () => {}, warm: () => true };
+    return { setActive: () => {}, update: () => {}, warm: () => true, fovFor: () => def.composition?.fov ?? BASE_FOV };
   }
 
   const plate = (id: string) => plates.find((p) => p.id === id);
@@ -391,7 +398,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const benchDef = plate('bench');
   if (!skyDef || !canopyDef || !farBankDef || !nearBankDef) {
     opened();
-    return { setActive: () => {}, update: () => {}, warm: () => true };
+    return { setActive: () => {}, update: () => {}, warm: () => true, fovFor: () => def.composition?.fov ?? BASE_FOV };
   }
 
   // ---- sky: a gradient plane, with the horizon where the manifest puts it.
@@ -1174,7 +1181,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     standIns: THREE.Object3D[],
     thermal = false,
   ): ImagePlate | null {
-    if (!p.images) return null;
+    // A plate laid out from the painting is the composition's to build.
+    if (!p.images || p.ref) return null;
     const loader = new THREE.TextureLoader();
     const layers: ImageLayer[] = [];
     const plate: ImagePlate = { layers, ready: false, opened: Promise.resolve() };
@@ -1890,16 +1898,40 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
 
   const imagePlates = [canopyImg, farImg, nearImg, foregroundImg, treesImg];
+  // ---- the park laid out from the painting (session 18): plates with
+  // a box in the reference are projected through the seat's camera. The
+  // ground and the people take the thermal as the drawn banks did; the
+  // painting's own sky, shore, water and lawn stand in for the drawn
+  // ones, the lake's shader goes under its image, and the procedural
+  // cloud deck stays off — the painting has its own clouds.
+  const composition = buildComposition(group, def, new THREE.TextureLoader(), (mat, p) => {
+    if (p.lay || p.feet) thermalPlate(mat);
+  });
+  if (composition) {
+    for (const cp of composition.plates) {
+      if (cp.def === skyDef) sky.visible = false;
+      if (cp.def === canopyDef) leafy.visible = bare.visible = false;
+      if (cp.def === farBankDef) farBank.visible = false;
+      if (cp.def === nearBankDef) nearBank.visible = false;
+    }
+    // Under the painting's water, which lies at the same height and
+    // orders by its far edge: the wind's streamlines are owed a new home.
+    water.renderOrder = -16;
+    clouds.visible = false;
+  }
   // The other scenes fetch their imagery once the opening frame has its
   // own; the year says so whether or not every plate arrived.
-  Promise.all([...imagePlates.map((p) => p?.opened), benchImg?.opened, ...figureSets.map((f) => f.loaded)]).then(
-    opened,
-    opened,
-  );
+  Promise.all([
+    ...imagePlates.map((p) => p?.opened),
+    benchImg?.opened,
+    ...figureSets.map((f) => f.loaded),
+    ...(composition?.plates.map((p) => p.opened) ?? []),
+  ]).then(opened, opened);
   let warmed = false;
   function warm(renderer: THREE.WebGLRenderer, camera: THREE.Camera): boolean {
     if (warmed) return true;
     if (!imagePlates.every((p) => !p || p.ready)) return false;
+    if (composition && !composition.plates.every((p) => p.ready)) return false;
     // compile() walks visible objects only, so the world shows itself to
     // the compiler for one call and hides again.
     const was = group.visible;
@@ -1908,6 +1940,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     group.visible = was;
     for (const p of imagePlates) {
       for (const l of p?.layers ?? []) if (l.mat.map) renderer.initTexture(l.mat.map);
+    }
+    for (const p of composition?.plates ?? []) {
+      for (const l of p.layers) if (l.mat.map) renderer.initTexture(l.mat.map);
     }
     warmed = true;
     return true;
@@ -2024,7 +2059,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // Decades: the years so far, the elms' growth, the band and the rings.
     const years = holder?.years ? holder.years * holder.local : 0;
     const grow = holder?.grow ? 1 + (holder.grow - 1) * (holder.local * holder.local) : 1;
-    for (const mesh of [leafy, bare, ...canopyImg!.layers.map((l) => l.mesh)]) {
+    for (const mesh of [leafy, bare, ...(canopyImg?.layers.map((l) => l.mesh) ?? [])]) {
       mesh.scale.set(grow, grow, 1);
       mesh.position.y = canopyDef!.baseY + (canopyDef!.height / 2) * grow;
     }
@@ -2198,11 +2233,30 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // What is only real from the seat — the elms we sit under, the people
     // on the lawn — is a card seen from above once the camera leaves it,
     // so it goes as the eye rises and is back by the time the fall lands.
-    const seated = clamp01((3.6 - camera.position.y) / 1.4);
+    // All of it from the seat (y 2.5), none by the time the eye is a
+    // metre and a half above it.
+    const seated = clamp01((4.6 - camera.position.y) / 1.4);
     lawnSeated.value = seated;
     swayU.uTime.value = reducedMotion ? 0 : elapsed;
     if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
     if (treesImg) setImage(treesImg, nightShade(treesDef!.shade ?? 0), presence(treesDef) * seated);
+    // The painting's plates: each for its window of the year, dimmed
+    // with the night, its seasons cross-faded as the drawn plates are,
+    // and what is only real from the seat going as the eye rises.
+    for (const cp of composition?.plates ?? []) {
+      if (!cp.ready) continue;
+      const p = cp.def;
+      const there = presence(p) * (p.seat ? seated : 1);
+      let front = -1;
+      cp.layers.forEach((l, i) => {
+        if (weightOf(l.key) > 0) front = i;
+      });
+      cp.layers.forEach((l, i) => {
+        const w = weightOf(l.key);
+        setTint(l.mat, 0xffffff, nightShade(p.shade ?? 0));
+        l.mat.opacity = alpha * there * (w <= 0 ? 0 : i === front ? w : 1);
+      });
+    }
 
     // The figures: there for their window of the year, dimmed with the
     // night; the walkers on their way in the world's real time, wrapping
@@ -2415,5 +2469,5 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     attr.needsUpdate = true;
   }
 
-  return { setActive, update, warm };
+  return { setActive, update, warm, fovFor: (aspect) => composition?.fovFor(aspect) ?? def.composition?.fov ?? BASE_FOV };
 }

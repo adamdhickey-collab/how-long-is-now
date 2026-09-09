@@ -16,12 +16,15 @@
  *   node scripts/generate.mjs --dry           print what would be sent
  *   node scripts/generate.mjs --ref <file>    another reference image
  *   node scripts/generate.mjs --quality medium
+ *   node scripts/generate.mjs --taken-apart     the reference painting itself, one element
+ *                                               kept per layer (reference-layers.mjs)
  */
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers, memoryLayers } from './park-layers.mjs';
+import { layers as takenApart } from './reference-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -41,6 +44,7 @@ const seasons = args.includes('--seasons');
 const crowd = args.includes('--crowd');
 const corridor = args.includes('--corridor');
 const memory = args.includes('--memory');
+const apart = args.includes('--taken-apart');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -74,6 +78,42 @@ function nextVersion(layer) {
   return max + 1;
 }
 
+// ---------------------------------------------------------------- crops and masks
+function latest(spec) {
+  // 'latest:scene-04/ref/quiet-park' → the highest -vN.png of that id.
+  const [, rel] = spec.split(':');
+  const dir = resolve(root, 'assets/raw', dirname(rel));
+  const id = rel.split('/').pop();
+  const re = new RegExp(`^${id}-v(\\d+)\\.png$`);
+  let best = null, max = 0;
+  if (existsSync(dir)) for (const f of readdirSync(dir)) { const m = f.match(re); if (m && Number(m[1]) > max) { max = Number(m[1]); best = resolve(dir, f); } }
+  if (!best) throw new Error(`no ${id}-vN.png in ${dir} yet`);
+  return best;
+}
+
+async function prepared(layer) {
+  const { default: sharp } = await import('sharp');
+  const srcSpec = layer.crop?.src ?? layer.src;
+  const src = srcSpec.startsWith('latest:') ? latest(srcSpec) : resolve(root, srcSpec);
+  if (layer.crop) {
+    const [left, top, width, height] = layer.crop.box.map(Math.round);
+    return { image: await sharp(src).extract({ left, top, width, height }).png().toBuffer() };
+  }
+  const image = await sharp(src).png().toBuffer();
+  let mask;
+  if (layer.maskBoxes) {
+    const { width, height } = await sharp(src).metadata();
+    // Opaque everywhere the model must keep; the boxes are cut to alpha 0.
+    const rects = layer.maskBoxes.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>`).join('');
+    const holes = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+    mask = await sharp({ create: { width, height, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } } })
+      .composite([{ input: Buffer.from(holes), blend: 'dest-out' }])
+      .png().toBuffer();
+    if (dry) writeFileSync(resolve(outDir(layer), `${layer.id}-mask-dry.png`), mask);
+  }
+  return { image, mask };
+}
+
 // ---------------------------------------------------------------- one layer
 async function generate(layer, key) {
   const version = nextVersion(layer);
@@ -81,6 +121,11 @@ async function generate(layer, key) {
   const prompt = `${layer.preamble ?? STYLE}\n\n${layer.prompt}`;
   if (dry) {
     console.log(`\n— ${layer.id} → ${out}\n  size ${layer.size}, quality ${quality}\n  ${prompt}`);
+    if (layer.crop || layer.src) {
+      mkdirSync(outDir(layer), { recursive: true });
+      const { image } = await prepared(layer);
+      writeFileSync(resolve(outDir(layer), `${layer.id}-crop-dry.png`), image);
+    }
     return;
   }
   const form = new FormData();
@@ -95,7 +140,15 @@ async function generate(layer, key) {
     const file = resolve(root, r);
     form.append('image[]', new Blob([readFileSync(file)], { type: 'image/png' }), file.split('/').pop());
   }
-  form.append('image[]', new Blob([readFileSync(ref)], { type: 'image/png' }), 'reference.png');
+  // A layer may edit a crop of a source image, or a source with a mask
+  // (transparent where the model may paint); either way it is the
+  // image being edited and the style reference is left out.
+  if (layer.crop || layer.src) {
+    const { image, mask } = await prepared(layer);
+    form.append('image[]', new Blob([image], { type: 'image/png' }), `${layer.id}.png`);
+    if (mask) form.append('mask', new Blob([mask], { type: 'image/png' }), `${layer.id}-mask.png`);
+  }
+  if (!layer.noRef) form.append('image[]', new Blob([readFileSync(ref)], { type: 'image/png' }), 'reference.png');
   const t0 = Date.now();
   const res = await fetch(ENDPOINT, {
     method: 'POST',
@@ -126,7 +179,7 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const pool = memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
+  const pool = apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
   const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
     console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);

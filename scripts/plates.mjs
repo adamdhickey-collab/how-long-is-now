@@ -18,6 +18,7 @@
 import { access, mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
+import { refSky, refFarShore, refWater, refGround, refTrees, refCheck } from './reference-bands.mjs';
 
 const RAW = 'assets/raw';
 const OUT = 'public/plates';
@@ -147,6 +148,24 @@ const PARK = {
 };
 
 const SCENES = {
+  // The painting taken apart (session 18, scripts/reference-layers.mjs):
+  // whole-frame bands cut from the quiet park, and every element keyed
+  // and trimmed. The composition places each by its box in the painting.
+  'scene-04/ref': [
+    // ('check' draws the boundaries and the matte over the quiet park,
+    // for the eye; add it to the list when the bands need looking at.)
+    ...['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
+      id,
+      raw: ['quiet-park-v1.png', 'empty-view-v1.png'],
+      recipe: `ref-${id}`,
+      budgetKb: 900,
+    })),
+    ...[
+      'reader', 'couple', 'man-dog', 'bicycle', 'sitters-lawn', 'straw-hat', 'lying-man', 'family', 'chairs',
+      'jogger', 'edge-family', 'wall-group', 'standing-group', 'dog-walkers', 'backpack-walker', 'far-right',
+      'sailboat', 'sails-mid', 'sailboat-right', 'sails-far',
+    ].map((id) => ({ id, raw: `${id}-v${{ couple: 2, bicycle: 2 }[id] ?? 1}.png`, recipe: 'cutout', key: true, alphaQuality: 100, pockets: !/sail/.test(id), strict: /sail/.test(id) })),
+  ],
   'scene-04/park': [
     { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-thin-v1.png', recipe: 'strip', key: true },
     { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v2.png', recipe: 'strip', key: true },
@@ -506,16 +525,31 @@ async function fragmentAtlas(files, p = {}) {
  * or night. The keyed image is written beside the raw as a PNG the
  * recipes then read.
  */
-async function keyWhite(file) {
+async function keyWhite(file, opts = {}) {
   const out = file.replace(/\.png$/, '.keyed.png');
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
-  const paper = (i) => {
-    const r = data[i * 4];
-    const g = data[i * 4 + 1];
-    const b = data[i * 4 + 2];
-    return r >= 222 && g >= 222 && b >= 218 && Math.max(r, g, b) - Math.min(r, g, b) <= 26;
-  };
+  // A sail is cream on cream paper, and the paper itself is a different
+  // cream from one image to the next: the boats read paper strictly, as
+  // whatever is within a few points of the border's own colour, and
+  // keep the warmer sail. Everyone else reads it as the flat near-white
+  // the model usually leaves.
+  const P0 = [0, 0, 0];
+  {
+    let n = 0;
+    const take = (i) => { for (let c = 0; c < 3; c++) P0[c] += data[i * 4 + c]; n++; };
+    for (let x = 0; x < w; x++) { take(x); take(w + x); take((h - 1) * w + x); take((h - 2) * w + x); }
+    for (let y = 0; y < h; y++) { take(y * w); take(y * w + 1); take(y * w + w - 1); take(y * w + w - 2); }
+    for (let c = 0; c < 3; c++) P0[c] /= n;
+  }
+  const paper = opts.strict
+    ? (i) => Math.abs(data[i * 4] - P0[0]) <= 9 && Math.abs(data[i * 4 + 1] - P0[1]) <= 9 && Math.abs(data[i * 4 + 2] - P0[2]) <= 9
+    : (i) => {
+        const r = data[i * 4];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        return r >= 222 && g >= 222 && b >= 218 && Math.max(r, g, b) - Math.min(r, g, b) <= 26;
+      };
   const bg = new Uint8Array(w * h);
   const queue = new Int32Array(w * h);
   let head = 0;
@@ -534,20 +568,209 @@ async function keyWhite(file) {
     push(y * w);
     push(y * w + w - 1);
   }
-  while (head < tail) {
-    const i = queue[head++];
-    const x = i % w;
-    if (x > 0) push(i - 1);
-    if (x < w - 1) push(i + 1);
-    if (i >= w) push(i - w);
-    if (i < (h - 1) * w) push(i + w);
+  const flood = () => {
+    while (head < tail) {
+      const i = queue[head++];
+      const x = i % w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (i >= w) push(i - w);
+      if (i < (h - 1) * w) push(i + w);
+    }
+  };
+  flood();
+  const border = tail;
+  // Pockets (session 18): paper the flood cannot reach — between an arm
+  // and a body, under a chair — is paper all the same. Any run of paper
+  // pixels bigger than a few dots joins the background; a white shirt is
+  // dots of colour and never reads as paper for forty pixels together.
+  // A sail is an enclosed white shape too: the boats opt out.
+  if (opts.pockets !== false) {
+    const seen = new Uint8Array(w * h);
+    const pocket = [];
+    for (let i = 0; i < w * h; i++) {
+      if (bg[i] || seen[i] || !paper(i)) continue;
+      pocket.length = 0;
+      seen[i] = 1;
+      pocket.push(i);
+      for (let k = 0; k < pocket.length; k++) {
+        const j = pocket[k];
+        const x = j % w;
+        const step = (n) => {
+          if (!seen[n] && paper(n)) {
+            seen[n] = 1;
+            pocket.push(n);
+          }
+        };
+        if (x > 0) step(j - 1);
+        if (x < w - 1) step(j + 1);
+        if (j >= w) step(j - w);
+        if (j < (h - 1) * w) step(j + w);
+      }
+      if (pocket.length >= 40) for (const j of pocket) { bg[j] = 1; queue[tail++] = j; }
+    }
   }
-  // The paper's own colour, measured: what the edge was blended with.
+  // The ground the model puts under the feet (session 18): asked for
+  // nothing under a figure it still paints a pale blue-white contact
+  // shadow there. In the lowest sixth of what is drawn, pale, cool,
+  // evenly pale pixels reachable from the background are ground, not
+  // figure — feet are warm, shoes are dark, and a blanket is dots.
+  {
+    let top = h, bottom = -1;
+    for (let i = 0; i < w * h; i++) if (!bg[i]) { const y = (i / w) | 0; if (y < top) top = y; if (y > bottom) bottom = y; }
+    const bandTop = bottom - Math.round((bottom - top) * 0.17);
+    const lum = new Float32Array(w * h);
+    const sat = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      lum[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      sat[i] = mx ? (mx - mn) / mx : 0;
+    }
+    const groundish = (i) => {
+      const y = (i / w) | 0;
+      if (y < bandTop) return false;
+      const x = i % w;
+      const r = data[i * 4], b = data[i * 4 + 2];
+      if (lum[i] < 0.68 || b < r - 15) return false;
+      let l = 0, sN = 0, n = 0;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const j = yy * w + xx;
+        if (bg[j]) { l += 1; n++; continue; }
+        l += lum[j]; sN += sat[j]; n++;
+      }
+      return l / n >= 0.8 && sN / n <= 0.26;
+    };
+    const pushG = (i) => { if (!bg[i] && groundish(i)) { bg[i] = 1; queue[tail++] = i; } };
+    for (let k = 0; k < tail; k++) {
+      const i = queue[k];
+      const x = i % w;
+      if (x > 0) pushG(i - 1);
+      if (x < w - 1) pushG(i + 1);
+      if (i >= w) pushG(i - w);
+      if (i < (h - 1) * w) pushG(i + w);
+    }
+    // What the window test leaves against the shoes — a sliver of the
+    // same pale ground, too close to the leather to read as even — is
+    // taken by a bounded creep: three pixels at most, pale and cool.
+    const sliver = (i) => {
+      const y = (i / w) | 0;
+      if (y < bandTop) return false;
+      const r = data[i * 4], b = data[i * 4 + 2];
+      return lum[i] >= 0.72 && b >= r - 15 && sat[i] <= 0.35;
+    };
+    for (let pass = 0; pass < 3; pass++) {
+      const from = tail;
+      const was = new Uint8Array(bg);
+      for (let i = 0; i < w * h; i++) {
+        if (was[i] || !sliver(i)) continue;
+        const x = i % w;
+        if ((x > 0 && was[i - 1]) || (x < w - 1 && was[i + 1]) || (i >= w && was[i - w]) || (i < (h - 1) * w && was[i + w])) {
+          bg[i] = 1;
+          queue[tail++] = i;
+        }
+      }
+      if (tail === from) break;
+    }
+  }
+  // Specks (session 18): what is drawn but not part of anything — a
+  // stray mark, a shred of shadow — goes. A piece smaller than 0.15 % of
+  // the largest piece is a speck; a hat, a bag, a bottle is not.
+  {
+    const label = new Int32Array(w * h).fill(-1);
+    const sizes = [];
+    const stack = [];
+    for (let i = 0; i < w * h; i++) {
+      if (bg[i] || label[i] >= 0) continue;
+      const id = sizes.length;
+      let size = 0;
+      stack.length = 0;
+      stack.push(i);
+      label[i] = id;
+      while (stack.length) {
+        const j = stack.pop();
+        size++;
+        const x = j % w;
+        const step = (n) => { if (!bg[n] && label[n] < 0) { label[n] = id; stack.push(n); } };
+        if (x > 0) step(j - 1);
+        if (x < w - 1) step(j + 1);
+        if (j >= w) step(j - w);
+        if (j < (h - 1) * w) step(j + w);
+      }
+      sizes.push(size);
+    }
+    const largest = Math.max(0, ...sizes);
+    let dropped = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (bg[i]) continue;
+      if (sizes[label[i]] < largest * 0.0015) { bg[i] = 1; dropped++; }
+    }
+    if (dropped) console.log(`  ${dropped} px of specks dropped`);
+  }
+  // A boat's sail is outlined by a mast a pixel wide; where the outline
+  // has a gap the flood gets in and eats the sail from inside. For the
+  // plates that opt out of pockets, any cleared region that does not
+  // touch the border is not paper but the inside of something: kept.
+  if (opts.pockets === false) {
+    const seen = new Uint8Array(w * h);
+    const comp = [];
+    let kept = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (!bg[i] || seen[i]) continue;
+      comp.length = 0;
+      seen[i] = 1;
+      comp.push(i);
+      let touches = false;
+      for (let k = 0; k < comp.length; k++) {
+        const j = comp[k];
+        const x = j % w;
+        const y = (j / w) | 0;
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) touches = true;
+        const step = (n) => { if (bg[n] && !seen[n]) { seen[n] = 1; comp.push(n); } };
+        if (x > 0) step(j - 1);
+        if (x < w - 1) step(j + 1);
+        if (j >= w) step(j - w);
+        if (j < (h - 1) * w) step(j + w);
+      }
+      if (!touches) { for (const j of comp) bg[j] = 0; kept += comp.length; }
+    }
+    if (kept) console.log(`  ${kept} px inside the outline kept`);
+  }
+  // Strictly keyed plates close their pinholes: a sail's brightest dots
+  // read as paper, and a hole two pixels wide is filled from around it.
+  if (opts.strict) {
+    const grown = new Uint8Array(w * h);
+    const r = 2;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let any = 0;
+      for (let dy = -r; dy <= r && !any; dy++) for (let dx = -r; dx <= r; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < w && yy < h && !bg[yy * w + xx]) { any = 1; break; }
+      }
+      grown[y * w + x] = any;
+    }
+    const closed = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let all = 1;
+      for (let dy = -r; dy <= r && all; dy++) for (let dx = -r; dx <= r; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < w && yy < h && !grown[yy * w + xx]) { all = 0; break; }
+      }
+      closed[y * w + x] = all;
+    }
+    let filled = 0;
+    for (let i = 0; i < w * h; i++) if (bg[i] && closed[i]) { bg[i] = 0; filled++; }
+    if (filled) console.log(`  ${filled} px of pinholes closed`);
+  }
+  // The paper's own colour, measured over what the flood found: what
+  // the edge was blended with.
   const P = [255, 255, 255];
-  if (tail > 0) {
+  if (border > 0) {
     const sum = [0, 0, 0];
-    for (let k = 0; k < tail; k++) for (let c = 0; c < 3; c++) sum[c] += data[queue[k] * 4 + c];
-    for (let c = 0; c < 3; c++) P[c] = sum[c] / tail;
+    for (let k = 0; k < border; k++) for (let c = 0; c < 3; c++) sum[c] += data[queue[k] * 4 + c];
+    for (let c = 0; c < 3; c++) P[c] = sum[c] / border;
   }
   // The ring: drawn pixels with paper against them.
   const ring = new Uint8Array(w * h);
@@ -569,6 +792,19 @@ async function keyWhite(file) {
       if (bg[i]) continue;
       around(x, y, (j) => {
         if (bg[j]) ring[i] = 1;
+      });
+      if (ring[i]) edge++;
+    }
+  }
+  // At four times the painting's scale the paper's blend runs two
+  // pixels in (session 18): the pixels touching the ring are a second
+  // ring, unmixed the same way against the drawn colour beyond them.
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (bg[i] || ring[i]) continue;
+      around(x, y, (j) => {
+        if (ring[j] === 1) ring[i] = 2;
       });
       if (ring[i]) edge++;
     }
@@ -595,6 +831,17 @@ async function keyWhite(file) {
         n++;
         for (let c = 0; c < 3; c++) C[c] += data[j * 4 + c];
       });
+      // The second ring reads past the first, two pixels out.
+      if (n === 0 && ring[i] === 2) {
+        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const j = yy * w + xx;
+          if (bg[j] || ring[j]) continue;
+          n++;
+          for (let c = 0; c < 3; c++) C[c] += data[j * 4 + c];
+        }
+      }
       if (n === 0) continue;
       for (let c = 0; c < 3; c++) C[c] /= n;
       // Coverage: where the pixel sits between paper and colour, read on
@@ -611,6 +858,9 @@ async function keyWhite(file) {
       }
       if (room < 24) continue;
       a = Math.max(0, Math.min(1, a));
+      // Inside the second ring only a clear paper share counts: a pixel
+      // read as nine-tenths covered is the drawing, not the blend.
+      if (ring[i] === 2 && a > 0.88) continue;
       if (a <= 0.02) {
         outData[o + 3] = 0;
         continue;
@@ -624,6 +874,29 @@ async function keyWhite(file) {
         outData[o + c] = Math.max(0, Math.min(255, Math.round(v)));
       }
       outData[o + 3] = Math.round(a * 255);
+    }
+  }
+  // Under the clear pixels beside an edge, the edge's own colour: a
+  // texture is filtered across its alpha, and black under the paper
+  // would darken every edge by a hair.
+  for (let pass = 0; pass < 3; pass++) {
+    const src = Buffer.from(outData);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const o = i * 4;
+        if (src[o + 3] !== 0 || (src[o] | src[o + 1] | src[o + 2])) continue;
+        let n = 0;
+        C[0] = C[1] = C[2] = 0;
+        around(x, y, (j) => {
+          const jo = j * 4;
+          if (src[jo + 3] === 0 && !(src[jo] | src[jo + 1] | src[jo + 2])) return;
+          n++;
+          for (let c = 0; c < 3; c++) C[c] += src[jo + c];
+        });
+        if (!n) continue;
+        for (let c = 0; c < 3; c++) outData[o + c] = Math.max(1, Math.round(C[c] / n));
+      }
     }
   }
   await sharp(outData, { raw: { width: w, height: h, channels: 4 } }).png().toFile(out);
@@ -704,6 +977,12 @@ async function squaresAtlas(files, p) {
 }
 
 const RECIPES = {
+  'ref-sky': refSky,
+  'ref-far-shore': refFarShore,
+  'ref-water': refWater,
+  'ref-ground': refGround,
+  'ref-trees': refTrees,
+  'ref-check': refCheck,
   canopy: canopyStrip,
   cutout,
   strip,
@@ -721,11 +1000,11 @@ const exists = (f) =>
     () => false,
   );
 
-async function encode(pipeline, out, budget = BUDGET_KB) {
+async function encode(pipeline, out, budget = BUDGET_KB, alphaQuality = 80) {
   // Step quality down until the file fits the budget.
   const ladder = [82, 72, 62, 54, 46];
   for (const quality of ladder) {
-    await pipeline.clone().webp({ quality, alphaQuality: 80, effort: 6 }).toFile(out);
+    await pipeline.clone().webp({ quality, alphaQuality, effort: 6 }).toFile(out);
     const kb = (await stat(out)).size / 1024;
     if (kb <= budget) return { kb, quality };
   }
@@ -762,10 +1041,10 @@ async function run() {
           }),
         );
       }
-      if (p.key) srcs = await Promise.all(srcs.map(keyWhite));
+      if (p.key) srcs = await Promise.all(srcs.map((f) => keyWhite(f, p)));
       const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
-      const { kb, quality, over } = await encode(pipeline, out, p.budgetKb);
+      const { kb, quality, over } = await encode(pipeline, out, p.budgetKb, p.alphaQuality);
       console.log(
         `${out}  ${meta.info.width}×${meta.info.height}  ${kb.toFixed(0)} KB @q${quality}${over ? '  OVER BUDGET' : ''}${
           p.ext && !ext ? '  (flanks tiled: no ' + p.ext + ')' : ''

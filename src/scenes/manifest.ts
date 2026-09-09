@@ -80,6 +80,34 @@ export interface Plate {
    * it both ways, mirrored at every seam. The lawn.
    */
   ground?: { depth: number; repeat: [number, number] };
+  /**
+   * Where the plate is in the reference painting (session 18): its box
+   * as [x, y, w, h] in the painting's own pixels. The scene projects the
+   * box through the seat's camera onto the plate's plane, so from the
+   * seat the plate lands where the painting had it, to the pixel, and
+   * from anywhere else it is a thing at an honest distance. A plate
+   * with a `ref` derives its width, height, x and baseY; the ones it
+   * declares are ignored.
+   */
+  ref?: [number, number, number, number];
+  /** With `ref`: the plate lies on the ground (y = baseY) from the
+   *  box's nearest row to its furthest, instead of standing at z. */
+  lay?: boolean;
+  /** With `ref`: the plate stands with its feet on the ground, so its
+   *  z is found from the box's bottom row rather than declared. */
+  feet?: boolean;
+  /**
+   * With `ref`, for an image that is one element redrawn whole where
+   * the painting's frame cut it off: which side of the box to trust.
+   * 'w' matches the width and hangs from the top (a figure cut by the
+   * frame's foot); 'h' matches the height and keeps the right edge (one
+   * cut by its left edge); the default fits the whole image inside the
+   * box, standing on its bottom.
+   */
+  fit?: 'w' | 'h';
+  /** Only real from the seat: fades as the camera rises, like the elms
+   *  we sit under. */
+  seat?: boolean;
 }
 
 /**
@@ -597,6 +625,15 @@ export interface Scene {
    */
   plates?: Plate[];
   /**
+   * The painting the world is laid out from (session 18): the frame's
+   * size in pixels, and the vertical field of view the seat's camera
+   * sees it through when the viewport has the frame's shape. Plates
+   * with a `ref` are placed by projecting their box through the
+   * scene's opening camera; the renderer narrows the lens on wider
+   * viewports so the frame always covers the view.
+   */
+  composition?: { frame: [number, number]; fov: number };
+  /**
    * The lake. It stops at the far shore rather than running to a true
    * horizon — otherwise distant water shows above the treeline once the
    * camera is high enough to look down on it.
@@ -889,8 +926,8 @@ export const scenes: Scene[] = [
     // grass, as a thermal reading that arrives on its own time.
     hold: { of: 'scene-04-year', at: 0, life: ['jogger'] },
     camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
-      to: { y: 2.5, z: 16, lookY: 0.35 },
+      from: { y: 2.5, z: 16, lookY: -1.77 },
+      to: { y: 2.5, z: 16, lookY: -1.77 },
     },
     // The ramp spread across what one August afternoon holds: the lake
     // at 24 °C sits low and blue, the sunned grass at 32 near the top.
@@ -923,8 +960,8 @@ export const scenes: Scene[] = [
     // wind on the water first, then the air, through the radar.
     hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5 },
     camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
-      to: { y: 2.5, z: 16, lookY: 0.35 },
+      from: { y: 2.5, z: 16, lookY: -1.77 },
+      to: { y: 2.5, z: 16, lookY: -1.77 },
     },
     instruments: [
       { kind: 'flow', from: 0.06, to: 1 },
@@ -959,8 +996,8 @@ export const scenes: Scene[] = [
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
     },
     camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
-      to: { y: 2.5, z: 16, lookY: 0.35 },
+      from: { y: 2.5, z: 16, lookY: -1.77 },
+      to: { y: 2.5, z: 16, lookY: -1.77 },
     },
     instruments: [
       { kind: 'arc', from: 0.02, to: 1 },
@@ -984,181 +1021,350 @@ export const scenes: Scene[] = [
     // which is fixed to the sky and not to the ground, stays in the frame
     // for the whole year.
     camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
+      from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 9.5, z: 27, lookY: 9.5 },
     },
+    // The park is laid out from the reference painting (session 18,
+    // LEDGER 18): every plate names its box in the painting's 1536 × 1024
+    // pixels and the scene projects it through the seat's camera onto
+    // the plate's plane, so from the seat the plates stack back into the
+    // painting and from anywhere else they are things at honest
+    // distances. The lens: a 3:2 viewport sees the whole frame at 55°;
+    // wider ones see it through a narrower lens so it always covers. The
+    // seat looks at y −1.77: that puts the world's horizon a quarter of
+    // the way down the frame, just above the painting's own far
+    // waterline, so every row of water lies on the ground — a lying
+    // plate cannot show a row that is above the horizon.
+    composition: { frame: [1536, 1024], fov: 55 },
     plates: [
-      { id: 'sky', z: -170, width: 620, height: 340, baseY: -90 },
-      // The park, in the reference's layers (LEDGER session 10), every
-      // one generated on white and keyed. The far shore: the treeline
-      // and the bandshell across the water as one strip, its foot just
-      // under the waterline. It keeps the canopy's id — the elms that
-      // grow through a lifetime and count its years are these. 1536 × 232.
+      // The whole-frame layers cut from the painting with its people
+      // painted out: the sky and the far shore stand at the back, the
+      // water and the ground lie flat from their nearest row to their
+      // furthest, and the elms we sit under stand just ahead of the seat
+      // and go with it. The ids are the drawn world's, kept: the far
+      // shore is the canopy, the water the far bank, the ground the near
+      // bank, so the thermal reads the grass as the grass it is. A plate
+      // with a ref derives its size and place; the zeros are ignored.
+      { id: 'sky', z: -170, ref: [0, 0, 1536, 320], width: 0, height: 0, baseY: 0, images: { '*': 'plates/scene-04/ref/sky.webp' } },
+      // The far shore stands where the painting's water ends: through the
+      // seat's lens the far waterline lies about fifty units out.
+      { id: 'canopy', z: -52, ref: [0, 120, 1536, 200], width: 0, height: 0, baseY: 0, shade: 0.12, images: { '*': 'plates/scene-04/ref/far-shore.webp' } },
+      { id: 'far-bank', z: -52, lay: true, ref: [0, 260, 1536, 360], width: 0, height: 0, baseY: 0, shade: 0.08, images: { '*': 'plates/scene-04/ref/water.webp' } },
+      { id: 'near-bank', z: 4, lay: true, ref: [0, 280, 1536, 744], width: 0, height: 0, baseY: 0, shade: 0.1, images: { '*': 'plates/scene-04/ref/ground.webp' } },
+      // Just behind the bicycle that leans on the trunk (its feet put it
+      // at about 11.5) and the three nearest people, ahead of everyone else.
+      { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { '*': 'plates/scene-04/ref/trees.webp' } },
+      // The nearest people, each one its own plate at its own distance, redrawn from the painting and fitted into its box there. All August: there for the second and gone once the year turns.
       {
-        id: 'canopy',
-        z: -90,
-        width: 290,
-        height: 47.6,
-        baseY: -1,
-        shade: 0.12,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/park/far-shore-late-summer.webp',
-          AUTUMN: 'plates/scene-04/park/far-shore-autumn.webp',
-          WINTER: 'plates/scene-04/park/far-shore-winter.webp',
-          SPRING: 'plates/scene-04/park/far-shore-spring.webp',
-        },
-      },
-      // The near shore: the sea wall and the shrubs along the path, one
-      // short band tiled along the water's edge. Keeps the far bank's id.
-      {
-        id: 'far-bank',
-        z: 4,
-        width: 96,
-        height: 1.06,
-        baseY: -0.1,
-        shade: 0.08,
-        lip: 0.42,
-        // A stone wall is the same wall all year.
-        images: { '*': 'plates/scene-04/park/shoreline.webp' },
-        imageRepeat: 12,
-      },
-      // The lawn: the ground itself, from the wall back past the seat,
-      // its tile mirrored across it. Keeps the near bank's id; the
-      // thermal reads it as the grass it is.
-      {
-        id: 'near-bank',
-        z: 4,
-        width: 200,
-        height: 40,
-        baseY: 0,
-        shade: 0.1,
-        ground: { depth: 40, repeat: [32, 6.5] },
-        images: {
-          'LATE SUMMER': 'plates/scene-04/park/lawn-late-summer.webp',
-          AUTUMN: 'plates/scene-04/park/lawn-autumn.webp',
-          WINTER: 'plates/scene-04/park/lawn-winter.webp',
-          SPRING: 'plates/scene-04/park/lawn-spring.webp',
-        },
-      },
-      // The nearest people: the couple, the reader, the man with his dog,
-      // on their blanket just ahead of the seat, cropped by the frame's
-      // foot. An August cutout, as the bench was: there for the second
-      // and gone once the year turns. 1526 × 556.
-      {
-        id: 'foreground',
-        x: 0.3,
+        id: 'reader',
         z: 12,
-        width: 5.2,
-        height: 1.9,
-        baseY: -0.9,
+        ref: [0, 640, 420, 293],
+        feet: true,
+        fit: 'w',
+        width: 0,
+        height: 0,
+        baseY: 0,
         shade: 0.1,
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1.06, edge: 0.04 },
         ],
-        images: { '*': 'plates/scene-04/park/foreground.webp' },
+        images: { '*': 'plates/scene-04/ref/reader.webp' },
       },
-      // The elms we sit under: two trunks at the frame's edges and their
-      // canopy across its top, a card just ahead of the camera. It goes
-      // with the seat: the rise leaves it below and the lifetime never
-      // has it. 1536 × 1024.
       {
-        id: 'trees',
-        z: 13.5,
-        width: 6.4,
-        height: 4.27,
-        // High enough that only the canopy's fringe hangs into the top
-        // of the frame; the trunks run out of its foot.
-        baseY: 0.6,
-        shade: 0.08,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/park/trees-late-summer.webp',
-          AUTUMN: 'plates/scene-04/park/trees-autumn.webp',
-          WINTER: 'plates/scene-04/park/trees-winter.webp',
-          SPRING: 'plates/scene-04/park/trees-spring.webp',
-        },
+        id: 'couple',
+        z: 12,
+        ref: [375, 600, 530, 335],
+        feet: true,
+        fit: 'w',
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/couple.webp' },
+      },
+      {
+        id: 'man-dog',
+        z: 12,
+        ref: [960, 680, 490, 320],
+        feet: true,
+        fit: 'w',
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/man-dog.webp' },
+      },
+      {
+        id: 'bicycle',
+        z: 12,
+        ref: [0, 505, 205, 250],
+        feet: true,
+        fit: 'h',
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/bicycle.webp' },
+      },
+      {
+        id: 'sitters-lawn',
+        z: 12,
+        ref: [585, 462, 225, 138],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/sitters-lawn.webp' },
+      },
+      {
+        id: 'straw-hat',
+        z: 12,
+        ref: [800, 420, 300, 295],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/straw-hat.webp' },
+      },
+      {
+        id: 'lying-man',
+        z: 12,
+        ref: [1080, 510, 190, 100],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/lying-man.webp' },
+      },
+      {
+        id: 'family',
+        z: 12,
+        ref: [1225, 505, 305, 220],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/family.webp' },
+      },
+      {
+        id: 'chairs',
+        z: 12,
+        ref: [1300, 400, 236, 130],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/chairs.webp' },
+      },
+      // On the path and at the water's edge.
+      {
+        id: 'jogger',
+        z: 12,
+        ref: [160, 400, 100, 205],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/jogger.webp' },
+      },
+      {
+        id: 'edge-family',
+        z: 12,
+        ref: [430, 398, 130, 165],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/edge-family.webp' },
+      },
+      {
+        id: 'wall-group',
+        z: 12,
+        ref: [600, 398, 135, 112],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/wall-group.webp' },
+      },
+      {
+        id: 'standing-group',
+        z: 12,
+        ref: [762, 345, 145, 155],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/standing-group.webp' },
+      },
+      {
+        id: 'dog-walkers',
+        z: 12,
+        ref: [1075, 355, 220, 140],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/dog-walkers.webp' },
+      },
+      {
+        id: 'backpack-walker',
+        z: 12,
+        ref: [1290, 325, 130, 120],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/backpack-walker.webp' },
+      },
+      {
+        id: 'far-right',
+        z: 12,
+        ref: [1425, 325, 111, 75],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/far-right.webp' },
+      },
+      // On the water, their feet the waterline: with the horizon a
+      // quarter of the way down the frame every hull's row is well below
+      // it, and the water's depth places them. The z is the fallback.
+      {
+        id: 'sailboat',
+        z: -40,
+        ref: [225, 238, 100, 125],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/sailboat.webp' },
+      },
+      {
+        id: 'sails-mid',
+        z: -110,
+        ref: [535, 252, 75, 60],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/sails-mid.webp' },
+      },
+      {
+        id: 'sailboat-right',
+        z: -80,
+        ref: [695, 252, 65, 85],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/sailboat-right.webp' },
+      },
+      {
+        id: 'sails-far',
+        z: -140,
+        ref: [1120, 305, 90, 32],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/ref/sails-far.webp' },
       },
     ],
     figures: [
-      // Who is on the lawn: two sheets of nine, each group placed at most
-      // once and spaced so the lawn is company, not a crowd; the second
-      // sheet is Minneapolis without saying so. A sheet is cut at one
-      // scale, so `size` is the world size of a tile — the largest group
-      // fills it and the rest keep their drawn proportions — and depth
-      // does the rest; no placement has a size of its own. The couple and the reader
-      // of the first sheet are the foreground's own and are not placed.
-      {
-        id: 'sitters',
-        atlas: { image: 'plates/scene-04/park/sitters.webp', cols: 3, rows: 6, count: 18 },
-        size: 2.7,
-        baseY: 0,
-        life: { breath: 0.012, sway: 0.5 },
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        places: [
-          { id: 'family', cell: 1, x: 7.2, z: 6.6 },
-          { id: 'man-dog', cell: 4, x: -6.4, z: 6.8 },
-          { id: 'chair', cell: 6, x: -9.2, z: 5.6 },
-          { id: 'lying', cell: 8, x: 4.0, z: 6.2 },
-          { id: 'somali-family', cell: 9, x: -4.6, z: 9.2 },
-          { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6 },
-          { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4 },
-          { id: 'grandmother', cell: 13, x: -1.6, z: 6.4 },
-          { id: 'paddle', cell: 16, x: -4.8, z: 5.3 },
-          { id: 'growler', cell: 17, x: -13, z: 9.8 },
-        ],
-      },
-      // Who is passing: on the path along the wall, each at their own
-      // pace, wrapping beyond the frame's edges.
-      {
-        id: 'movers',
-        atlas: { image: 'plates/scene-04/park/movers.webp', cols: 6, rows: 4, count: 24, frames: 2 },
-        size: 2.6,
-        baseY: 0,
-        walk: { from: -34, to: 34 },
-        life: { sway: 0.25, gait: true },
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        places: [
-          { id: 'jogger', cell: 0, x: -20, z: 4.7, speed: 2.6 },
-          { id: 'woman', cell: 1, x: 8, z: 4.8, speed: -1.25 },
-          { id: 'man', cell: 2, x: 24, z: 4.7, speed: 1.4 },
-          { id: 'cyclist', cell: 3, x: -30, z: 4.6, speed: 4.4, ride: true },
-          { id: 'family', cell: 4, x: -4, z: 4.9, speed: -0.9 },
-          { id: 'stroller', cell: 5, x: 16, z: 4.8, speed: 1.1 },
-          { id: 'dog-walker', cell: 6, x: 30, z: 4.7, speed: 1.3 },
-          { id: 'child', cell: 7, x: -12, z: 4.9, speed: 2.2 },
-          { id: 'runner', cell: 8, x: 2, z: 4.6, speed: -2.4 },
-          { id: 'skater', cell: 9, x: -26, z: 4.8, speed: 3.2, ride: true },
-          { id: 'small-dog', cell: 10, x: 20, z: 4.9, speed: -0.9 },
-          { id: 'bike-walker', cell: 11, x: -18, z: 4.7, speed: 1.2 },
-        ],
-      },
-      // The boats: sails across the lake, drifting. Not there in the ice.
-      {
-        id: 'boats',
-        atlas: { image: 'plates/scene-04/park/boats.webp', cols: 3, rows: 3, count: 9 },
-        size: 6,
-        baseY: -0.3,
-        walk: { from: -70, to: 70 },
-        life: { heel: 2, breath: 0.006 },
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        places: [
-          { id: 'boat-a', cell: 0, x: -30, z: -60, speed: 0.5 },
-          { id: 'boat-b', cell: 4, x: 10, z: -44, speed: -0.4 },
-          { id: 'boat-c', cell: 7, x: 40, z: -70, speed: 0.35 },
-          { id: 'boat-d', cell: 2, x: -55, z: -30, speed: 0.55 },
-          { id: 'boat-e', cell: 5, x: 25, z: -34, speed: -0.6 },
-          { id: 'boat-f', cell: 8, x: 60, z: -52, speed: -0.45 },
-        ],
-      },
       // ---- the crowd through the year (LEDGER 10d). Late October: the
       // few who stay on the lawn in the cold, and the path's traffic in
       // jackets; a man raking at the path's edge does not move.
@@ -1672,8 +1878,8 @@ export const scenes: Scene[] = [
     // and then the interface itself.
     hold: { of: 'scene-04-year', at: 0 },
     camera: {
-      from: { y: 2.5, z: 16, lookY: 0.35 },
-      to: { y: 2.5, z: 16, lookY: 0.35 },
+      from: { y: 2.5, z: 16, lookY: -1.77 },
+      to: { y: 2.5, z: 16, lookY: -1.77 },
     },
     instruments: [
       { kind: 'ring', from: 0, to: 0.18, strength: 0.5 },

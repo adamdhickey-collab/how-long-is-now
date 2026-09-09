@@ -123,6 +123,9 @@ function resize() {
   if (w <= 0 || h <= 0) return;
   renderer.setSize(w, h);
   camera.aspect = w / h;
+  // The park is laid out from a painting; a viewport wider than its
+  // frame sees the frame through a narrower lens, so it always covers.
+  camera.fov = year.fovFor(w / h);
   camera.updateProjectionMatrix();
   // The runway is sized in vh, so a resize moves the piece under the
   // visitor's scroll; read where they are now rather than wait for the

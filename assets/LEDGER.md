@@ -941,3 +941,113 @@ And the roots withdrawn from the lifetime, under the rule now written
 into DIRECTION.md: an instrument has to change how long something
 feels, not only show what is there. The reader stays built; one line
 in the manifest brings it back.
+
+## Session 18 · the painting, taken apart · 2026-09-09
+
+Pointillism, second version, on branch `pointillist-v2` (from main).
+The brief: the opening scene is to look exactly like the reference
+painting (`assets/raw/park/reference.png`, 1536 × 1024), built from
+individually generated elements that sit where the painting has them,
+to be animated later.
+
+### 18a · what the model will and will not do
+
+A probe asked for the painting again "keeping only the couple exactly
+where they are, everything else white". The model isolates an element
+beautifully and will not hold its position: the couple came back four
+times larger and centred; the far shore grew an invented lawn. So
+position and size are measured here, in the painting's own pixels, and
+the model does only what it is good at. `scripts/reference-layers.mjs`
+holds the measurements: twenty elements, each a box `[x, y, w, h]` in
+the painting, from the reader at the left to the two far sails.
+
+### 18b · the elements
+
+Each element is a crop of the painting around its box, sent as the
+image being edited with "redraw only <the element>, larger, complete,
+on pure white — same pose, dots and colours" (`node scripts/generate.mjs
+--taken-apart --quality high`; the crop and any mask are built by the
+generator, which grew `crop`, `src`, `maskBoxes` and `noRef` for it).
+Twenty came back at four times the painting's detail, whole where the
+frame had cut them, hands and feet drawn: the reader, the couple with
+their basket and bottle, the man and his dog, the bicycle, the sitters
+across the lawn in six groups, the jogger, the families and pairs at
+the water's edge, the walkers, and four boats. Keyed and trimmed by the
+`cutout` recipe into `public/plates/scene-04/ref/`.
+
+### 18c · the ground
+
+Two whole-frame edits with masks: `quiet-park`, the painting with every
+person, boat and thing painted out (a mask of all the element boxes),
+which came back faithful and clean; and `empty-view`, the quiet park
+with the framing trees painted out too — which did not: the model
+repainted the whole picture, flattened the far shore and dropped the
+bandshell. So the quiet park is the master for every ground layer and
+the empty view fills only what is behind the trees.
+`scripts/reference-bands.mjs` cuts five whole-frame bands from it —
+sky, far shore, water, ground, trees — finding the treeline's top by
+lightness and the water's two edges by blueness, column by column. The
+tree matte is a colour key (leaves against pale sky, trunks against
+green and blue inside their own columns), then grown by four pixels so
+the trees carry a ring of their own background: no seam from the seat,
+a faint ghost only once the eye has risen and the trees are already
+fading. Leaves that hang in front of the far treeline are both green
+and stay baked into the far shore — a better matte is owed before the
+year's rise is judged. Each band runs on opaque under the band drawn
+over it, since two feathered half-alphas never sum to solid.
+
+### 18d · the composition
+
+`src/scenes/park-composition.ts`, new: a plate with a `ref` box is
+placed by a fixed eye — the seat's camera, seeing the painting's frame
+through the composition's field of view. The box is sampled on a grid,
+every sample unprojected onto the plate's plane (a wall at z, or the
+ground at baseY for `lay`; `feet` finds a standing plate's z where its
+bottom row meets the ground), and the image mapped by the same pixels.
+From the seat the plates stack back into the painting to the pixel;
+from anywhere else they are things at honest distances. The seat looks
+at y −1.77 so the world's horizon sits a quarter of the way down the
+frame, just above the far waterline: a lying plate cannot show a row
+that is above the horizon, and the first attempt (horizon at 0.295)
+left black holes along the far shore's foot where the water's rows
+were. The lens narrows on viewports wider than 3:2 so the frame always
+covers (`fovFor`, applied in main's resize). The year scene hands its
+sky, far shore, water and lawn to the painting's plates, puts the
+lake's shader under the water image (the wind's streamlines are owed a
+new home on the image), and leaves the procedural cloud deck off.
+
+Verified in the dev server by reading the WebGL canvas back and
+posting it to a local receiver, then blending the frame 50/50 over the
+reference: every figure, boat and blanket lands on itself. The far
+treeline sits a few pixels higher than the reference's, the quiet
+park's own drift, and the sky has fewer clouds. Owed next: the other
+seasons of every band and the winter trees; the flow instrument on the
+water image; a proper tree matte; then the animation the elements were
+cut for — walkers, sails, the dog.
+
+### 18e · the cut, refined
+
+Adam's zooms of the first frame found white pockets between arms and
+bodies and under the chairs, pale blue-white ground under every pair
+of feet, a stray mark by the jogger, a smear over the chairs, a trunk
+riding along with the bicycle. `keyWhite` grew four rules for it:
+paper the flood cannot reach — any run of forty paper pixels — is
+paper (the boats opt out, a sail being an enclosed white shape too,
+and read paper strictly as their own border's colour, pinholes
+closed); in the lowest sixth of what is drawn, pale, cool, evenly pale
+pixels reachable from the background are the model's contact shadow,
+not the figure, with a three-pixel creep for the sliver against the
+shoes; a piece under 0.15 % of the largest is a speck; and the paper's
+blend is unmixed two pixels in, not one, with the edge's colour bled
+under the clear pixels so filtering never darkens it. The cutouts
+keep lossless alpha. The smear over the chairs was the tree matte:
+blue shadow dots on the grass inside a trunk's column had read as
+trunk and were drawn in front of the sitters; a trunk is warm now.
+The bicycle was generated again without its tree. The far shore's foot
+had diagonal streaks: the water's far edge, read column by column,
+had jumped up into the treeline's blue shadow dots in places, and
+those rows of lying water, almost at the horizon, drew as long
+slivers. The far waterline is one straight line now, held to the
+width's median; the far shore stands at z −52, where that line lies
+through the seat's lens, and the boats are back on their feet.
+Verified in the frame at the seat, zoomed where the flaws were.
