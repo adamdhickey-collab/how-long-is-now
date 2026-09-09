@@ -701,3 +701,23 @@ mirrored.
 The fragments are keyed now (they were drawn on white, not with
 alpha) and cut at one scale like the park's sheets. Both clocks of the
 corridor and the remembered half hung with fragments were looked at.
+
+
+## Session 12 · the memory sheets in dots · 2026-09-08
+
+Scene 09's five sheets in the park's pointillist style through the
+generator (`--memory`, landing under `assets/raw/scene-09`), with a
+preamble of their own: a 3 by 3 grid of nine square pictures filling
+their cells, which the squares recipe cuts by thirds.
+
+| # | File | What | Result |
+| --- | --- | --- | --- |
+| 1 | `days-same-v3.png` | Nine near-identical desks at 4:17, a plant added | **Accept.** No white gaps drawn between the cells; the inset cut does not need them. |
+| 2–5 | `days-vivid-a-v2.png` … `days-vivid-d-v2.png` | The thirty vivid days, sessions 8's subjects | **Accept**, all four first time, in order. |
+
+Thirty dotted squares compress badly: the vivid atlas fell to the
+quality ladder's foot and was still over the 700 KB budget, so a plate
+may now declare its own `budgetKb`; the vivid month's is 1100 and it
+weighs 995 KB at q62. It loads after the opening frame, so the first
+frame pays nothing for it. With this every plate in the piece is in
+one style.

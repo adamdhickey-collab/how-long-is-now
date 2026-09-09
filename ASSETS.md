@@ -13,8 +13,9 @@ generated through the image model's API rather than the browser:
 with the reference attached and writes the layers to
 `assets/raw/scene-04/park/`; `npm run plates` keys them off their white
 and cuts them. The paragraphs below record how the earlier plates were
-made and remain true of the memory sheets; the corridor followed the park
-into the dots on 2026-09-08 (session 11, `--corridor`).
+made; the corridor and the memory sheets followed the park into the dots
+on 2026-09-08 (sessions 11 and 12, `--corridor` and `--memory`), so every
+plate in the piece is now in one style.
 
 Earlier status: pipeline proven, 2026-09-05; plates restyled, 2026-09-06.
 Session 1 generated its six images (seven with one correction); findings

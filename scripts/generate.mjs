@@ -12,6 +12,7 @@
  *   node scripts/generate.mjs --seasons        the other three seasons
  *   node scripts/generate.mjs --crowd          the crowd through the year
  *   node scripts/generate.mjs --corridor       scene 08's corridor and fragments
+ *   node scripts/generate.mjs --memory         scene 09's memory sheets
  *   node scripts/generate.mjs --dry           print what would be sent
  *   node scripts/generate.mjs --ref <file>    another reference image
  *   node scripts/generate.mjs --quality medium
@@ -20,7 +21,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers } from './park-layers.mjs';
+import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers, memoryLayers } from './park-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -39,6 +40,7 @@ const only = flag('--only')?.split(',').map((s) => s.trim()).filter(Boolean);
 const seasons = args.includes('--seasons');
 const crowd = args.includes('--crowd');
 const corridor = args.includes('--corridor');
+const memory = args.includes('--memory');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -124,7 +126,7 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const pool = corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
+  const pool = memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
   const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
     console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);

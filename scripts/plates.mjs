@@ -195,10 +195,13 @@ const SCENES = {
     },
   ],
   'scene-09': [
-    { id: 'days-same', raw: ['days-same-v2.png'], recipe: 'squares' },
+    { id: 'days-same', raw: ['days-same-v3.png'], recipe: 'squares' },
     {
       id: 'days-vivid',
-      raw: ['days-vivid-a-v1.png', 'days-vivid-b-v1.png', 'days-vivid-c-v1.png', 'days-vivid-d-v1.png'],
+      // Thirty dotted squares compress badly; this one atlas may weigh
+      // more than the budget rather than go to the ladder's foot.
+      budgetKb: 1100,
+      raw: ['days-vivid-a-v2.png', 'days-vivid-b-v2.png', 'days-vivid-c-v2.png', 'days-vivid-d-v2.png'],
       recipe: 'squares',
       count: 30,
     },
@@ -659,13 +662,13 @@ const exists = (f) =>
     () => false,
   );
 
-async function encode(pipeline, out) {
+async function encode(pipeline, out, budget = BUDGET_KB) {
   // Step quality down until the file fits the budget.
   const ladder = [82, 72, 62, 54, 46];
   for (const quality of ladder) {
     await pipeline.clone().webp({ quality, alphaQuality: 80, effort: 6 }).toFile(out);
     const kb = (await stat(out)).size / 1024;
-    if (kb <= BUDGET_KB) return { kb, quality };
+    if (kb <= budget) return { kb, quality };
   }
   const kb = (await stat(out)).size / 1024;
   return { kb, quality: ladder[ladder.length - 1], over: true };
@@ -703,7 +706,7 @@ async function run() {
       if (p.key) srcs = await Promise.all(srcs.map(keyWhite));
       const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
-      const { kb, quality, over } = await encode(pipeline, out);
+      const { kb, quality, over } = await encode(pipeline, out, p.budgetKb);
       console.log(
         `${out}  ${meta.info.width}×${meta.info.height}  ${kb.toFixed(0)} KB @q${quality}${over ? '  OVER BUDGET' : ''}${
           p.ext && !ext ? '  (flanks tiled: no ' + p.ext + ')' : ''

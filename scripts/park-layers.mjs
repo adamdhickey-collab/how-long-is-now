@@ -208,3 +208,35 @@ export const corridorLayers = [
     prompt: `Nine separate small pictures in a 3 by 3 grid on flat pure white, each one thing seen close and alone, in muted warm colours, with nothing beneath or behind it and white between the cells, no grid lines: two hands around a warm mug; an open doorway with light coming through; a ring of keys; a small bird on a windowsill; a wristwatch with its strap undone; a folded note; reading glasses on a closed book; a potted plant on a sill; a torn ticket stub.`,
   },
 ];
+
+/**
+ * Scene 09's memory sheets in the same dots (LEDGER session 12): nine
+ * square pictures to a sheet in a 3 by 3 grid with thin white gaps,
+ * each filling its cell — the recipe cuts them by thirds. Run with
+ * `--memory`; they land under assets/raw/scene-09.
+ */
+const SHEET_STYLE = `The attached image is the style reference: pointillist, small dots of pure colour, built entirely from dots. The image you make is a neat 3 by 3 grid of NINE separate square pictures with thin white gaps between them and no other border or text, every picture filling its square edge to edge in the same dots.`;
+
+const vividDays = [
+  'a new city at dawn from a hotel window; a train window with fields going by; a name learned across a cafe table; a wrong turn that ends at a river; rain all day, seen from inside; a first swim in cold water; hard news read on a phone; a long walk along a ridge; a borrowed kitchen',
+  'fog with one lamp post; an argument on a park bench; a market stall of fruit; a first try on a bicycle; hail on a car roof; an old friend laughing; keys lost under a sofa; high wind on a bridge; a letter opened at 4:17',
+  'a night bus; a stray dog on a road; heat on a shuttered street; the wrong train; someone singing in a stairwell; thunder over rooftops; a door held open; a word written on a hand; a flood warning on a river',
+  'a long dinner with candles; snow on blossom; home at the desk again; a ferry deck; a power cut with a candle; a bicycle lying in grass; a storm from a rooftop; an empty swimming pool; a hand on a train door',
+];
+
+export const memoryLayers = [
+  {
+    id: 'days-same',
+    dir: 'scene-09',
+    size: SQUARE,
+    preamble: SHEET_STYLE,
+    prompt: `All nine pictures show the SAME DAY at the same desk: a desk by a window, a mug, a closed laptop, a lamp, a small plant, the clock reading 4:17, the same flat afternoon light. Vary almost nothing between them — the mug an inch to the left, the blind a little lower, the chair pushed in, a pen moved — so they are hard to tell apart.`,
+  },
+  ...vividDays.map((days, i) => ({
+    id: `days-vivid-${'abcd'[i]}`,
+    dir: 'scene-09',
+    size: SQUARE,
+    preamble: SHEET_STYLE,
+    prompt: `Nine different days of one vivid month, in order, each a moment seen by the person living it, muted but real colour: ${days}.`,
+  })),
+];
