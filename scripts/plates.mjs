@@ -147,10 +147,10 @@ const PARK = {
 
 const SCENES = {
   'scene-04/park': [
-    { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-v1.png', recipe: 'strip', key: true },
-    { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v1.png', recipe: 'strip', key: true },
-    { id: 'far-shore', variant: 'winter', raw: 'far-shore-winter-v1.png', recipe: 'strip', key: true },
-    { id: 'far-shore', variant: 'spring', raw: 'far-shore-spring-v1.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-thin-v1.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v2.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'winter', raw: 'far-shore-winter-v2.png', recipe: 'strip', key: true },
+    { id: 'far-shore', variant: 'spring', raw: 'far-shore-spring-v2.png', recipe: 'strip', key: true },
     // One wall for all four seasons: every seasonal edit of it grew
     // trees above the wall, and a stone wall does not change anyway.
     { id: 'shoreline', raw: 'shoreline-v3.png', recipe: 'strip', key: true },

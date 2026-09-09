@@ -1008,10 +1008,10 @@ export const scenes: Scene[] = [
           { from: 0.93, to: 1, edge: 0.04 },
         ],
         places: [
-          { id: 'family', cell: 1, x: 5.2, z: 8.6 },
+          { id: 'family', cell: 1, x: 7.2, z: 6.6 },
           { id: 'man-dog', cell: 4, x: -6.4, z: 6.8 },
           { id: 'chair', cell: 6, x: -9.2, z: 5.6 },
-          { id: 'lying', cell: 8, x: 1.6, z: 10.4 },
+          { id: 'lying', cell: 8, x: 3.2, z: 7.6 },
           { id: 'somali-family', cell: 9, x: -4.6, z: 9.2 },
           { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6 },
           { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4 },

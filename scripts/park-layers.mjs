@@ -21,6 +21,12 @@ export const layers = [
     prompt: `Layer 1 of the scene, the far shore: one wide strip across the middle of the image. The treeline on the far side of Lake Harriet with the bandshell at centre-right and the small crowd on its lawn, seen from across the water at eye level, late-summer afternoon light from the left. Draw only the shore, the trees and the bandshell. Everything above the treeline and everything below the shoreline is flat pure white. No water, no sky, no boats.`,
   },
   {
+    id: 'far-shore-thin',
+    size: LANDSCAPE,
+    refs: ['assets/raw/scene-04/park/far-shore-v1.png'],
+    prompt: `The first image is the far shore layer; the second is the style reference. Redraw the first image exactly — the same treeline, the same bandshell in the same place, the same flat pure white above and below — but with the crowd thinned: a few dozen people scattered loosely on the lawn in front of the bandshell with open grass between them, the bandshell's benches mostly empty, and only a handful of figures along the rest of the shore. Keep the pointillist dots, palette and dot size.`,
+  },
+  {
     id: 'boats',
     size: LANDSCAPE,
     prompt: `Layer 2, the boats: a 3 by 3 grid of nine separate small sailboats on flat pure white, white sails catching late-summer light, seen from across the water at eye level, a few with tiny figures aboard, each boat alone in its cell with no water drawn. Sailboats only: nothing on this lake has a motor. White between the cells, no grid lines.`,
@@ -80,7 +86,7 @@ const SEASONS = {
 };
 
 const TURNING = [
-  { id: 'far-shore', from: 'far-shore-v1.png', size: LANDSCAPE, keep: 'the treeline, the bandshell and its crowd exactly where they are, and the flat pure white above and below' },
+  { id: 'far-shore', from: 'far-shore-thin-v1.png', size: LANDSCAPE, keep: 'the treeline, the bandshell and its crowd exactly where they are, and the flat pure white above and below' },
   { id: 'shoreline', from: 'shoreline-v3.png', size: LANDSCAPE, keep: 'the wall and its top edge exactly where they are, the path above it just as open and low — no shrubs, no trees, nothing taller than the small tufts, nothing on the ground in front of the wall — and the flat pure white above and below' },
   { id: 'lawn', from: 'lawn-v1.png', size: SQUARE, keep: 'it as the ground only, seen from directly above and filled edge to edge — grass, or what now covers the grass, lit evenly, with no trees, no branches, no trunks, no shadows of anything, no objects and no white — still tiling seamlessly' },
   { id: 'trees', from: 'trees-v2.png', size: LANDSCAPE, keep: 'both trunks and every branch exactly where they are, the canopy just as open with the flat white showing through it, and the flat pure white between the trunks below the canopy' },
