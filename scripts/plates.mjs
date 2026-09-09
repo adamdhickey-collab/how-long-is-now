@@ -354,10 +354,11 @@ async function corridorBay(file, _ext, p) {
 
 /**
  * A cell of a sheet as its own RGBA buffer, with the blobs that are not
- * its own cleared: connected regions of alpha that touch the cell's top
- * or bottom edge and are small beside the largest are a neighbour's
- * overflow, and go. A group's own separate things — a bottle, a paddle,
- * a gosling — sit inside the cell and stay.
+ * its own cleared: connected regions of alpha that touch any edge of the
+ * cell and are small beside the largest are a neighbour's overflow —
+ * chair legs from above, a shoulder from the side — and go. A group's
+ * own separate things — a bottle, a paddle, a gosling — sit inside the
+ * cell and stay.
  */
 function ownBlobs(data, width, x0, y0, w, h) {
   const cell = Buffer.alloc(w * h * 4);
@@ -374,14 +375,13 @@ function ownBlobs(data, width, x0, y0, w, h) {
     let tail = 0;
     queue[tail++] = i;
     label[i] = id;
-    const blob = { id, area: 0, top: false, bottom: false };
+    const blob = { id, area: 0, edge: false };
     while (head < tail) {
       const j = queue[head++];
       blob.area++;
       const x = j % w;
       const y = (j - x) / w;
-      if (y === 0) blob.top = true;
-      if (y === h - 1) blob.bottom = true;
+      if (y === 0 || y === h - 1 || x === 0 || x === w - 1) blob.edge = true;
       const near = [];
       if (x > 0) near.push(j - 1);
       if (x < w - 1) near.push(j + 1);
@@ -397,7 +397,7 @@ function ownBlobs(data, width, x0, y0, w, h) {
     blobs.push(blob);
   }
   const largest = Math.max(0, ...blobs.map((b) => b.area));
-  const drop = new Set(blobs.filter((b) => (b.top || b.bottom) && b.area < largest * 0.3).map((b) => b.id));
+  const drop = new Set(blobs.filter((b) => b.edge && b.area < largest * 0.3).map((b) => b.id));
   if (drop.size) {
     for (let i = 0; i < w * h; i++) if (drop.has(label[i])) cell[i * 4 + 3] = 0;
   }

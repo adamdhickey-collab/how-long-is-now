@@ -1016,7 +1016,7 @@ export const scenes: Scene[] = [
           { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6 },
           { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4 },
           { id: 'grandmother', cell: 13, x: -1.6, z: 6.4 },
-          { id: 'paddle', cell: 16, x: 3.4, z: 5.6 },
+          { id: 'paddle', cell: 16, x: -4.8, z: 5.3 },
           { id: 'growler', cell: 17, x: -13, z: 9.8 },
         ],
       },

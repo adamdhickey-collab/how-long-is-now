@@ -620,3 +620,8 @@ sheet, with no placement having a size of its own. And a quad sampled
 its texture rectangle to the tile's very edge, where a texel is half
 the neighbour's, which showed as a sliver of a neighbour down a quad's
 side; the rectangle is now pulled three percent inside the tile.
+
+Overflow from the side too: the red shirt of the group in the cell to
+the lying man's left ran sideways into his cell and rode along as a
+needle down his tile's edge. `ownBlobs` now clears small blobs touching
+any edge of a cell, not only the top and bottom.
