@@ -46,6 +46,11 @@ August afternoon. In the corner:
 Scroll to leave now.
 ```
 
+The invitation is not there at first. It arrives only after you have sat in
+the second for a while — after the blink, after the first thing is noticed
+— so the first instruction the piece gives is not one that makes you miss
+the first thing it does.
+
 ### The outward journey
 
 - **1 SECOND — NOW.** Almost nothing happens. A leaf moves. Someone blinks.
@@ -60,10 +65,11 @@ Scroll to leave now.
   empty, return. Paths appear in snow. The place becomes a time-lapse
   organism — evoking *Powers of Ten* without copying its literal spatial
   zoom.
-- **10 YEARS → A LIFETIME.** People stop being continuous characters and
-  become *appearances*. Children grow. Buildings change. Trees become
-  enormous. The starting afternoon becomes one infinitesimal coordinate
-  buried inside an enormous quantity of lived experience.
+
+That is the whole of the outward journey. It is the setup, and it is
+familiar — the scale ladder everyone has climbed before. It goes only as
+far as the year, because what the piece has to say is not about scale, and
+the sooner it turns to that the better.
 
 ### The turn
 
@@ -71,17 +77,8 @@ Everything stops. Black screen. One line:
 
 > *But that isn't how you experienced it.*
 
-And the camera falls — violently or very gently — all the way back into the
-original afternoon.
-
-### The inward journey
-
-Now the other direction. Ten minutes → one minute → ten seconds → one second
-→ fractions of a second. Instead of atoms, we descend into **attention**: a
-glance, a breath, a fragment of conversation, an eye movement, a remembered
-association, a sound suddenly noticed. The park resolves into layers of
-sensory information. The world is not getting physically smaller — we are
-resolving experience more finely.
+Nothing falls back into the afternoon. The black simply opens, and you are
+somewhere else: indoors, in a corridor.
 
 ### The reveal — two clocks (the centerpiece)
 
@@ -96,6 +93,21 @@ Then the label changes from **WHILE IT WAS HAPPENING** to **LOOKING BACK**
 nothing. The rich one opens into dozens of individual memory fragments.
 
 Same ten minutes. Different time.
+
+This is the argument, and it arrives less than halfway through, straight
+after the turn. Everything that follows is what you take back to the park
+now that you have seen it.
+
+### The inward journey
+
+Back at the bench, in the same second the piece opened on. The clock does
+not move. What moves is the division: one second → half → a quarter → a
+tenth → a hundredth. Instead of atoms, we descend into **attention**: a
+glance, a breath, a fragment of conversation, an eye movement, a remembered
+association, a sound suddenly noticed. The park resolves into layers of
+sensory information — the absorbed clock's state, found again outdoors. The
+world is not getting physically smaller; we are resolving experience more
+finely.
 
 ### Memory as a spatial material
 
@@ -113,6 +125,16 @@ thirty-day distance suddenly appears enormous.
 
 No infographic says NOVELTY = MORE MEMORIES. You experience the
 compression.
+
+### A lifetime
+
+Then the widest view the piece takes, and the last before the end: the park
+from above and behind, as eighty years pass over it. People stop being
+continuous characters and become *appearances*. Trees become enormous. The
+sun's yearly figure stacks into a band; an elm counts the years as rings.
+The starting afternoon becomes one infinitesimal coordinate buried inside
+an enormous quantity of lived experience — and, having walked the two
+corridors, you know that the quantity is not what it looks like from here.
 
 ### The ending
 
