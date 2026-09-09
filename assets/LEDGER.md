@@ -1051,3 +1051,54 @@ slivers. The far waterline is one straight line now, held to the
 width's median; the far shore stands at z −52, where that line lies
 through the seat's lens, and the boats are back on their feet.
 Verified in the frame at the seat, zoomed where the flaws were.
+
+### 18f · the second look
+
+More zooms: the man in the second camp chair gone above the seat, a
+small sitter's head cut flat, a hairline down the left trunk, the big
+sailboat's reflection cut square, and the far-right pair visible only
+through a slit. All but one were the tree matte. Its trunk columns had
+been read as "warm and not green", which took the sunlit path, the wall
+and the dry grass inside each column and drew them, in front of the
+sitters, as a block; a trunk is bark now — redder than the path and
+darker than the grass — in a column no wider than the trunk, and the
+right column ends above the small sitter the model drew high. The
+hairline was the matte's one-pixel feather: the ground under the trees
+is filled from the empty view by the same mask, and a soft edge shared
+by both let a quarter of the empty view through along the trunk; the
+matte is hard now, its ring hiding the edge from the seat. The
+reflection was the ground rule under the feet, which the boats now opt
+out of, as they opt out of pockets.
+
+### 18g · asked away
+
+Adam edited the crowd from the frame: the woman on the wall (the two
+children beside her stay, in a box of their own), the reader's black
+bag (the plate keeps its trim so she keeps her place), the three at the
+far right behind the trunks and the man lying back on the lawn (their
+plates stay cut, their declarations went), and the reader moved a
+little toward the bicycle — a box may run past the frame's edge. The
+standing man's head had been clipped by the generated image's top
+edge; drawn again with headroom. The right trunk's column ends above
+the shoulder of the man in the second chair. The boats read paper
+within twenty points of their border and their reflections ease away
+below the hull, so no white smear sits on the lake. `cutout` grew
+`keep` (a span of the width whose pieces stay), `drop` (a region whose
+pieces go, size held) and `fade`. The man with the backpack and the three beyond him went the same way.
+
+### 18h · the rise, looked at; the overlays, off
+
+With the seat frame settled, the rise was captured at seven points.
+Beyond the seat the painting's plates show what they are — one view
+projected from one eye: the ground and the water end at the frame's
+edges as a trapezoid over black, the sky under the canopy shows the
+blocks of the empty view's fill once the elms have faded, the summer
+bands sit under the winter crowd, and the survey, the ring, the radar
+and the sun's figure of eight lie over all of it in a hand the
+painting does not share. Adam asked for every overlay off, to be
+rebuilt for the new direction: scenes 01–05 and 07 declare no
+instruments, the year has no survey, the sun's trail is not drawn
+(`sun.trace: false`; the sun still moves and lights). He also asked
+that the people read as a time lapse — figures that come and go in
+different places and different seasons — rather than walkers
+animated in place. The plan for the rise is in PLAN.html.

@@ -164,7 +164,26 @@ const SCENES = {
       'reader', 'couple', 'man-dog', 'bicycle', 'sitters-lawn', 'straw-hat', 'lying-man', 'family', 'chairs',
       'jogger', 'edge-family', 'wall-group', 'standing-group', 'dog-walkers', 'backpack-walker', 'far-right',
       'sailboat', 'sails-mid', 'sailboat-right', 'sails-far',
-    ].map((id) => ({ id, raw: `${id}-v${{ couple: 2, bicycle: 2 }[id] ?? 1}.png`, recipe: 'cutout', key: true, alphaQuality: 100, pockets: !/sail/.test(id), strict: /sail/.test(id) })),
+    ].map((id) => ({
+      id,
+      raw: `${id}-v${{ couple: 2, bicycle: 2, 'standing-group': 2 }[id] ?? 1}.png`,
+      recipe: 'cutout',
+      key: true,
+      alphaQuality: 100,
+      // Pockets for the boats too, but only big ones: the paper under the
+      // boom goes, and a sail's bright patch, paper-pale for a few hundred
+      // pixels, stays (18g).
+      pockets: true,
+      pocketMin: /sail/.test(id) ? 6000 : undefined,
+      strict: /sail/.test(id),
+      ground: !/sail/.test(id),
+      // The woman on the wall was asked away (18g); the children stay.
+      keep: id === 'wall-group' ? [0.5, 1] : undefined,
+      // The reader's black bag, asked away (18g): the piece at the lower right.
+      drop: id === 'reader' ? [0.7, 0.6, 1, 1] : undefined,
+      // The boats' reflections ease away below the hull.
+      fade: /sail/.test(id) ? [0.62, 0.25] : undefined,
+    })),
   ],
   'scene-04/park': [
     { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-thin-v1.png', recipe: 'strip', key: true },
@@ -543,7 +562,7 @@ async function keyWhite(file, opts = {}) {
     for (let c = 0; c < 3; c++) P0[c] /= n;
   }
   const paper = opts.strict
-    ? (i) => Math.abs(data[i * 4] - P0[0]) <= 9 && Math.abs(data[i * 4 + 1] - P0[1]) <= 9 && Math.abs(data[i * 4 + 2] - P0[2]) <= 9
+    ? (i) => Math.abs(data[i * 4] - P0[0]) <= 20 && Math.abs(data[i * 4 + 1] - P0[1]) <= 20 && Math.abs(data[i * 4 + 2] - P0[2]) <= 20
     : (i) => {
         const r = data[i * 4];
         const g = data[i * 4 + 1];
@@ -607,7 +626,7 @@ async function keyWhite(file, opts = {}) {
         if (j >= w) step(j - w);
         if (j < (h - 1) * w) step(j + w);
       }
-      if (pocket.length >= 40) for (const j of pocket) { bg[j] = 1; queue[tail++] = j; }
+      if (pocket.length >= (opts.pocketMin ?? 40)) for (const j of pocket) { bg[j] = 1; queue[tail++] = j; }
     }
   }
   // The ground the model puts under the feet (session 18): asked for
@@ -615,7 +634,8 @@ async function keyWhite(file, opts = {}) {
   // shadow there. In the lowest sixth of what is drawn, pale, cool,
   // evenly pale pixels reachable from the background are ground, not
   // figure — feet are warm, shoes are dark, and a blanket is dots.
-  {
+  // A boat's reflection is pale and cool and under it: the boats opt out.
+  if (opts.ground !== false) {
     let top = h, bottom = -1;
     for (let i = 0; i < w * h; i++) if (!bg[i]) { const y = (i / w) | 0; if (y < top) top = y; if (y > bottom) bottom = y; }
     const bandTop = bottom - Math.round((bottom - top) * 0.17);
@@ -928,8 +948,78 @@ async function plain(file) {
   return sharp(file);
 }
 
-async function cutout(file) {
-  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+async function cutout(file, _ext, p = {}) {
+  let { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  // A plate may keep only the pieces whose centre falls in a span of its
+  // width (session 18: the woman on the wall, asked away; the two
+  // children beside her stay). Pieces are runs of touching pixels.
+  if (p.keep || p.drop) {
+    const { width: w, height: h } = info;
+    const label = new Int32Array(w * h).fill(-1);
+    const cx = [];
+    const stack = [];
+    for (let i = 0; i < w * h; i++) {
+      if (data[i * 4 + 3] === 0 || label[i] >= 0) continue;
+      const id = cx.length;
+      let sum = 0, sumY = 0, n = 0;
+      stack.length = 0;
+      stack.push(i);
+      label[i] = id;
+      while (stack.length) {
+        const j = stack.pop();
+        sum += j % w;
+        sumY += (j / w) | 0;
+        n++;
+        const x = j % w;
+        const step = (k) => { if (data[k * 4 + 3] !== 0 && label[k] < 0) { label[k] = id; stack.push(k); } };
+        if (x > 0) step(j - 1);
+        if (x < w - 1) step(j + 1);
+        if (j >= w) step(j - w);
+        if (j < (h - 1) * w) step(j + w);
+      }
+      cx.push([sum / n / w, sumY / n / h]);
+    }
+    const out = Buffer.from(data);
+    let dropped = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (label[i] < 0) continue;
+      const [c, cy] = cx[label[i]];
+      const gone = p.keep ? c < p.keep[0] || c > p.keep[1] : c >= p.drop[0] && cy >= p.drop[1] && c <= p.drop[2] && cy <= p.drop[3];
+      if (gone) { out[i * 4 + 3] = 0; out[i * 4] = out[i * 4 + 1] = out[i * 4 + 2] = 0; dropped++; }
+    }
+    console.log(`  ${p.keep ? `kept pieces centred in ${p.keep[0]}–${p.keep[1]} of the width` : `let go of pieces centred in [${p.drop}]`}; ${dropped} px`);
+    const keptFile = file.replace(/\.png$/, '.kept.png');
+    await sharp(out, { raw: { width: w, height: h, channels: 4 } }).png().toFile(keptFile);
+    // A dropped piece leaves the trim where it was, so the plate keeps
+    // its size and place in the box; a kept span is re-boxed by hand.
+    if (p.drop) {
+      const box = alphaBox(data, w, 0, 0, w, h);
+      const pad = CUTOUT.pad;
+      const left = Math.max(0, box.left - pad);
+      const top = Math.max(0, box.top - pad);
+      return sharp(keptFile).extract({ left, top, width: Math.min(w - left, box.width + pad * 2), height: Math.min(h - top, box.height + pad * 2) });
+    }
+    file = keptFile;
+    data = out;
+  }
+  // A reflection under a boat is pale dots on white paper, and cut out
+  // it reads as a white smear on the lake: below `fade[0]` of what is
+  // drawn the alpha eases down to `fade[1]` at the foot (18g).
+  if (p.fade) {
+    const { width: w, height: h } = info;
+    const box0 = alphaBox(data, w, 0, 0, w, h);
+    const out = Buffer.from(data);
+    const from = box0.top + box0.height * p.fade[0];
+    for (let y = Math.ceil(from); y < box0.top + box0.height; y++) {
+      const t = (y - from) / (box0.top + box0.height - from);
+      const k = 1 - (1 - p.fade[1]) * t * t;
+      for (let x = 0; x < w; x++) out[(y * w + x) * 4 + 3] = Math.round(out[(y * w + x) * 4 + 3] * k);
+    }
+    const fadedFile = file.replace(/\.png$/, '.faded.png');
+    await sharp(out, { raw: { width: w, height: h, channels: 4 } }).png().toFile(fadedFile);
+    file = fadedFile;
+    data = out;
+  }
   const box = alphaBox(data, info.width, 0, 0, info.width, info.height);
   if (!box) throw new Error(`${file}: nothing in it`);
   const pad = CUTOUT.pad;

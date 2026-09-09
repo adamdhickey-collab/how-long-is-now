@@ -52,7 +52,7 @@ export const ELEMENTS = [
   { id: 'jogger', box: [160, 400, 100, 205], fit: 'box', prompt: `the woman jogging along the path: ponytail, blue patterned top, dark shorts, white trainers, mid-stride` },
   { id: 'edge-family', box: [430, 398, 130, 165], fit: 'box', prompt: `the father in the blue shirt and shorts holding hands with the small girl in the pink dress, and the little boy in the blue top pointing at the lake, standing at the water's edge seen from behind` },
   { id: 'wall-group', box: [600, 398, 135, 112], fit: 'box', prompt: `the woman in the sun hat sitting on the low wall and the two women standing beside her looking at the lake, seen from behind` },
-  { id: 'standing-group', box: [762, 345, 145, 155], fit: 'box', prompt: `the four people standing at the water's edge seen from behind: the man, the woman with long hair, the girl in the white dress and the woman in the light dress` },
+  { id: 'standing-group', box: [762, 345, 145, 155], fit: 'box', pad: 0.24, prompt: `the four people standing at the water's edge seen from behind: the man, the woman with long hair, the girl in the white dress and the woman in the light dress. Draw them smaller than the frame, with clear white above the tallest head and below their feet: no head may touch the top edge` },
   { id: 'dog-walkers', box: [1075, 355, 220, 140], fit: 'box', prompt: `the couple walking along the path seen from behind, the woman with the green backpack, the man in the navy shirt holding the lead of the brown dog trotting beside them` },
   { id: 'backpack-walker', box: [1290, 325, 130, 120], fit: 'box', prompt: `the man walking away along the path with a blue backpack, and the small group of people standing beyond him` },
   { id: 'far-right', box: [1425, 325, 111, 75], fit: 'box', prompt: `the three people standing together at the water's edge at the far right, seen from behind` },
@@ -78,7 +78,7 @@ export const TREE_BOXES = [[0, 0, 1536, 300], [0, 0, 235, 725], [1365, 0, 171, 4
 const sizeFor = ([, , w, h]) => (w / h > 1.2 ? '1536x1024' : w / h < 0.83 ? '1024x1536' : '1024x1024');
 
 export const layers = [
-  ...ELEMENTS.map((e) => ({ id: e.id, dir, size: sizeFor(e.box), crop: { src: REF, box: pad(e.box, Math.round(Math.max(e.box[2], e.box[3]) * 0.1)) }, noRef: true, preamble: ELEMENT_STYLE, prompt: e.prompt })),
+  ...ELEMENTS.map((e) => ({ id: e.id, dir, size: sizeFor(e.box), crop: { src: REF, box: pad(e.box, Math.round(Math.max(e.box[2], e.box[3]) * (e.pad ?? 0.1))) }, noRef: true, preamble: ELEMENT_STYLE, prompt: e.prompt })),
   {
     id: 'quiet-park', dir, size: '1536x1024', src: REF, maskBoxes: LIFE_BOXES, noRef: true,
     preamble: 'The image is a pointillist painting of a park on a lake: small dots and dashes of pure colour, sunlit.',

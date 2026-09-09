@@ -306,6 +306,9 @@ export interface SunRecord {
    *  through daylight saving would break its figure in two. */
   clock: string;
   utcOffset: number;
+  /** Whether the record's trail — the figure of eight — is drawn across
+   *  the sky. The sun moves either way. */
+  trace?: boolean;
   /**
    * Local progress the record is held at its opening day before the year
    * begins to turn — the same hold the first season gets, so the year and
@@ -931,13 +934,10 @@ export const scenes: Scene[] = [
     },
     // The ramp spread across what one August afternoon holds: the lake
     // at 24 °C sits low and blue, the sunned grass at 32 near the top.
-    instruments: [
-      // Lighter than it was, and later: over the pointillist park the
-      // reading at full strength was a beige wash, and the first thing
-      // noticed should not take the afternoon's colour away before the
-      // visitor has arrived in it. It comes after the blink.
-      { kind: 'thermal', from: 0, to: 1, after: 7, strength: 0.3, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
     // Someone blinks: the viewer, once, after the second has been sat
     // in long enough to forget the eye, and before the reading arrives.
     blink: { after: 5.5, close: 0.1, open: 0.18 },
@@ -963,16 +963,10 @@ export const scenes: Scene[] = [
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
     },
-    instruments: [
-      { kind: 'flow', from: 0.06, to: 1 },
-      {
-        kind: 'radar',
-        from: 0.4,
-        to: 1,
-        period: 6,
-        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
-      },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
   },
   {
     id: 'scene-03-day',
@@ -999,12 +993,10 @@ export const scenes: Scene[] = [
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
     },
-    instruments: [
-      { kind: 'arc', from: 0.02, to: 1 },
-      // A day's spread: the grass falls to 14 °C by the small hours and
-      // climbs past 30 by afternoon, the lake barely moving under it.
-      { kind: 'thermal', from: 0.05, to: 1, strength: 0.6, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [10, 34] },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
   },
   {
     id: 'scene-04-year',
@@ -1056,9 +1048,11 @@ export const scenes: Scene[] = [
       { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { '*': 'plates/scene-04/ref/trees.webp' } },
       // The nearest people, each one its own plate at its own distance, redrawn from the painting and fitted into its box there. All August: there for the second and gone once the year turns.
       {
+        // Nearer the bicycle than the painting had her, by a little (18g):
+        // a box may run past the frame's edge.
         id: 'reader',
         z: 12,
-        ref: [0, 640, 420, 293],
+        ref: [-45, 640, 420, 293],
         feet: true,
         fit: 'w',
         width: 0,
@@ -1150,21 +1144,6 @@ export const scenes: Scene[] = [
         images: { '*': 'plates/scene-04/ref/straw-hat.webp' },
       },
       {
-        id: 'lying-man',
-        z: 12,
-        ref: [1080, 510, 190, 100],
-        feet: true,
-        width: 0,
-        height: 0,
-        baseY: 0,
-        shade: 0.1,
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        images: { '*': 'plates/scene-04/ref/lying-man.webp' },
-      },
-      {
         id: 'family',
         z: 12,
         ref: [1225, 505, 305, 220],
@@ -1226,9 +1205,11 @@ export const scenes: Scene[] = [
         images: { '*': 'plates/scene-04/ref/edge-family.webp' },
       },
       {
+        // The two children at the water's edge; the woman who sat on the
+        // wall beside them was asked away (LEDGER 18g), so the box is theirs.
         id: 'wall-group',
         z: 12,
-        ref: [600, 398, 135, 112],
+        ref: [678, 398, 60, 114],
         feet: true,
         width: 0,
         height: 0,
@@ -1269,36 +1250,6 @@ export const scenes: Scene[] = [
           { from: 0.93, to: 1.06, edge: 0.04 },
         ],
         images: { '*': 'plates/scene-04/ref/dog-walkers.webp' },
-      },
-      {
-        id: 'backpack-walker',
-        z: 12,
-        ref: [1290, 325, 130, 120],
-        feet: true,
-        width: 0,
-        height: 0,
-        baseY: 0,
-        shade: 0.1,
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        images: { '*': 'plates/scene-04/ref/backpack-walker.webp' },
-      },
-      {
-        id: 'far-right',
-        z: 12,
-        ref: [1425, 325, 111, 75],
-        feet: true,
-        width: 0,
-        height: 0,
-        baseY: 0,
-        shade: 0.1,
-        present: [
-          { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1.06, edge: 0.04 },
-        ],
-        images: { '*': 'plates/scene-04/ref/far-right.webp' },
       },
       // On the water, their feet the waterline: with the horizon a
       // quarter of the way down the frame every hull's row is well below
@@ -1498,30 +1449,10 @@ export const scenes: Scene[] = [
     // order: the winter zenith, the summer lake, the autumn horizon's
     // sand, the August sun — over the span the banks and the water
     // actually cover in a year.
-    instruments: [
-      { kind: 'flow', from: 0.05, to: 0.94 },
-      // The radar is a small scope tucked under the clock, in the band
-      // of sky between it and the survey's horizon datum: a corner
-      // instrument, not a veil.
-      {
-        kind: 'radar',
-        from: 0.16,
-        to: 0.92,
-        period: 6,
-        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
-      },
-      // Softer than full over the pointillist park: cold ground read at
-      // full strength was a dark wash over a pale spring lawn.
-      {
-        kind: 'thermal',
-        from: 0.3,
-        to: 0.9,
-        strength: 0.55,
-        ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0],
-        range: [-10, 36],
-      },
-      { kind: 'ring', from: 0.14, to: 0.95 },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
     // The year's dated marks, for the ring. Ice-out is the Minnesota DNR's
     // median for Lake Harriet; freeze-up is when the lake typically
     // closes; leaf-out and leaf-fall are the elms', from Minnesota
@@ -1546,6 +1477,9 @@ export const scenes: Scene[] = [
       utcOffset: -5,
       hold: 0.12,
       lens: { scale: 0.3, altitude: 25.5, west: 10 },
+      // The record's figure of eight is not drawn (18h): the sun itself
+      // still moves, and lights the world.
+      trace: false,
     },
     // The deck sits just ahead of the sky and behind the sun's trail. A
     // year of weather passes in the scene; the field churns enough that
@@ -1560,32 +1494,8 @@ export const scenes: Scene[] = [
     // stays a few weeks. The live blocks are up before the year turns, so
     // the survey is set before there is anything to measure; everything
     // is off the page before the scene's own fade at 0.95.
-    figure: {
-      enter: 0.02,
-      exit: 0.012,
-      callouts: [
-        { kind: 'header', from: 0.04, to: 0.955 },
-        { kind: 'plan', from: 0.06, to: 0.955 },
-        { kind: 'specimen', from: 0.08, to: 0.955 },
-        { kind: 'datum', from: 0.1, to: 0.95 },
-        { kind: 'trace', from: 0.12, to: 0.95 },
-        { kind: 'now', from: 0.125, to: 0.95 },
-        { kind: 'altitude', from: 0.14, to: 0.2 },
-        { kind: 'equinox-autumn', from: 0.2, to: 0.25 },
-        { kind: 'azimuth', from: 0.25, to: 0.36 },
-        { kind: 'title', from: 0.3, to: 0.95 },
-        { kind: 'eot-fast', from: 0.3, to: 0.37 },
-        { kind: 'solstice-winter', from: 0.41, to: 0.5 },
-        { kind: 'altitude', from: 0.42, to: 0.5 },
-        { kind: 'eot-slow', from: 0.54, to: 0.61 },
-        { kind: 'equinox-spring', from: 0.63, to: 0.7 },
-        { kind: 'node', from: 0.695, to: 0.78 },
-        { kind: 'solstice-summer', from: 0.85, to: 0.94 },
-        { kind: 'altitude', from: 0.86, to: 0.9 },
-        { kind: 'height', from: 0.89, to: 0.95 },
-        { kind: 'width', from: 0.9, to: 0.95 },
-      ],
-    },
+    // (The survey overlay was withdrawn 2026-09-09, session 18h, with the
+    // other instruments; its callouts are still declared in the code.)
     fadeIn: 0.035,
     fadeOut: 0.05,
   },
@@ -1719,26 +1629,10 @@ export const scenes: Scene[] = [
       { from: 0.56, label: '⅒ SECOND' },
       { from: 0.78, label: '1/100 SECOND' },
     ],
-    instruments: [
-      { kind: 'thermal', from: 0.08, to: 1, strength: 0.5, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
-      { kind: 'flow', from: 0.3, to: 1 },
-      {
-        kind: 'radar',
-        from: 0.52,
-        to: 1,
-        period: 6,
-        scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
-      },
-      // The finest division: one leaf read as the network it is, drawn
-      // in vein by vein as the label descends to a hundredth of a second,
-      // and still being drawn when the corridor takes the frame.
-      {
-        kind: 'leaf',
-        from: 0.66,
-        to: 1,
-        scope: { corner: 'bottom-right', size: 0.34, inset: { x: 0.04, y: 0.095 } },
-      },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
   },
   {
     id: 'scene-09-memory-compression',
@@ -1851,10 +1745,10 @@ export const scenes: Scene[] = [
     // of the place, not a property of time, and the rule now is that
     // every instrument has to change how long something feels. The
     // `roots` reader is still built; one line here brings it back.
-    instruments: [
-      { kind: 'band', from: 0.02, to: 0.96 },
-      { kind: 'rings', from: 0.05, to: 0.94 },
-    ],
+    // The overlays were switched off on 2026-09-09 (session 18h): every
+    // instrument is to be rebuilt for the new direction, and until then
+    // the world is looked at plain.
+    instruments: [],
     fadeIn: 0.06,
     fadeOut: 0.06,
   },

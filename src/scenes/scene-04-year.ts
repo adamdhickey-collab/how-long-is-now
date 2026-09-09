@@ -568,6 +568,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   trail.position.set(0, 0, trailZ);
   trail.renderOrder = -9;
   trail.name = 'analemma';
+  // The manifest may keep the record unseen: the sun still moves.
+  trail.visible = sunDef.trace !== false;
   group.add(trail);
 
   // ---- the band: a holder running decades stacks the record a figure

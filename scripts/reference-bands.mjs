@@ -35,8 +35,9 @@ const CANOPY_REGIONS = [
 const TRUNK_REGIONS = [
   [20, 150, 125, 460], // the left trunk
   [0, 560, 215, 185], // its flare and roots
-  [1375, 150, 78, 330], // the right trunks
-  [1468, 150, 68, 330],
+  [1380, 150, 62, 265], // the right trunks, their own columns only; this one
+  // ends above the shoulder of the man in the second chair (18g)
+  [1486, 150, 50, 245], // stops above the small sitter the model drew high
 ];
 
 const cache = new Map();
@@ -123,11 +124,12 @@ async function prepare(files) {
       const o = i * 4;
       let tree = 0;
       if (CANOPY_REGIONS.some((r) => inBox(x, y, r)) && !skyLike(o)) tree = 1;
-      // A trunk is warm — brown, grey, ochre — never a blue shadow dot on
-      // the grass beside it, which drawn in front of the sitters was a
-      // dark smear over the chairs.
-      const warm = q[o] >= q[o + 1] - 4 && q[o] >= q[o + 2] - 2;
-      if (TRUNK_REGIONS.some((r) => inBox(x, y, r)) && warm && !skyLike(o) && !greenLike(o) && !blueLike(o) && lumAt(o) < 0.78) tree = 1;
+      // A trunk is bark: brown, darker than the sunlit path and the dry
+      // grass, redder than either. Anything paler or greener inside its
+      // column — the path, the wall, a blue shadow dot on the grass — is
+      // not the tree, and drawn in front of the sitters it hid them.
+      const bark = q[o] > q[o + 1] && q[o] > q[o + 2] + 8 && lumAt(o) < 0.62;
+      if (TRUNK_REGIONS.some((r) => inBox(x, y, r)) && bark && !skyLike(o) && !greenLike(o) && !blueLike(o)) tree = 1;
       m[i] = tree;
     }
   // The treeline top: from the sky's own key, ignoring columns the
@@ -167,12 +169,19 @@ async function prepare(files) {
   m = morph(morph(m, w, h, 2, -1), w, h, 2, 1); // open: drop specks
   m = morph(m, w, h, 4, 1); // grow: the trees carry a ring of their ground
   m = morph(morph(m, w, h, 3, 1), w, h, 3, -1); // close
-  m = blur(m, w, h, 1);
-  // ---- the base: the quiet park, the trees filled from behind.
+  // Hard, not feathered: the base under the trees is filled from the
+  // empty view by this same mask, and a soft edge shared by both let a
+  // quarter of the empty view through along every trunk as a hairline.
+  // The ring of the trees' own ground hides the hard edge from the seat.
+  // ---- the base: the quiet park, the trees filled from behind — two
+  // pixels inside the matte, not to its edge: the renderer filters the
+  // trees' alpha across a texel, and quiet over quiet there is nothing,
+  // where quiet over the empty view was a hairline down every trunk.
+  const mBase = morph(m, w, h, 2, -1);
   const base = Buffer.alloc(w * h * 4);
   for (let i = 0; i < w * h; i++) {
     const o = i * 4;
-    const k = m[i];
+    const k = mBase[i];
     for (let c = 0; c < 3; c++) base[o + c] = Math.round(quiet.data[o + c] * (1 - k) + empty.data[o + c] * k);
     base[o + 3] = 255;
   }
