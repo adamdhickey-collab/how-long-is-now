@@ -721,3 +721,21 @@ may now declare its own `budgetKb`; the vivid month's is 1100 and it
 weighs 995 KB at q62. It loads after the opening frame, so the first
 frame pays nothing for it. With this every plate in the piece is in
 one style.
+
+
+## Session 13 · people as appearances · 2026-09-08
+
+No imagery: choreography. While the lifetime holds the year at its
+close, the summer crowd is not there and then there and then gone. A
+holder may declare `appearances` — how often a figure shows, for how
+long, how long its trace lasts, and how much rarer it is by the end of
+the span — and each figure keeps its own count: a snap in, a third of
+a second there, a fading trace; walkers and sails at a different point
+of their span each time rather than travelling; no shadows, since an
+appearance casts none; every second or so a different two to ten of
+the twenty-eight, thinning to two or three by the eightieth year.
+Under reduced motion they stand faint and still.
+
+Found on the way: a window is fully gone at its own end, so the
+crowd's return window at the year's close (0.93–1) gave them no
+presence at exactly 1, where the lifetime holds; it runs to 1.06 now.

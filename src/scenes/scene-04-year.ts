@@ -154,6 +154,8 @@ export interface Hold {
   grow?: number;
   /** Which walkers are on their way, by placement id; absent, all. */
   life?: string[];
+  /** People as appearances, for a holder running decades. */
+  appearances?: { period: number; dwell: number; trace: number; rarer: number };
 }
 
 /** The record's band holds at most this many years, one figure each. */
@@ -2233,12 +2235,33 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         // them, one step per phase, and rises through each step on a
         // smooth arc, lowest as a foot lands; a rider's wheels turn on
         // their own slower count.
+        // People as appearances: for a holder running decades a figure
+        // is there for a moment on its own count and gone, a walker or a
+        // sail somewhere else along its span each time, leaving a trace.
+        const ap = holder?.appearances;
+        let vis = 1;
+        if (ap) {
+          if (reducedMotion) {
+            vis = 0.35;
+          } else {
+            const period = ap.period * (1 + (ap.rarer - 1) * holder.local);
+            const own = elapsed + i * 7.13 + p.def.x * 0.37;
+            const t = own % period;
+            const k = Math.floor(own / period);
+            vis = t < 0.08 ? t / 0.08 : t < ap.dwell ? 1 : Math.exp(-(t - ap.dwell) / (ap.trace * 0.45));
+            if (walker && f.walk) {
+              const r = Math.abs(Math.sin(k * 12.9898 + i * 78.233) * 43758.5453) % 1;
+              p.mesh.position.x = f.walk.from + r * (f.walk.to - f.walk.from);
+            }
+          }
+          p.shadow.visible = false;
+        }
         const l = f.life;
         let lift = 0;
         let tilt = 0;
         let breathe = 1;
         let blend = 0;
-        if (l && !reducedMotion) {
+        if (l && !reducedMotion && !ap) {
           const phase = i * 2.399;
           if (l.breath) breathe = 1 + l.breath * Math.sin(elapsed * 1.5 + phase);
           if (l.sway) tilt += l.sway * Math.sin(elapsed * 0.45 + phase);
@@ -2256,12 +2279,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           }
           if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
         }
-        (p.mesh.material as THREE.MeshBasicMaterial).opacity = shown * (p.other ? 1 - blend : 1);
+        (p.mesh.material as THREE.MeshBasicMaterial).opacity = shown * vis * (p.other ? 1 - blend : 1);
         p.mesh.scale.y = breathe;
         p.mesh.position.y = f.baseY + (size / 2) * breathe + lift;
         if (tilt) p.mesh.rotateZ(tilt * D2R);
         if (p.other) {
-          (p.other.material as THREE.MeshBasicMaterial).opacity = shown * blend;
+          (p.other.material as THREE.MeshBasicMaterial).opacity = shown * vis * blend;
           p.other.position.copy(p.mesh.position);
           p.other.quaternion.copy(p.mesh.quaternion);
           p.other.scale.copy(p.mesh.scale);

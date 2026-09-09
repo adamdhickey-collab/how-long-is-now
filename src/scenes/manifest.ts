@@ -16,7 +16,8 @@
  * A window of a scene's progress something is there for, with the
  * distance it takes to arrive and to go. A plate or a sheet of figures
  * may declare several: the summer crowd is there at the year's opening
- * and again at its close.
+ * and again at its close. A window is fully gone at its own end, so one
+ * meant to hold through the close runs a little past 1.
  */
 export interface Window {
   from: number;
@@ -678,6 +679,17 @@ export interface Scene {
      * feel inhabited.
      */
     life?: string[];
+    /**
+     * People become appearances. While this scene holds the world, its
+     * figures are not there and then there and then gone: each shows for
+     * `dwell` seconds every `period` seconds on its own count, snapping
+     * in and fading out over `trace` seconds, walkers and sails at a
+     * different point of their span each time rather than travelling;
+     * by the end of the holder's span an appearance is `rarer` times
+     * rarer than at its start. Appearances cast no shadow. Under reduced
+     * motion every figure stands faint and still instead.
+     */
+    appearances?: { period: number; dwell: number; trace: number; rarer: number };
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -979,7 +991,7 @@ export const scenes: Scene[] = [
         shade: 0.1,
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
         ],
         images: { '*': 'plates/scene-04/park/foreground.webp' },
       },
@@ -1020,7 +1032,7 @@ export const scenes: Scene[] = [
         life: { breath: 0.012, sway: 0.5 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
         ],
         places: [
           { id: 'family', cell: 1, x: 7.2, z: 6.6 },
@@ -1046,7 +1058,7 @@ export const scenes: Scene[] = [
         life: { bob: 0.022, lean: 3, wobble: 1 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
         ],
         places: [
           { id: 'jogger', cell: 0, x: -20, z: 4.7, speed: 2.6 },
@@ -1073,7 +1085,7 @@ export const scenes: Scene[] = [
         life: { heel: 2, breath: 0.006 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
-          { from: 0.93, to: 1, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
         ],
         places: [
           { id: 'boat-a', cell: 0, x: -30, z: -60, speed: 0.5 },
@@ -1318,7 +1330,16 @@ export const scenes: Scene[] = [
     // enormous, the sun's record stacks year on year into a band, and an
     // elm counts the years as rings. The starting afternoon becomes one
     // coordinate. Then the world fades, for the turn.
-    hold: { of: 'scene-04-year', at: 1, years: 80, grow: 1.7 },
+    // The afternoon's people, over eighty years: appearances. Each is
+    // there for a third of a second every couple of seconds, leaving a
+    // trace, and by the end three times rarer.
+    hold: {
+      of: 'scene-04-year',
+      at: 1,
+      years: 80,
+      grow: 1.7,
+      appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
+    },
     camera: {
       from: { y: 9.5, z: 27, lookY: 9.5 },
       to: { y: 20, z: 44, lookY: 16 },
