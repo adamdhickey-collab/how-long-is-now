@@ -96,6 +96,10 @@ const memory = createMemoryScene(scene, memoryDef, reducedMotion);
 
 function resize() {
   const { innerWidth: w, innerHeight: h } = window;
+  // A window passing through zero size — a pane hiding, a tab in the
+  // background — would make the aspect NaN and poison the camera for a
+  // frame, and the survey lays its callouts out through the camera.
+  if (w <= 0 || h <= 0) return;
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();

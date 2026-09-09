@@ -739,3 +739,13 @@ Under reduced motion they stand faint and still.
 Found on the way: a window is fully gone at its own end, so the
 crowd's return window at the year's close (0.93–1) gave them no
 presence at exactly 1, where the lifetime holds; it runs to 1.06 now.
+
+### 13b · the equinox's NaN
+
+The NaN attributes the pane logged from the survey's equinox callout
+were the camera's: a window passing through zero height — a pane
+hiding — made the aspect NaN for a frame, the callout laid itself out
+through that camera, and since a callout is laid out only while it is
+on, the NaN stayed in the DOM. A real window never has zero height; the
+resize now ignores a zero-size window, and a walk through the
+equinox's windows leaves no NaN anywhere in the overlay.
