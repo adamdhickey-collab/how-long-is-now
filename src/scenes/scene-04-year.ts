@@ -1014,7 +1014,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const leafyTex = canvasTexture(canopyW, canopyH, (c) => drawTreeline(c, canopyW, canopyH, trees, true));
   const bareTex = canvasTexture(canopyW, canopyH, (c) => drawTreeline(c, canopyW, canopyH, trees, false));
 
-  const canopyGeo = new THREE.PlaneGeometry(canopyDef.width, canopyDef.height);
+  // Subdivided, so its tops can sway while its foot holds still.
+  const canopyGeo = new THREE.PlaneGeometry(canopyDef.width, canopyDef.height, 48, 12);
   const leafyMat = new THREE.MeshBasicMaterial({ map: leafyTex, transparent: true, depthWrite: false });
   const bareMat = new THREE.MeshBasicMaterial({ map: bareTex, transparent: true, depthWrite: false });
   const leafy = new THREE.Mesh(canopyGeo, leafyMat);
@@ -1310,12 +1311,40 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const treesImg = treesDef
     ? imagePlate(
         treesDef,
-        new THREE.PlaneGeometry(treesDef.width, treesDef.height),
+        new THREE.PlaneGeometry(treesDef.width, treesDef.height, 24, 16),
         treesDef.baseY + treesDef.height / 2,
         -1.5,
         [],
       )
     : null;
+
+  // ---- the leaves move: the canopy overhead and the far treeline sway
+  // at their tops, a slow wave over a subdivided card, the trunks and
+  // the foot of the shore holding still. Stilled under reduced motion.
+  const swayU = { uTime: { value: 0 } };
+  const sway = (plate: ImagePlate | null, amount: number) => {
+    for (const l of plate?.layers ?? []) {
+      l.mat.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = swayU.uTime;
+        shader.uniforms.uSway = { value: amount };
+        shader.vertexShader = shader.vertexShader
+          .replace('void main() {', 'uniform float uTime;\nuniform float uSway;\nvoid main() {')
+          .replace(
+            '#include <begin_vertex>',
+            `#include <begin_vertex>
+            {
+              float top = smoothstep(0.5, 1.0, uv.y);
+              float w = sin(uTime * 0.9 + uv.x * 6.3) * 0.5 + sin(uTime * 1.7 + uv.x * 11.0 + uv.y * 3.0) * 0.5;
+              transformed.x += w * uSway * top;
+              transformed.y += sin(uTime * 1.3 + uv.x * 9.0) * uSway * 0.35 * top;
+            }`,
+          );
+      };
+      l.mat.needsUpdate = true;
+    }
+  };
+  sway(treesImg, 0.05);
+  sway(canopyImg, 0.35);
 
   // ---- the figures: people and boats, cutouts from sheets stood in the
   // world. Each placement is one square plane whose UVs are one cell of
@@ -2139,6 +2168,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // so it goes as the eye rises and is back by the time the fall lands.
     const seated = clamp01((3.6 - camera.position.y) / 1.4);
     lawnSeated.value = seated;
+    swayU.uTime.value = reducedMotion ? 0 : elapsed;
     if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
     if (treesImg) setImage(treesImg, nightShade(treesDef!.shade ?? 0), presence(treesDef) * seated);
 

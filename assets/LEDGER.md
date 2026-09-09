@@ -647,3 +647,13 @@ cell plus twelve) and swapped with each step, in time with the bob, so
 the feet land as the body dips; a rider's wheels turn on their own
 count. Two frames and a bob read as hand-drawn animation, and the dots
 changing between frames is the boil.
+
+### 10i · the leaves move
+
+The canopy overhead and the far treeline sway at their tops: a slow
+two-frequency wave in the vertex shader over cards subdivided for it,
+weighted to the upper half so the trunks and the foot of the shore hold
+still — five centimetres on the card at the seat, a third of a unit on
+the shore ninety units back. Stilled under reduced motion. With the
+sitters breathing, the walkers striding and the sails heeling, nothing
+in the seat is a still image any more except the wall.
