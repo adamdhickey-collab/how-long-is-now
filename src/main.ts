@@ -140,6 +140,7 @@ const scaleLabel = document.getElementById('scale-label')!;
 const scrollHint = document.getElementById('scroll-hint')!;
 const clock = document.getElementById('clock')!;
 const caption = document.getElementById('caption')!;
+const describeEl = document.getElementById('describe')!;
 const lidUpper = document.querySelector('.lid--upper') as HTMLElement;
 const lidLower = document.querySelector('.lid--lower') as HTMLElement;
 
@@ -149,6 +150,16 @@ let hudShown = 1;
 // The scene's own running time, and whether its blink has happened.
 let sceneShown = 0;
 let blinked = false;
+
+// The invitation waits, if the opening scene says so, until the second
+// has been sat in for as long as the manifest asks; under reduced motion
+// the still essay shows it from arrival.
+const hintAfter = reducedMotion ? 0 : (scenes[0].hint?.after ?? 0);
+let hintWaiting = hintAfter > 0;
+if (hintWaiting) scrollHint.classList.add('is-waiting');
+// On a touch screen nobody scrolls; the one gesture is named for what
+// the thumb actually does.
+if (window.matchMedia('(pointer: coarse)').matches) scrollHint.textContent = 'Swipe up to leave now.';
 
 function showCaption(up: boolean) {
   if (captionUp === up) return;
@@ -185,6 +196,20 @@ function scaleOf(s: (typeof scenes)[number], local: number): string {
   let text = s.label;
   for (const step of s.labelAt) if (local >= step.from) text = step.label;
   return text;
+}
+
+let described = '';
+
+/** What the scene shows, for the reader who cannot see it. */
+function describeOf(s: (typeof scenes)[number], local: number): string {
+  let text = s.describe ?? '';
+  for (const step of s.describeAt ?? []) if (local >= step.from) text = step.text;
+  return text;
+}
+function setDescription(text: string) {
+  if (text === described) return;
+  described = text;
+  describeEl.textContent = text;
 }
 
 /**
@@ -243,6 +268,13 @@ function frame(now: number) {
     blink(active.blink);
   }
 
+  // The hint comes up once the opening scene has been sat in for its
+  // declared while, or at once if the visitor has already left it.
+  if (hintWaiting && (index !== 0 || sceneShown >= hintAfter)) {
+    hintWaiting = false;
+    scrollHint.classList.remove('is-waiting');
+  }
+
   // Scroll depth drives the simulated clock through the active scene.
   // timeRate is the span the whole scene covers, so local reads it out.
   worldTime = active.timeRate * local;
@@ -267,6 +299,7 @@ function frame(now: number) {
   }
   // A scene that subdivides its own scale says so as the scroll descends.
   if (active.labelAt) setScale(scaleOf(active, local));
+  setDescription(describeOf(active, local));
 
   // The interface leaves where a scene says it does, and comes back if
   // the visitor scrolls away from the ending.
@@ -364,6 +397,11 @@ opening.then(() => {
   requestAnimationFrame(() => {
     document.body.classList.add('is-arrived');
     window.setTimeout(() => document.body.classList.add('is-settled'), 2000);
+    // The opening second is counted from when it can be seen: its
+    // blink and its invitation are so many seconds after arrival, not
+    // after the script's first frame, which may be seconds earlier
+    // while the imagery is on the wire.
+    if (activeIndex === 0 && !blinked) sceneShown = 0;
   });
 });
 

@@ -496,9 +496,15 @@ async function fragmentAtlas(files, p = {}) {
 /**
  * Key the paper out of a layer drawn on flat white. The paper is found
  * by flooding from the image's borders through near-white pixels, so a
- * white shirt or sail enclosed by colour stays; the edge is feathered a
- * pixel and its colour unmixed from the white beneath, so no halo. The
- * keyed image is written beside the raw as a PNG the recipes then read.
+ * white shirt or sail enclosed by colour stays. Then the edge: every
+ * drawn pixel that touches paper was blended with it when it was drawn
+ * — a pale ring one pixel wide, half as saturated as the colour inside
+ * it — so its coverage is read back from where it sits between the
+ * paper and the colour behind it, its colour unmixed from the paper,
+ * and the paper itself left clear. The cutout's edge is then its own
+ * anti-aliasing, choked a pixel in, with no halo to show against water
+ * or night. The keyed image is written beside the raw as a PNG the
+ * recipes then read.
  */
 async function keyWhite(file) {
   const out = file.replace(/\.png$/, '.keyed.png');
@@ -536,39 +542,92 @@ async function keyWhite(file) {
     if (i >= w) push(i - w);
     if (i < (h - 1) * w) push(i + w);
   }
-  // Feather: a pixel's alpha is the share of its 3 × 3 neighbourhood
-  // that is not paper, then its colour is unmixed from the white.
-  const outData = Buffer.alloc(w * h * 4);
+  // The paper's own colour, measured: what the edge was blended with.
+  const P = [255, 255, 255];
+  if (tail > 0) {
+    const sum = [0, 0, 0];
+    for (let k = 0; k < tail; k++) for (let c = 0; c < 3; c++) sum[c] += data[queue[k] * 4 + c];
+    for (let c = 0; c < 3; c++) P[c] = sum[c] / tail;
+  }
+  // The ring: drawn pixels with paper against them.
+  const ring = new Uint8Array(w * h);
+  const around = (x, y, fn) => {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const xx = x + dx;
+        const yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        fn(yy * w + xx);
+      }
+    }
+  };
+  let edge = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
+      if (bg[i]) continue;
+      around(x, y, (j) => {
+        if (bg[j]) ring[i] = 1;
+      });
+      if (ring[i]) edge++;
+    }
+  }
+  const outData = Buffer.alloc(w * h * 4);
+  const C = [0, 0, 0];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const o = i * 4;
+      if (bg[i]) continue; // clear
+      outData[o] = data[o];
+      outData[o + 1] = data[o + 1];
+      outData[o + 2] = data[o + 2];
+      outData[o + 3] = 255;
+      if (!ring[i]) continue;
+      // The colour behind the blend: the drawn pixels beside it that are
+      // not themselves on the edge. A stroke one pixel wide has none,
+      // and is kept as drawn rather than guessed at.
       let n = 0;
-      let fg = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const xx = x + dx;
-          const yy = y + dy;
-          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-          n++;
-          if (!bg[yy * w + xx]) fg++;
+      C[0] = C[1] = C[2] = 0;
+      around(x, y, (j) => {
+        if (bg[j] || ring[j]) return;
+        n++;
+        for (let c = 0; c < 3; c++) C[c] += data[j * 4 + c];
+      });
+      if (n === 0) continue;
+      for (let c = 0; c < 3; c++) C[c] /= n;
+      // Coverage: where the pixel sits between paper and colour, read on
+      // the channel with the most room between them. A colour near the
+      // paper's own leaves nothing to read, and the pixel stands.
+      let room = -1;
+      let a = 1;
+      for (let c = 0; c < 3; c++) {
+        const r = P[c] - C[c];
+        if (r > room) {
+          room = r;
+          a = (P[c] - data[o + c]) / r;
         }
       }
-      const a = bg[i] ? fg / n : 1;
-      const o = i * 4;
-      if (a <= 0) {
+      if (room < 24) continue;
+      a = Math.max(0, Math.min(1, a));
+      if (a <= 0.02) {
         outData[o + 3] = 0;
         continue;
       }
+      // Unmix: what was drawn, with the paper's share taken out; leaned
+      // toward the colour behind it as the pixel thins and the unmixing
+      // grows noisy.
       for (let c = 0; c < 3; c++) {
-        const v = data[o + c];
-        const un = a < 1 ? (v - (1 - a) * 250) / a : v;
-        outData[o + c] = Math.max(0, Math.min(255, Math.round(un)));
+        const un = (data[o + c] - (1 - a) * P[c]) / a;
+        const v = C[c] + (un - C[c]) * a;
+        outData[o + c] = Math.max(0, Math.min(255, Math.round(v)));
       }
       outData[o + 3] = Math.round(a * 255);
     }
   }
   await sharp(outData, { raw: { width: w, height: h, channels: 4 } }).png().toFile(out);
-  console.log(`  keyed ${path.basename(file)}: ${((tail / (w * h)) * 100).toFixed(0)}% paper`);
+  console.log(`  keyed ${path.basename(file)}: ${((tail / (w * h)) * 100).toFixed(0)}% paper, ${edge} edge px unmixed`);
   return out;
 }
 

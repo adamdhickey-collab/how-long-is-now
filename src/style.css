@@ -89,9 +89,12 @@ body.is-settled .clock {
   letter-spacing: 0.08em;
   transition: opacity 1.2s ease;
   /* The one invitation the piece makes breathes, slowly, until it is
-     taken; then it dissolves and does not come back. */
-  animation: hint-breathe 4.4s ease-in-out infinite;
+     taken; then it dissolves and does not come back. The breathing
+     waits out the fade, so the hint arrives rather than appears. */
+  animation: hint-breathe 4.4s ease-in-out 1.2s infinite;
 }
+/* Before the manifest says it may: the second is sat in first. */
+.hud__hint.is-waiting,
 .hud__hint.is-gone {
   animation: none;
   opacity: 0;
@@ -159,6 +162,17 @@ body.is-settled .clock {
    from the manifest's total scroll length. */
 #runway { width: 1px; }
 
+/* Off the frame but in the document: the scene descriptions, for a
+   screen reader. Clipped rather than hidden, so they are still read. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hud__hint { transition: none; animation: none; }
   #world, .hud, .clock { transition: none; }
@@ -220,7 +234,12 @@ body.is-settled .clock {
 .figure .leaf__node { fill: var(--ink); stroke: none; }
 .figure__marker--now { fill: var(--now); stroke: none; }
 
+/* A phone is a different exhibition of the same drawing, not a smaller
+   one: the survey drops the callouts that do not fit (scene-04-figure's
+   narrow mode) rather than shrinking what is kept. Nothing an instrument
+   prints goes below 12 px; a survey label a thumb's width from the eye
+   has to be readable at arm's length. */
 @media (max-width: 720px) {
-  .figure { font-size: 10px; }
-  .figure text.title { font-size: 11px; }
+  .figure { font-size: 12px; }
+  .figure text.title { font-size: 13px; }
 }

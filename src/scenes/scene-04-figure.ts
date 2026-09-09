@@ -71,7 +71,10 @@ const BEARINGS: [number, string][] = [
  *  sun: enough that, through the lens, it runs off both edges of the frame. */
 const DATUM_SPAN = 150;
 const DATUM_STEPS = 40;
-/** Callouts that do not fit a phone, and ones that need a full laptop. */
+/** Callouts that do not fit a phone, and ones that need a full laptop.
+ *  A phone keeps the specimen and loses the plan: the two blocks cannot
+ *  share the foot of a frame 375 px wide, and the specimen's azimuth row
+ *  carries the plan's one reading. */
 const WIDE_ONLY = new Set<FigureKind>(['header', 'plan', 'azimuth', 'width', 'height']);
 const ROOMY_ONLY = new Set<FigureKind>(['width', 'height']);
 const WIDE = 720;
@@ -715,6 +718,8 @@ export function createFigure(svg: SVGSVGElement, def: Figure, w: FigureWorld): F
           const rule = drawable('line', {}, 'hair');
           const title = new Label('title').set('SPECIMEN');
           const keys = ['SUBJECT', 'LOCATION', 'EXPOSURE', 'DATE', 'ALTITUDE', 'AZIMUTH', 'DECLIN.', 'EQ. TIME', 'LENS'];
+          /** The rows a phone keeps: what, which exposure, when, where the sun is. */
+          const NARROW_ROWS = [0, 2, 3, 4, 5];
           const ks = keys.map((k) => new Label('dim').set(k));
           const vs = keys.map(() => new Label());
           labels.push(title, ...ks, ...vs);
@@ -729,11 +734,15 @@ export function createFigure(svg: SVGSVGElement, def: Figure, w: FigureWorld): F
             beats,
             exit: { x: 16, y: 0 },
             layout(f) {
-              const cols = f.narrow ? 30 : 34;
+              // On a phone: fewer rows, and bottom-left above the HUD —
+              // where the plan stands on a wide frame — so the people at
+              // the frame's foot are not covered by a table.
+              const kept = f.narrow ? NARROW_ROWS : keys.map((_, i) => i);
+              const cols = f.narrow ? 28 : 34;
               const bw = f.ch * cols;
-              const bh = f.lh * (keys.length + 2.4);
-              const x0 = f.W - f.inset - bw;
-              const y0 = f.H - f.inset - bh;
+              const bh = f.lh * (kept.length + 2.4);
+              const x0 = f.narrow ? f.inset : f.W - f.inset - bw;
+              const y0 = f.H - f.inset - bh - (f.narrow ? f.lh * 3.2 : 0);
               box.setAttribute('x', x0.toFixed(1));
               box.setAttribute('y', y0.toFixed(1));
               box.setAttribute('width', bw.toFixed(1));
@@ -755,7 +764,12 @@ export function createFigure(svg: SVGSVGElement, def: Figure, w: FigureWorld): F
                 `${rec.lens.scale.toFixed(2)}× · NOT TO SCALE`,
               ];
               keys.forEach((_, i) => {
-                const y = ty + f.lh * (1.6 + i);
+                const row = kept.indexOf(i);
+                const on = row >= 0;
+                ks[i].el.style.display = on ? '' : 'none';
+                vs[i].el.style.display = on ? '' : 'none';
+                if (!on) return;
+                const y = ty + f.lh * (1.6 + row);
                 setAt(ks[i].el, { x: x0 + pad, y });
                 vs[i].set(values[i]);
                 setAt(vs[i].el, { x: vx, y });
@@ -967,7 +981,10 @@ export function createFigure(svg: SVGSVGElement, def: Figure, w: FigureWorld): F
               const dx = p.x > f.W * 0.62 ? -1 : 1;
               const o = ld.set({ x: p.x + dx * 5, y: p.y }, dx, 0, LEADER * 1.6, 20);
               l1.set('ANALEMMA');
-              l2.set(`THE SUN AT ONE CLOCK TIME · ${days} EXPOSURES`);
+              // On a phone the whole line runs off the frame's right edge
+              // from where the record anchors it; the count is in the
+              // specimen's exposure row anyway.
+              l2.set(f.narrow ? 'THE SUN AT ONE CLOCK TIME' : `THE SUN AT ONE CLOCK TIME · ${days} EXPOSURES`);
               place(l1, { x: o.x, y: o.y - lh * 0.15 }, dx, 0);
               place(l2, { x: o.x, y: o.y - lh * 0.15 }, dx, 1);
             },

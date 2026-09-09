@@ -822,3 +822,103 @@ sat still until it was taken; it breathes now, over four and a half
 seconds, and dissolves when the scroll begins. Both stilled under
 reduced motion. The arrival was seen to fire in the pane: the classes
 land after the first drawn frame.
+
+## Session 14 · the edge, unmixed · 2026-09-09
+
+### 14a · the white key's halo
+
+A second critique named a pale matte edge on the people and the
+foliage, worst against water and night. Measured on the keyed sheets:
+the outermost ring of opaque pixels on every cutout was about forty
+points brighter and half as saturated as the ring inside it — the
+drawing's own anti-aliasing against the paper, kept at full alpha. The
+old key feathered a pixel *outward* into the paper and unmixed only
+that ring, so the contaminated ring stood inside a soft one.
+
+`keyWhite` in `scripts/plates.mjs` now finds the paper as before
+(flooded from the borders), measures its colour, and treats every
+drawn pixel touching it as a blend: its coverage is read from where it
+sits between the paper and the mean of the non-edge drawn pixels
+beside it, on the channel with the most room; its colour is unmixed
+from the paper and leaned toward the colour behind it as it thins;
+the paper itself is left clear. A stroke a pixel wide, with nothing
+behind it to read, is kept as drawn. The silhouette chokes in by about
+a pixel. After: the edge ring's luminance and saturation match the
+interior on the sitters, the walkers, the elms and the foreground
+group. Every keyed plate regenerated (`npm run plates`); the corridor
+and the sixty squares, which are not keyed, came out byte-identical.
+
+Same session, scene 01: the hint now waits on the manifest
+(`hint: { after: 8.5 }`), arriving as the first reading settles rather
+than with the interface, and the opening second is counted from
+arrival rather than the script's first frame — in development the
+imagery took six seconds to land, and the blink had been firing in
+the dark.
+
+### 14b · the two clocks, quieter, and stacked
+
+The absorbed clock's lived half carried a thermal pass, seven hundred
+motes and seven survey readings; the critique's point was that the
+viewer was made to read at the moment they should be feeling the
+contrast. The manifest now declares the motes and three readings —
+LAMP, HUM, AIR: one for the eye, one for the ear, one for the skin —
+and no thermal, so the corridor keeps its own colour against the
+waiting clock's. The layers' code is untouched; a thermal can be
+declared again in a line.
+
+And the frame's proportion now decides the composition
+(`views()` in `scene-08-two-clocks.ts`): wider than tall, the two
+clocks stand side by side as before; taller than wide, the waiting
+clock is on top and the absorbed one below, each the full width and
+half the height, the dial sized to its view and the survey placed in
+its own. Seen at 1280 × 720 and 375 × 812 in both states: the stub
+over the fragments on a phone is the argument in one glance.
+
+### 14c · the runway's proportion
+
+The first seven scenes took 1340 of 1920 vh, so the two clocks began
+at seven tenths. Lengths only, order kept: 100, 110, 110, 320, 150,
+120, 120 for the setup (1030), then 240 for the two clocks — now the
+longest scene — and 200 and 180 as before. Total 1650; the two clocks
+begin at 62 %. Getting under a half would mean moving the lifetime or
+the descent after the corridor, which is a change to the concept and
+was not made.
+
+### 14d · the described scene
+
+The canvas and the figure are hidden from assistive technology and
+only the caption was live, so a screen reader heard "Same ten
+minutes. Different time." with nothing to compare. Every scene now
+declares `describe` in the manifest (and `describeAt` where its
+picture turns inside itself: the two clocks at the turn, the memory
+corridor between its months); `main.ts` reads it into a clipped
+live region beside the caption's as the scene is entered.
+
+### 14e · the phone as its own exhibition
+
+The critique's largest implementation point: a portrait phone was the
+landscape composition through a narrower window. What is now
+composed for it, beyond the two clocks' stack (14b):
+
+- The figure's type floor on a phone is 12 px (titles 13), up from 10
+  and 11: nothing an instrument prints is below what can be read at
+  arm's length. The survey's layout is derived from the computed size,
+  so its blocks grew with it and were re-placed.
+- The year's survey in its narrow mode loses the plan (the specimen's
+  azimuth row carries its one reading), keeps five of the specimen's
+  nine rows — subject, exposure, date, altitude, azimuth — and stands
+  the block at the foot's left above the HUD, off the foreground
+  people. The analemma's subtitle drops its exposure count, which ran
+  off the right edge; the count is in the specimen.
+- The ring of seasons, which the specimen's move put it under, stands
+  right of centre and smaller when the frame is taller than wide
+  (`RING_CENTRE_PORTRAIT`, `RING_R_PORTRAIT` in scene-04-year).
+- The radar and leaf scopes were already sized from the frame's
+  shorter side and needed nothing.
+- On a touch screen the invitation reads "Swipe up to leave now."
+
+Not done, and needing a phone in a hand rather than an emulated
+frame: whether the plates want a different crop in portrait (the far
+shore's bandshell sits at the right edge at 375 wide), and whether the
+year's callouts near the analemma's top still collide with the title
+as the sun passes it.

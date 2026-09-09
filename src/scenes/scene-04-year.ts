@@ -50,9 +50,13 @@ const ECHO_TRAIL_S = 0.8;
 /** The dot drawn at an echo's head, in CSS pixels. */
 const ECHO_DOT_PX = 3.2;
 /** Where the ring of seasons sits on the screen, in clip space, and its
- *  radius as a fraction of the frame's half-height. */
+ *  radius as a fraction of the frame's half-height. A frame taller than
+ *  it is wide is a different composition: the specimen block stands at
+ *  the foot's left there, so the ring moves right and draws smaller. */
 const RING_CENTRE = { x: 0, y: -0.58 };
 const RING_R = 0.2;
+const RING_CENTRE_PORTRAIT = { x: 0.6, y: -0.6 };
+const RING_R_PORTRAIT = 0.14;
 
 /**
  * The thermal reading, shared by every surface that takes it: a
@@ -2358,7 +2362,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     ring.visible = ringOn > 0;
     ringMat.uniforms.uOn.value = ringOn;
     ringMat.uniforms.uDay.value = clamp01(day / DAYS);
-    ringMat.uniforms.uExtent.value.set((RING_R * 1.5) / aspect, RING_R * 1.5);
+    const portrait = aspect < 1;
+    const ringR = portrait ? RING_R_PORTRAIT : RING_R;
+    const ringC = portrait ? RING_CENTRE_PORTRAIT : RING_CENTRE;
+    ringMat.uniforms.uCentre.value.set(ringC.x, ringC.y);
+    ringMat.uniforms.uExtent.value.set((ringR * 1.5) / aspect, ringR * 1.5);
     if (radarOn > 0) {
       const pos = airGeo.getAttribute('position') as THREE.BufferAttribute;
       const back = airDef!.fall * s.airFall * ECHO_TRAIL_S;

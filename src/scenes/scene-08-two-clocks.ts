@@ -15,11 +15,14 @@
  * at a given moment. The corridor itself is a procedural stand-in for the
  * generated plate to come (ASSETS.md); the choreography is not.
  *
- * The frame is split: the left half is rendered through the waiting
- * clock's camera, the right through the absorbed one's. Both cameras stand
- * in the same corridor — it is one image, used twice — and only what is
- * true of each clock differs between the two passes: how far along it
- * stands, where its end wall is, whether the fragments are there.
+ * The frame is split: one view rendered through the waiting clock's
+ * camera, the other through the absorbed one's — side by side when the
+ * frame is wider than it is tall, the waiting clock on the left; one
+ * above the other when it is taller, the waiting clock on top. Both
+ * cameras stand in the same corridor — it is one image, used twice — and
+ * only what is true of each clock differs between the two passes: how
+ * far along it stands, where its end wall is, whether the fragments are
+ * there.
  */
 
 import * as THREE from 'three';
@@ -44,6 +47,40 @@ const GROUND = 0x060708;
 const EYE = 1.55;
 /** The gap between the two views, CSS px, in the ground colour. */
 const GUTTER = 2;
+
+/** A view's place in the frame: CSS px from the frame's top-left. */
+interface View {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Where each clock's view sits. Side by side when the frame is wider
+ * than it is tall; stacked when it is taller — a phone held upright
+ * cannot give two corridors half its width each, but can give them
+ * half its height, and a corridor reads as well down a frame as across
+ * one. Everything drawn over a view — the dial, the survey, the labels
+ * — is placed through this, so the two compositions share one code.
+ */
+function views(W: number, H: number): { stacked: boolean; waiting: View; absorbed: View } {
+  const g = Math.round(GUTTER / 2);
+  if (H > W) {
+    const half = Math.floor(H / 2);
+    return {
+      stacked: true,
+      waiting: { x: 0, y: 0, w: W, h: half - g },
+      absorbed: { x: 0, y: half + g, w: W, h: H - half - g },
+    };
+  }
+  const half = Math.floor(W / 2);
+  return {
+    stacked: false,
+    waiting: { x: 0, y: 0, w: half - g, h: H },
+    absorbed: { x: half + g, y: 0, w: W - half - g, h: H },
+  };
+}
 /**
  * The corridor's own fog, per unit of depth: exponential, not squared,
  * so the corridor darkens from the first bay and dissolves rather than
@@ -628,11 +665,11 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   }
   const placeDial = () => {
     if (!dial || !tc.instrument) return;
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    const cx = W / 4;
-    const cy = H / 2;
-    const r = (tc.instrument.size * H) / 2;
+    const v = views(window.innerWidth, window.innerHeight).waiting;
+    // At the waiting view's vanishing point, sized to the view's height.
+    const cx = v.x + v.w / 2;
+    const cy = v.y + v.h / 2;
+    const r = (tc.instrument.size * v.h) / 2;
     dialFace.setAttribute('transform', `translate(${cx} ${cy})`);
     dialCount.setAttribute('x', String(cx));
     dialCount.setAttribute('y', String(cy + r + 24));
@@ -683,11 +720,10 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     svg.appendChild(survey);
   }
   const placeSurvey = () => {
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const v = views(window.innerWidth, window.innerHeight).absorbed;
     for (const c of callouts) {
-      const x = W / 2 + c.def.at[0] * (W / 2);
-      const y = c.def.at[1] * H;
+      const x = v.x + c.def.at[0] * v.w;
+      const y = v.y + c.def.at[1] * v.h;
       // The reading sits up and to the right of its mark, or the left
       // when the mark is near the right edge, with a short leader.
       const left = c.def.at[0] > 0.66;
@@ -712,11 +748,15 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     const W = window.innerWidth;
     const H = window.innerHeight;
     const inset = Math.min(Math.max(24, W * 0.04), 64);
+    const { stacked, waiting: vw, absorbed: va } = views(W, H);
     stateEl.setAttribute('x', String(W / 2));
     stateEl.setAttribute('y', String(inset + 10));
-    waitingEl.setAttribute('x', String(W / 4));
-    waitingEl.setAttribute('y', String(H - inset));
-    absorbedEl.setAttribute('x', String((3 * W) / 4));
+    // Each clock's name at the foot of its own view: on the HUD's
+    // baseline side by side; stacked, the waiting clock's sits just
+    // above the gutter between them.
+    waitingEl.setAttribute('x', String(vw.x + vw.w / 2));
+    waitingEl.setAttribute('y', String(stacked ? vw.y + vw.h - 14 : H - inset));
+    absorbedEl.setAttribute('x', String(va.x + va.w / 2));
     absorbedEl.setAttribute('y', String(H - inset));
   };
 
@@ -860,9 +900,8 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     renderer.getSize(size);
     const W = size.x;
     const H = size.y;
-    const half = Math.floor(W / 2);
-    const gutter = Math.round(GUTTER / 2);
-    const aspect = Math.max(1, half - gutter) / Math.max(1, H);
+    const { waiting: vw, absorbed: va } = views(W, H);
+    const aspect = Math.max(1, vw.w) / Math.max(1, vw.h);
     for (const c of [camWaiting, camAbsorbed]) {
       if (c.aspect !== aspect) {
         c.aspect = aspect;
@@ -873,10 +912,9 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     renderer.setScissorTest(true);
     renderer.setClearColor(GROUND, 1);
 
-    // Left: the waiting clock. Right: the absorbed one.
+    // The waiting clock first (left, or top), then the absorbed one.
     const draw = (
-      x: number,
-      w: number,
+      v: View,
       cam: THREE.PerspectiveCamera,
       p: { end: number },
       show: number,
@@ -895,12 +933,13 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       frags.visible = show > 0;
       moteLines.visible = motes > 0;
       moteDots.visible = motes > 0;
-      renderer.setViewport(x, 0, w, H);
-      renderer.setScissor(x, 0, w, H);
+      // GL counts from the bottom; the view is placed from the top.
+      renderer.setViewport(v.x, H - v.y - v.h, v.w, v.h);
+      renderer.setScissor(v.x, H - v.y - v.h, v.w, v.h);
       renderer.render(world, cam);
     };
-    draw(0, half - gutter, camWaiting, pass.waiting, 0, 0, 0);
-    draw(half + gutter, W - half - gutter, camAbsorbed, pass.absorbed, pass.show, pass.thermal, pass.motes);
+    draw(vw, camWaiting, pass.waiting, 0, 0, 0);
+    draw(va, camAbsorbed, pass.absorbed, pass.show, pass.thermal, pass.motes);
 
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);

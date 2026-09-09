@@ -716,6 +716,23 @@ export interface Scene {
    * does rather than watches. Under reduced motion the eye stays open.
    */
   blink?: { after: number; close: number; open: number };
+  /**
+   * The invitation: the HUD's hint arrives so many seconds after the
+   * scene is entered rather than with the rest of the interface, so the
+   * visitor is first left alone in the second — the blink, the first
+   * reading — and only then told they may leave it. Under reduced
+   * motion it is up from arrival. Only the opening scene has one.
+   */
+  hint?: { after: number };
+  /**
+   * What the scene shows, for whoever cannot see it: read into a hidden
+   * live region as the scene is entered, the way the caption is spoken,
+   * so the argument reaches a screen reader and not only the lines. A
+   * scene whose picture changes inside itself replaces it from a point
+   * in local progress, as `labelAt` does the label.
+   */
+  describe?: string;
+  describeAt?: { from: number; text: string }[];
 }
 
 // ---------------------------------------------------------------- scenes
@@ -840,11 +857,23 @@ const lakeHarrietSeasons: Season[] = [
   { at: 1, ...LATE_SUMMER },
 ];
 
+/**
+ * The runway's proportion (2026-09-09). The outward journey — the second,
+ * ten minutes, a day, a year, a lifetime, the turn, the descent — is
+ * the piece's setup, and the two clocks are its argument; a first cut
+ * gave the setup seven tenths of the scroll and the argument arrived
+ * late. The setup now takes 1030 of 1650 vh, so the two clocks begin
+ * a little past six tenths and have the longest scene in the piece.
+ * The order is kept: the turn's line needs the journey before it, and
+ * the descent needs to land in the corridor.
+ */
 export const scenes: Scene[] = [
   {
     id: 'scene-01-now',
     label: '1 SECOND',
-    lengthVh: 150,
+    lengthVh: 100,
+    describe:
+      'A pointillist park on a lake, late on an August afternoon, seen from a bench on the lawn. People sit on blankets, a bandshell stands on the far shore, and nothing moves but the air and the water. After a while a heat reading tints the sunned grass warm and the lake cool.',
     timeRate: 1,
     // The park, at the bench, at the second the year opens on. Nothing
     // the scroll does moves it: the second is inhabited, not crossed. The
@@ -865,14 +894,21 @@ export const scenes: Scene[] = [
       // visitor has arrived in it. It comes after the blink.
       { kind: 'thermal', from: 0, to: 1, after: 7, strength: 0.3, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
     ],
-    // Someone blinks: the viewer, once, after the reading has settled
-    // and the second has been sat in long enough to forget the eye.
+    // Someone blinks: the viewer, once, after the second has been sat
+    // in long enough to forget the eye, and before the reading arrives.
     blink: { after: 5.5, close: 0.1, open: 0.18 },
+    // Only then the invitation. The reading rises over a second and a
+    // half from 7; the hint comes up as it settles, so the first thing
+    // the visitor is told is not to leave before the first thing
+    // happens.
+    hint: { after: 8.5 },
   },
   {
     id: 'scene-02-ten-minutes',
     label: '10 MINUTES',
-    lengthVh: 150,
+    lengthVh: 110,
+    describe:
+      'The same view with ten minutes running as you scroll: people come and go, wind is drawn as streamlines on the water, and a small radar scope in the corner tracks what is in the air.',
     timeRate: 600,
     // The same park, from the same bench, with time switched on: scroll
     // runs ten minutes of the world's own motion. The camera does not
@@ -897,7 +933,9 @@ export const scenes: Scene[] = [
   {
     id: 'scene-03-day',
     label: '1 DAY',
-    lengthVh: 150,
+    lengthVh: 110,
+    describe:
+      'The same view across one day: the sun sets behind the elms, night falls, and the sun comes back over the left of the frame. Its arc is drawn across the sky as it happens, and the heat reading swings with it.',
     timeRate: 86_400,
     // The same park, from the same bench, for a day: scroll runs the
     // world's clock from 4:17 round to 4:17. The sun sets behind the
@@ -927,9 +965,11 @@ export const scenes: Scene[] = [
   {
     id: 'scene-04-year',
     label: '1 YEAR',
-    // Twice the runway of the scenes around it: a year should take a
+    describe:
+      'The same view across one year. Summer turns to autumn, the lake freezes and is skated on, spring returns, and the people change with the season. The sun\u2019s position at 4:17 each day is plotted in the sky as a figure of eight, annotated like a survey drawing with the solstices and equinoxes.',
+    // Three times the runway of the scenes around it: a year should take a
     // while, and at 200 a mouse wheel crossed a season in a few notches.
-    lengthVh: 400,
+    lengthVh: 320,
     timeRate: 31_557_600,
     // The first rise: from the bench, up over the elms, the lake opening
     // out below. The park stops being a place you sit in. The gaze lifts
@@ -1339,7 +1379,9 @@ export const scenes: Scene[] = [
   {
     id: 'scene-05-lifetime',
     label: 'A LIFETIME',
-    lengthVh: 200,
+    lengthVh: 150,
+    describe:
+      'Eighty years pass over the same park, seen from higher and further back. The elms grow enormous, roots spread under the far shore, an elm counts the years as rings, and the people flicker as brief appearances. Then the world fades to black.',
     timeRate: 2_524_608_000,
     // The year's world, held at the August it closed on, seen from
     // higher and further back as eighty years pass: the elms grow
@@ -1374,9 +1416,10 @@ export const scenes: Scene[] = [
   {
     id: 'scene-06-return',
     label: '',
+    describe: 'Black. Then, from the dark, the eye falls back down to the bench in the park.',
     // Long enough that the stop is a stop: the black has to be sat in
     // before the line arrives, and the line before the fall.
-    lengthVh: 140,
+    lengthVh: 120,
     caption: 'But that isn’t how you experienced it.',
     captionAt: { from: 0.12, to: 0.52 },
     timeRate: 0,
@@ -1400,7 +1443,9 @@ export const scenes: Scene[] = [
   {
     id: 'scene-07-attention',
     label: '1 SECOND',
-    lengthVh: 150,
+    lengthVh: 120,
+    describe:
+      'Back inside the single second the piece opened on. The clock does not move; the scale label divides the second finer and finer, down to a hundredth, and the readings arrive one after another and stay: heat, wind, the air, and an elm leaf drawn vein by vein as a network.',
     timeRate: 0.1,
     // The inward zoom. The same second the piece opened on, held: the
     // clock does not move and neither does the world. What changes is
@@ -1448,7 +1493,15 @@ export const scenes: Scene[] = [
   {
     id: 'scene-08-two-clocks',
     label: '10 MINUTES',
-    lengthVh: 200,
+    lengthVh: 240,
+    describe:
+      'Two views of one fluorescent-lit corridor, side by side, or one above the other on a phone. Labelled WHILE IT WAS HAPPENING. The waiting clock\u2019s corridor barely advances while a seconds dial counts the ten minutes; the absorbed clock\u2019s corridor moves quickly, with motes in the air and three readings called out: a lamp, a hum, the air.',
+    describeAt: [
+      {
+        from: 0.5,
+        text: 'Labelled LOOKING BACK, the relationship reverses. The waiting corridor is now a stub one bay long with a wall across it. The absorbed corridor runs on and on, hung with dozens of remembered fragments.',
+      },
+    ],
     caption: 'Same ten minutes. Different time.',
     captionAt: { from: 0.86, to: 1 },
     timeRate: 600,
@@ -1484,28 +1537,28 @@ export const scenes: Scene[] = [
       },
       waiting: { livedBays: 1.5, rememberedBays: 1 },
       // The absorbed clock's layers come on one after another through
-      // the lived half, so the view thickens with noticing, and all go
-      // off as the turn begins to dip. Readings are a corridor's:
-      // fluorescent tubes, their hum, the doors, the air, a walk.
+      // the lived half and all go off as the turn begins to dip. Kept
+      // deliberately few: the contrast with the waiting clock has to be
+      // felt, not read, so the absorbed view is motion, depth and three
+      // things noticed — one for the eye, one for the ear, one for the
+      // skin — over a corridor that keeps its own colour. (The thermal
+      // pass and the seven-reading survey were tried and withdrawn
+      // 2026-09-09: they made the viewer read at the moment they should
+      // be feeling.)
       absorbed: {
         livedBays: 30,
         rememberedBays: 20,
         fragments: 36,
         layers: [
-          { kind: 'thermal', from: 0.06, to: 0.46, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [16, 30] },
-          { kind: 'motes', from: 0.1, to: 0.46, count: 700 },
+          { kind: 'motes', from: 0.08, to: 0.46, count: 700 },
           {
             kind: 'survey',
-            from: 0.12,
+            from: 0.14,
             to: 0.46,
             callouts: [
-              { text: 'LAMP · 2 × 32 W · 4100 K', at: [0.5, 0.12], from: 0.12, to: 0.46 },
-              { text: 'HUM · 120 HZ · 38 DB', at: [0.76, 0.22], from: 0.16, to: 0.46 },
-              { text: 'DOOR · 0.9 × 2.1 M · OAK VENEER', at: [0.13, 0.4], from: 0.2, to: 0.46 },
-              { text: 'AIR · 0.2 M/S · TOWARD YOU · 21 °C', at: [0.5, 0.5], from: 0.24, to: 0.46 },
-              { text: 'STEPS · 1.8 / S · 0.72 M', at: [0.5, 0.8], from: 0.28, to: 0.46 },
-              { text: 'FLOOR · TERRAZZO · 19 °C', at: [0.26, 0.9], from: 0.32, to: 0.46 },
-              { text: 'WALL · 22 °C · TWO COATS', at: [0.86, 0.58], from: 0.36, to: 0.46 },
+              { text: 'LAMP · 2 × 32 W · 4100 K', at: [0.5, 0.14], from: 0.14, to: 0.46 },
+              { text: 'HUM · 120 HZ · 38 DB', at: [0.74, 0.3], from: 0.22, to: 0.46 },
+              { text: 'AIR · 0.2 M/S · TOWARD YOU · 21 °C', at: [0.42, 0.56], from: 0.3, to: 0.46 },
             ],
           },
         ],
@@ -1523,6 +1576,14 @@ export const scenes: Scene[] = [
     id: 'scene-09-memory-compression',
     label: '30 DAYS',
     lengthVh: 200,
+    describe:
+      'Thirty days as thirty panes of glass receding down a corridor. A month of the same day aligns into what looks like one thin sheet.',
+    describeAt: [
+      {
+        from: 0.5,
+        text: 'A month of different days, each pane carrying its own reading, scatters into a wide field that makes the same thirty days look enormous.',
+      },
+    ],
     timeRate: 2_592_000,
     // Two months, thirty days each, the same scroll for both so the
     // comparison is fair. The first is the same day thirty times and
@@ -1594,6 +1655,8 @@ export const scenes: Scene[] = [
     label: '1 SECOND',
     // Longer than the second it opened on: an ending needs room to leave in.
     lengthVh: 180,
+    describe:
+      'The park again, exactly as it opened, from the same bench at the same second. Every instrument is faintly on at once, then each goes, until only the afternoon is left. After the line, the clock and the labels fade too.',
     caption: 'The moment didn’t get longer.\nYou got closer.',
     captionAt: { from: 0.58, to: 0.88 },
     timeRate: 1,
