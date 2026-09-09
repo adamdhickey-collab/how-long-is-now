@@ -788,3 +788,22 @@ tenth of a second and stands for a third). Wheels, skates and skis
 glide as before. The trace of the jogger reads swap-and-advance,
 hold, swap-and-advance, hold. Whether it looks deliberate or broken is
 for a pair of eyes; it is one switch per sheet either way.
+
+### 13f · polish pass
+
+Systematic, over the DOM layer and the park. Found and fixed: the
+spoken lines were never in Newsreader — no face was loaded, so every
+caption fell back to the HUD's sans; Newsreader italic is loaded now
+(Google Fonts, serif fallback, swap) and is the captions' face and no
+other's, at a size and leading suited to it. The hint dropped to 11 px
+on a phone; the HUD's smallest text is 12.5 px now. Without WebGL the
+piece was black; it now says so in its own voice, and says so again if
+the context is lost. Checked and clean: no logging, no type escapes,
+no dead markers; reduced motion honoured by every motion added today;
+no interactive elements, so no focus states owed; the caption's live
+region and the canvas's aria-hidden in place.
+
+Not done, noted: `public/og.png`, the share card, still shows the
+illustrated park — a screenshot of the new seat at 1200 × 630 replaces
+it. The plates total ten megabytes, of which the opening frame needs
+about 1.7; the rest loads behind it.

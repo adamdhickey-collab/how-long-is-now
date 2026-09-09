@@ -46,7 +46,27 @@ lenis.on('scroll', () => {
 // ---------------------------------------------------------------- world
 
 const canvas = document.getElementById('world') as HTMLCanvasElement;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+
+// The piece is the world; without WebGL there is none, and the visitor
+// should be told so in the piece's own voice rather than left with black.
+function noWorld(line: string): void {
+  const caption = document.getElementById('caption')!;
+  caption.textContent = line;
+  caption.style.opacity = '1';
+  const hint = document.getElementById('scroll-hint');
+  if (hint) hint.style.opacity = '0';
+}
+let renderer: THREE.WebGLRenderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+} catch (err) {
+  noWorld('This piece needs WebGL, and this browser has none.');
+  throw err;
+}
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault();
+  noWorld('The world stopped drawing. Reload to sit down again.');
+});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 const scene = new THREE.Scene();

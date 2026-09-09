@@ -11,6 +11,8 @@
   /* The drafting face, for the figure only: a deliberate decision. The
      overlay is a survey drawing, and a survey is set in a monospace. */
   --face-figure: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  /* The spoken lines' face, and nothing else's. */
+  --face-voice: 'Newsreader', Georgia, 'Times New Roman', serif;
   /* The same inset the HUD and the clock keep, so the figure's blocks
      sit on their lines. */
   --inset: clamp(1.5rem, 4vw, 4rem);
@@ -56,7 +58,7 @@ body {
 }
 
 .hud__scale {
-  font-size: clamp(0.8rem, 1.1vw, 1rem);
+  font-size: clamp(0.85rem, 1.1vw, 1rem);
   font-weight: 500;
   letter-spacing: 0.35em;
   text-transform: uppercase;
@@ -64,7 +66,7 @@ body {
 
 .hud__hint {
   margin-top: 0.75em;
-  font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+  font-size: clamp(0.78rem, 0.9vw, 0.85rem);
   color: var(--ink-dim);
   letter-spacing: 0.08em;
   transition: opacity 1.2s ease;
@@ -114,9 +116,11 @@ body {
   z-index: 2;
   max-width: 32ch;
   text-align: center;
-  font-size: clamp(1rem, 1.8vw, 1.5rem);
-  line-height: 1.6;
-  letter-spacing: 0.02em;
+  font-family: var(--face-voice);
+  font-style: italic;
+  font-size: clamp(1.15rem, 2vw, 1.7rem);
+  line-height: 1.5;
+  letter-spacing: 0;
   opacity: 0;
   pointer-events: none;
   white-space: pre-line;
