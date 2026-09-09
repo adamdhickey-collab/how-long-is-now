@@ -1334,17 +1334,17 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
             `#include <begin_vertex>
             {
               float top = smoothstep(0.5, 1.0, uv.y);
-              float w = sin(uTime * 0.9 + uv.x * 6.3) * 0.5 + sin(uTime * 1.7 + uv.x * 11.0 + uv.y * 3.0) * 0.5;
+              float w = sin(uTime * 0.45 + uv.x * 4.0) * 0.6 + sin(uTime * 0.8 + uv.x * 7.0 + uv.y * 2.0) * 0.4;
               transformed.x += w * uSway * top;
-              transformed.y += sin(uTime * 1.3 + uv.x * 9.0) * uSway * 0.35 * top;
+              transformed.y += sin(uTime * 0.6 + uv.x * 5.0) * uSway * 0.3 * top;
             }`,
           );
       };
       l.mat.needsUpdate = true;
     }
   };
-  sway(treesImg, 0.05);
-  sway(canopyImg, 0.35);
+  sway(treesImg, 0.025);
+  sway(canopyImg, 0.3);
 
   // ---- the figures: people and boats, cutouts from sheets stood in the
   // world. Each placement is one square plane whose UVs are one cell of
@@ -1352,9 +1352,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   interface Placed {
     def: Figures['places'][number];
     mesh: THREE.Mesh;
+    /** The figure's other stride, if its sheet has one: the same quad
+     *  on the second frame's cell, crossfaded with the first. */
+    other: THREE.Mesh | null;
     shadow: THREE.Mesh;
     x0: number;
-    frame: number;
   }
   /** One cell's rectangle of a sheet's atlas, as a quad's UVs. */
   const cellUv = (geo: THREE.PlaneGeometry, cell: number, cols: number, rows: number) => {
@@ -1374,7 +1376,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   };
   interface FigureSet {
     def: Figures;
-    mat: THREE.MeshBasicMaterial;
+    /** One material per quad, so each can carry its own opacity. */
+    mats: THREE.MeshBasicMaterial[];
     shadowMat: THREE.MeshBasicMaterial;
     placed: Placed[];
     loaded: Promise<void>;
@@ -1392,8 +1395,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   });
   const shadowGeo = new THREE.PlaneGeometry(1, 1);
   const figureSets: FigureSet[] = (def.figures ?? []).map((f) => {
-    const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaTest: 0.02, opacity: 0 });
-    thermalPlate(mat);
+    const mats: THREE.MeshBasicMaterial[] = [];
+    const figureMat = () => {
+      const m = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaTest: 0.02, opacity: 0 });
+      thermalPlate(m);
+      mats.push(m);
+      return m;
+    };
     const shadowMat = new THREE.MeshBasicMaterial({
       map: shadowTex,
       color: 0x0b1626,
@@ -1406,7 +1414,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       const size = pl.size ?? f.size;
       const geo = new THREE.PlaneGeometry(size, size);
       cellUv(geo, pl.cell, cols, rows);
-      const mesh = new THREE.Mesh(geo, mat);
+      const mesh = new THREE.Mesh(geo, figureMat());
       mesh.position.set(pl.x, f.baseY + size / 2, pl.z);
       if ((pl.speed ?? 0) < 0) mesh.scale.x = -1;
       // Nearer draws later, between the lawn and the nearest people.
@@ -1414,6 +1422,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       mesh.visible = false;
       mesh.name = `${f.id}:${pl.id}`;
       group.add(mesh);
+      const frames = f.atlas.frames ?? 1;
+      let other: THREE.Mesh | null = null;
+      if (frames > 1 && pl.speed !== undefined) {
+        const geo2 = new THREE.PlaneGeometry(size, size);
+        cellUv(geo2, pl.cell + f.atlas.count / frames, cols, rows);
+        other = new THREE.Mesh(geo2, figureMat());
+        other.position.copy(mesh.position);
+        other.scale.copy(mesh.scale);
+        other.renderOrder = mesh.renderOrder + 0.001;
+        other.visible = false;
+        other.name = `${f.id}:${pl.id}:other`;
+        group.add(other);
+      }
       const shadow = new THREE.Mesh(shadowGeo, shadowMat);
       shadow.rotation.x = -Math.PI / 2;
       // A little to the right and toward us: the sun is ahead and left.
@@ -1422,21 +1443,26 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       shadow.renderOrder = mesh.renderOrder - 0.005;
       shadow.visible = false;
       group.add(shadow);
-      return { def: pl, mesh, shadow, x0: pl.x, frame: 0 };
+      return { def: pl, mesh, other, shadow, x0: pl.x };
     });
     const loaded = new THREE.TextureLoader()
       .loadAsync(plateUrl(f.atlas.image))
       .then((tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
-        mat.map = tex;
-        mat.needsUpdate = true;
-        for (const p of placed) p.mesh.visible = true;
+        for (const m of mats) {
+          m.map = tex;
+          m.needsUpdate = true;
+        }
+        for (const p of placed) {
+          p.mesh.visible = true;
+          if (p.other) p.other.visible = true;
+        }
       })
       .catch((err) => {
         console.warn(`[scene-04] ${f.id}: the sheet failed to load`, err);
       });
-    return { def: f, mat, shadowMat, placed, loaded };
+    return { def: f, mats, shadowMat, placed, loaded };
   });
 
   // ---- the lake: haze toward the far shore, and the sun's path on it.
@@ -2178,15 +2204,17 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     for (const set of figureSets) {
       const f = set.def;
       const there = presence(f as unknown as Plate);
-      setTint(set.mat, 0xffffff, nightShade(0.1));
-      set.mat.opacity = alpha * there;
+      const shown = alpha * there;
+      for (const m of set.mats) setTint(m, 0xffffff, nightShade(0.1));
       // Shadows soften as the light goes and on snow.
       set.shadowMat.opacity = alpha * there * 0.34 * (1 - night * 0.6) * (1 - s.airFall * 0.5);
       const life = holder?.life;
       for (let i = 0; i < set.placed.length; i++) {
         const p = set.placed[i];
         const walker = p.def.speed !== undefined && f.walk;
-        p.mesh.visible = !!set.mat.map && there > 0 && (!walker || !life || life.includes(p.def.id));
+        const loaded = !!(p.mesh.material as THREE.MeshBasicMaterial).map;
+        p.mesh.visible = loaded && shown > 0 && (!walker || !life || life.includes(p.def.id));
+        if (p.other) p.other.visible = p.mesh.visible;
         p.shadow.visible = p.mesh.visible;
         // Every figure faces the camera, feet where they stand: from the
         // seat a card, from the year's height a person seen from above.
@@ -2200,40 +2228,44 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         }
         // The sheet's life, on its own phase per placement: breath and
         // sway for those who sit, a stride's bob and lean for those who
-        // walk, a wobble for those who ride, a heel for the sails.
+        // walk, a wobble for those who ride, a heel for the sails. A
+        // figure drawn in both phases of its stride crossfades between
+        // them, one step per phase, and rises through each step on a
+        // smooth arc, lowest as a foot lands; a rider's wheels turn on
+        // their own slower count.
         const l = f.life;
         let lift = 0;
         let tilt = 0;
         let breathe = 1;
+        let blend = 0;
         if (l && !reducedMotion) {
           const phase = i * 2.399;
           if (l.breath) breathe = 1 + l.breath * Math.sin(elapsed * 1.5 + phase);
           if (l.sway) tilt += l.sway * Math.sin(elapsed * 0.45 + phase);
           const speed = p.def.speed ?? 0;
           const pace = Math.min(Math.abs(speed), 3);
-          // A figure drawn in both phases of its stride swaps them with
-          // each step, in time with the bob; a rider's wheels turn on
-          // their own count.
-          const frames = f.atlas.frames ?? 1;
-          let frame = 0;
           if (pace > 0 && !p.def.ride) {
             const cadence = 1.4 + pace * 0.5;
-            lift = ((l.bob ?? 0) * pace * Math.abs(Math.sin(Math.PI * cadence * elapsed + phase))) / 1.4;
+            const step = Math.sin(Math.PI * cadence * elapsed + phase);
+            lift = ((l.bob ?? 0) * pace * step * step) / 1.4;
             tilt -= ((l.lean ?? 0) * Math.sign(speed) * pace) / 3;
-            frame = Math.floor(cadence * elapsed + phase / Math.PI) % frames;
+            blend = 0.5 - 0.5 * Math.cos(Math.PI * cadence * elapsed + phase);
           } else if (pace > 0 && p.def.ride) {
             tilt += (l.wobble ?? 0) * Math.sin(elapsed * 1.7 + phase);
-            frame = Math.floor(2.5 * elapsed + phase) % frames;
+            blend = 0.5 - 0.5 * Math.cos(elapsed * 4.0 + phase);
           }
           if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
-          if (frame !== p.frame) {
-            p.frame = frame;
-            cellUv(p.mesh.geometry as THREE.PlaneGeometry, p.def.cell + frame * (f.atlas.count / frames), f.atlas.cols, f.atlas.rows);
-          }
         }
+        (p.mesh.material as THREE.MeshBasicMaterial).opacity = shown * (p.other ? 1 - blend : 1);
         p.mesh.scale.y = breathe;
         p.mesh.position.y = f.baseY + (size / 2) * breathe + lift;
         if (tilt) p.mesh.rotateZ(tilt * D2R);
+        if (p.other) {
+          (p.other.material as THREE.MeshBasicMaterial).opacity = shown * blend;
+          p.other.position.copy(p.mesh.position);
+          p.other.quaternion.copy(p.mesh.quaternion);
+          p.other.scale.copy(p.mesh.scale);
+        }
         // The shadow pools smaller under a foot that has left the ground.
         const off = lift > 0 ? 1 - Math.min(lift / (size * 0.06), 1) * 0.3 : 1;
         p.shadow.scale.set(size * 0.62 * off, size * 0.22 * off, 1);

@@ -663,3 +663,17 @@ sheet (`movers-autumn-stride`, `movers-winter-stride`,
 `movers-spring-stride`), all three consistent on the first try — the
 skaters' gliding leg swapped, the sled and the dogs likewise — cut in
 as the second nine cells of each atlas.
+
+### 10j · the stride, softened
+
+Judged in motion it was rough: the two frames cut hard from one to
+the other twice a second, a flip-book at 2 fps; the bob was a
+rectified sine with a cusp at every footfall, so figures hopped; the
+canopy sway was too fast and, at the seat, too large. Now each walker
+is two quads on the same spot, the first frame and the other,
+crossfaded with a raised cosine so a step is a dissolve rather than a
+cut; the bob is a smooth arc, lowest as a foot lands, at half the
+height; the recipe scales each second frame to its first's height so
+nothing pops in size; a rider's wheels dissolve on a slower count; the
+sway is half as large and half as fast. Still a judgement for a pair
+of eyes in a real browser.

@@ -172,11 +172,11 @@ const SCENES = {
     // The crowd through the year (LEDGER 10d): who is in the park in
     // each season, a sheet of nine each.
     { id: 'sitters-autumn', raw: ['sitters-autumn-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-autumn', raw: ['movers-autumn-v1.png', 'movers-autumn-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
+    { id: 'movers-autumn', raw: ['movers-autumn-v1.png', 'movers-autumn-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6, frames: 2 },
     { id: 'ice-winter', raw: ['ice-winter-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-winter', raw: ['movers-winter-v1.png', 'movers-winter-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
+    { id: 'movers-winter', raw: ['movers-winter-v1.png', 'movers-winter-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6, frames: 2 },
     { id: 'sitters-spring', raw: ['sitters-spring-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-spring', raw: ['movers-spring-v1.png', 'movers-spring-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
+    { id: 'movers-spring', raw: ['movers-spring-v1.png', 'movers-spring-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6, frames: 2 },
     // The second walkers sheet came as three rows with the third cut off
     // by the frame; its top two rows are kept and cut on the first's grid.
     // Then the same twelve in the other phase of their stride, as the
@@ -190,6 +190,7 @@ const SCENES = {
       align: 'bottom',
       grid: [3, 2],
       cols: 6,
+      frames: 2,
     },
   ],
   'scene-09': [
@@ -452,11 +453,19 @@ async function fragmentAtlas(files, p = {}) {
   }
   const maxDim = Math.max(...cells.map((k) => Math.max(k.box.width, k.box.height)));
   const factor = inner / maxDim;
+  // A sheet with a second frame per figure: each second frame is scaled
+  // to its first's height, so a figure does not change size as it steps.
+  const per = p.frames === 2 ? cells.length / 2 : 0;
   const tiles = [];
-  for (const k of cells) {
+  for (let i = 0; i < cells.length; i++) {
+    const k = cells[i];
+    const own = per && i >= per ? cells[i - per].box.height / k.box.height : 1;
     const cut = await sharp(k.cell, { raw: { width: k.cw, height: k.ch, channels: 4 } })
       .extract(k.box)
-      .resize({ width: Math.max(1, Math.round(k.box.width * factor)), height: Math.max(1, Math.round(k.box.height * factor)) })
+      .resize({
+        width: Math.max(1, Math.round(k.box.width * factor * own)),
+        height: Math.max(1, Math.round(k.box.height * factor * own)),
+      })
       .png()
       .toBuffer({ resolveWithObject: true });
     // Centred, or stood on a common baseline so a sheet of figures

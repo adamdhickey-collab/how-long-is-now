@@ -1043,7 +1043,7 @@ export const scenes: Scene[] = [
         size: 2.6,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.045, lean: 4, wobble: 1.5 },
+        life: { bob: 0.022, lean: 3, wobble: 1 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1, edge: 0.04 },
@@ -1070,7 +1070,7 @@ export const scenes: Scene[] = [
         size: 6,
         baseY: -0.3,
         walk: { from: -70, to: 70 },
-        life: { heel: 3, breath: 0.006 },
+        life: { heel: 2, breath: 0.006 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1, edge: 0.04 },
@@ -1109,7 +1109,7 @@ export const scenes: Scene[] = [
         size: 2.3,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.045, lean: 4, wobble: 1.5 },
+        life: { bob: 0.022, lean: 3, wobble: 1 },
         present: { from: 0.2, to: 0.42, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -20, z: 4.7, speed: 2.5 },
@@ -1150,7 +1150,7 @@ export const scenes: Scene[] = [
         size: 2.5,
         baseY: 0,
         walk: { from: -60, to: 60 },
-        life: { bob: 0.04, lean: 4, wobble: 2 },
+        life: { bob: 0.02, lean: 3, wobble: 1.2 },
         present: { from: 0.46, to: 0.64, edge: 0.04 },
         places: [
           { id: 'skater', cell: 0, x: -10, z: -24, speed: 2.4, ride: true },
@@ -1188,7 +1188,7 @@ export const scenes: Scene[] = [
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.045, lean: 4, wobble: 1.5 },
+        life: { bob: 0.022, lean: 3, wobble: 1 },
         present: { from: 0.68, to: 0.88, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -18, z: 4.7, speed: 2.6 },
