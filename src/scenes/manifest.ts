@@ -635,7 +635,17 @@ export interface Scene {
    * scene's opening camera; the renderer narrows the lens on wider
    * viewports so the frame always covers the view.
    */
-  composition?: { frame: [number, number]; fov: number };
+  composition?: {
+    frame: [number, number];
+    fov: number;
+    /**
+     * The painting continued outward (session 18i): whole-frame layers
+     * this size are the wide frame, with the painting's own pixel (0, 0)
+     * at `origin` in them, so the ground, the water and the sky run on
+     * past the frame the boxes are measured in.
+     */
+    wide?: { frame: [number, number]; origin: [number, number] };
+  };
   /**
    * The lake. It stops at the far shore rather than running to a true
    * horizon — otherwise distant water shows above the treeline once the
@@ -1027,7 +1037,7 @@ export const scenes: Scene[] = [
     // the way down the frame, just above the painting's own far
     // waterline, so every row of water lies on the ground — a lying
     // plate cannot show a row that is above the horizon.
-    composition: { frame: [1536, 1024], fov: 55 },
+    composition: { frame: [1536, 1024], fov: 55, wide: { frame: [3072, 2048], origin: [768, 512] } },
     plates: [
       // The whole-frame layers cut from the painting with its people
       // painted out: the sky and the far shore stand at the back, the

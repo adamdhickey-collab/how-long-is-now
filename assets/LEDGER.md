@@ -1102,3 +1102,43 @@ instruments, the year has no survey, the sun's trail is not drawn
 that the people read as a time lapse — figures that come and go in
 different places and different seasons — rather than walkers
 animated in place. The plan for the rise is in PLAN.html.
+
+### 18i · the park outward, and what stands behind the elms
+
+Step 1 of the plan for the rise. One edit with the quiet park at half
+size in the middle of the canvas came back as a wider picture
+recomposed, not continued — the model keeps what is unmasked only
+when it is most of the canvas — so the continuation is made in eight
+pieces (`scripts/outpaint.mjs`, `OUTPAINT_PIECES` in
+reference-layers.mjs): four windows on a frame twice the painting's
+size, each keeping half of it as painted and asking for the rest,
+then the four corners the same way; the sides as open lawn and the
+top as open sky, so nothing painted there lies flat on the ground
+plate as the eye rises; the trunk bases below the painting painted
+away in a masked edit of that piece for the same reason. Each piece's
+drift — the model repaints the known half a shade crisper — is read
+as a straight-line fit over that half and taken back out, and the
+pieces are feathered in over 140 pixels. Two tone-matching schemes
+were tried and withdrawn first: per-line gains striped the pieces,
+per-seam gains cast them. The painting is set into the result at
+full resolution, blended 140 pixels inside its edge. The bands are
+cut in the wide frame (3072 × 2048, the painting at 768, 512), and the
+composition maps a wide layer by that origin (`composition.wide`).
+
+What stands behind the elms is now the model's own answer: the quiet
+park edited through a mask the shape of the trees (the colour-keyed
+matte grown fourteen pixels, `scripts/tree-mask.mjs`), which kept the
+far shore, its bandshell and the water and painted sky, shore and
+lawn where the trunks and leaves were — exactly, outside the mask.
+The tree matte is what differs between the two inside that mask,
+rounded; the fill behind the trees is that image. The rise now has a
+world under and around it: sky above, lawn behind the seat, water and
+shore to both sides, and when the elms fade there is sky and shore
+behind them rather than blocks. Still visible: the painting's own
+crisper, hazier square against the continuation, most in the sky and
+along the far treeline at the left; the leaves that hang in front of
+the far treeline stay in it; the right extension keeps two painted
+elms. Season editions of the wide frame are step 3. Last, the far treeline had been found on the painting with the
+leaves still in front of it, and rode in the sky band as well as the
+far shore's, doubling as the eye rose; it is found on the filled image
+now, and the sky band carries only sky below it, mirrored down.

@@ -154,11 +154,13 @@ const SCENES = {
   'scene-04/ref': [
     // ('check' draws the boundaries and the matte over the quiet park,
     // for the eye; add it to the list when the bands need looking at.)
+    // The bands are cut in the wide frame (18i): the painting set into
+    // its outpainted continuation, twice the size each way.
     ...['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
       id,
-      raw: ['quiet-park-v1.png', 'empty-view-v1.png'],
+      raw: ['quiet-park-v1.png', 'empty-view-v2.png', 'wide-park-v8.png'],
       recipe: `ref-${id}`,
-      budgetKb: 900,
+      budgetKb: id === 'ground' ? 1500 : 1000,
     })),
     ...[
       'reader', 'couple', 'man-dog', 'bicycle', 'sitters-lawn', 'straw-hat', 'lying-man', 'family', 'chairs',

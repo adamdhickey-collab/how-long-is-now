@@ -101,7 +101,10 @@ async function prepared(layer) {
   }
   const image = await sharp(src).png().toBuffer();
   let mask;
-  if (layer.maskBoxes) {
+  if (layer.maskFile) {
+    // A mask drawn elsewhere: clear where the model may paint.
+    mask = await sharp(resolve(root, layer.maskFile)).ensureAlpha().png().toBuffer();
+  } else if (layer.maskBoxes) {
     const { width, height } = await sharp(src).metadata();
     // Opaque everywhere the model must keep; the boxes are cut to alpha 0.
     const rects = layer.maskBoxes.map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>`).join('');

@@ -100,12 +100,17 @@ export function buildComposition(
     const build = (key: string, tex: THREE.Texture, i: number) => {
       const iw = (tex.image as HTMLImageElement).width;
       const ih = (tex.image as HTMLImageElement).height;
-      const whole = Math.abs(iw / ih - FW / FH) < 0.01 && iw >= FW * 0.9;
+      const wide = comp.wide;
+      const isWide = !!wide && Math.abs(iw - wide.frame[0]) <= 2 && Math.abs(ih - wide.frame[1]) <= 2;
+      const whole = !isWide && Math.abs(iw / ih - FW / FH) < 0.01 && iw >= FW * 0.9;
       // The image's box in the painting: the whole frame for a whole-
-      // frame layer, else the element's measured box, or what a
-      // completed element's trusted side makes of it.
+      // frame layer, the wide frame placed by its origin for one of
+      // those, else the element's measured box, or what a completed
+      // element's trusted side makes of it.
       let ix = bx, iy = by, iw2 = bw, ih2 = bh;
-      if (whole) {
+      if (isWide) {
+        ix = -wide!.origin[0]; iy = -wide!.origin[1]; iw2 = wide!.frame[0]; ih2 = wide!.frame[1];
+      } else if (whole) {
         ix = 0; iy = 0; iw2 = FW; ih2 = FH;
       } else if (p.fit === 'w') {
         ih2 = (bw * ih) / iw;

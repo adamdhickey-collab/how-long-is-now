@@ -77,6 +77,50 @@ export const TREE_BOXES = [[0, 0, 1536, 300], [0, 0, 235, 725], [1365, 0, 171, 4
 /** Pick the API size that best matches a crop's aspect. */
 const sizeFor = ([, , w, h]) => (w / h > 1.2 ? '1536x1024' : w / h < 0.83 ? '1024x1536' : '1024x1024');
 
+/** The wide frame is twice the painting each way; the painting sits at
+ *  (768, 512) in it. Every piece is a 1536 × 1024 window on that frame. */
+export const WIDE = { frame: [3072, 2048], origin: [768, 512] };
+export const OUTPAINT_PIECES = {
+  // round 1: the sides, then the top and the bottom
+  left: { at: [0, 512], mask: [[0, 0, 776, 1024]], round: 1, ask: 'to the left: open lawn with its dappled tree shadows and no further trees or trunks standing in it, the lake and the far shore\u2019s treeline continuing at exactly the same heights to the edge' },
+  right: { at: [1536, 512], mask: [[760, 0, 776, 1024]], round: 1, ask: 'to the right: open lawn with its dappled tree shadows and no further trees or trunks standing in it, the lake and the far shore\u2019s treeline continuing at exactly the same heights to the edge' },
+  above: { at: [768, 0], mask: [[0, 0, 1536, 520]], round: 1, ask: 'above: only open sky with a few light clouds, the same blue as the sky already painted — no branches, no leaves, no treetops anywhere in the white area, as if the elms ended exactly at the painting\u2019s top edge' },
+  below: { at: [768, 1024], mask: [[0, 504, 1536, 520]], round: 1, ask: 'below: the same lawn continuing toward the viewer with its dappled tree shadows, the elms\u2019 trunks reaching the ground with their roots' },
+  // round 2: the corners
+  'top-left': { at: [0, 0], mask: [[0, 0, 776, 520]], round: 2, ask: 'in the corner: sky above, lawn and lake below, joining what is painted on either side' },
+  'top-right': { at: [1536, 0], mask: [[760, 0, 776, 520]], round: 2, ask: 'in the corner: sky above, lawn and lake below, joining what is painted on either side' },
+  'bottom-left': { at: [0, 1024], mask: [[0, 504, 776, 520]], round: 2, ask: 'in the corner: the lawn with its dappled tree shadows, joining what is painted on either side' },
+  'bottom-right': { at: [1536, 1024], mask: [[760, 504, 776, 520]], round: 2, ask: 'in the corner: the lawn with its dappled tree shadows, joining what is painted on either side' },
+};
+
+function outpaintLayers() {
+  const pieces = Object.entries(OUTPAINT_PIECES).map(([id, piece]) => ({
+    id: `wide-${id}`,
+    dir: `${dir}/outpaint`,
+    size: '1536x1024',
+    src: `assets/raw/${dir}/outpaint/${id}-input.png`,
+    maskBoxes: piece.mask,
+    noRef: true,
+    preamble: 'The image is part of a pointillist painting of a park on a lake — small dots and dashes of pure colour, sunlit — with a white area still to be painted.',
+    prompt: `Continue the painting into the white area so the whole canvas is one picture of the same park from the same spot, in exactly the same dots, colours and light — ${piece.ask}. No people, boats, animals or objects. Keep everything already painted exactly as it is, to the pixel.`,
+  }));
+  // The piece below the painting, with the elms' trunk bases painted
+  // away (18i): a trunk continued onto the lying ground plate streaks
+  // as the eye rises. An edit of the piece itself, masked to the two
+  // trunk columns below the painting's foot.
+  pieces.push({
+    id: 'wide-below-clean',
+    dir: `${dir}/outpaint`,
+    size: '1536x1024',
+    src: `latest:${dir}/outpaint/wide-below`,
+    maskBoxes: [[0, 500, 250, 524], [1360, 500, 176, 524]],
+    noRef: true,
+    preamble: 'The image is part of a pointillist painting of a park on a lake — small dots and dashes of pure colour, sunlit.',
+    prompt: `In the masked areas only, remove the tree trunks and their roots and continue the lawn there — the same grass with the same dappled tree shadow falling across it, in the same dots and light. Change nothing outside the masked areas.`,
+  });
+  return pieces;
+}
+
 export const layers = [
   ...ELEMENTS.map((e) => ({ id: e.id, dir, size: sizeFor(e.box), crop: { src: REF, box: pad(e.box, Math.round(Math.max(e.box[2], e.box[3]) * (e.pad ?? 0.1))) }, noRef: true, preamble: ELEMENT_STYLE, prompt: e.prompt })),
   {
@@ -85,8 +129,31 @@ export const layers = [
     prompt: `In the masked areas only, remove every person, dog, boat, bicycle, blanket, basket, bottle, bag, chair and pushchair, and continue what lies behind them — grass and its dappled tree shadows, the paved path, the low wall and shrubs, the sparkling water — in exactly the same dots, colours and light, so the park looks quietly empty. Change nothing outside the masked areas.`,
   },
   {
-    id: 'empty-view', dir, size: '1536x1024', src: 'latest:scene-04/ref/quiet-park', maskBoxes: TREE_BOXES, noRef: true,
+    // The park outward (18i): the quiet park at half size in the middle
+    // of the canvas, everything around it — and a thin margin inside —
+    // left for the model, so the ground, the water, the far shore and
+    // the sky run on past the painting's frame and the eye can rise.
+    id: 'wide-park', dir, size: '1536x1024', src: 'assets/raw/scene-04/ref/wide-input.png', noRef: true,
+    maskBoxes: [[0, 0, 1536, 264], [0, 760, 1536, 264], [0, 0, 392, 1024], [1144, 0, 392, 1024]],
+    preamble: 'The image is a pointillist painting of a park on a lake — small dots and dashes of pure colour, sunlit — sitting in the middle of a larger white canvas.',
+    prompt: `Continue the painting outward into the white on every side, in exactly the same dots, colours and light, so the whole canvas becomes one wider, taller view of the same park from the same spot: below and to the sides, more of the same lawn with its dappled tree shadows and the two big elms' trunks reaching the ground; to the left and right, the lake and the far shore's treeline continuing at the same height to the canvas's edges; above, open sky with a few light clouds and nothing else — do not add branches or leaves above the painting's top edge. No people, boats, animals or objects anywhere. Keep the painted centre exactly as it is.`,
+  },
+  // The park outward, in pieces (18i): each canvas keeps half of what is
+  // already painted and asks for the rest, so the model continues rather
+  // than recomposes. scripts/outpaint.mjs prepares the inputs, runs the
+  // two rounds — sides and top and bottom, then the four corners — and
+  // assembles the wide frame. The masks are the blank quarter or half of
+  // each canvas plus an eight-pixel margin into the painted part.
+  ...outpaintLayers(),
+  {
+    // What stands behind the elms (18i): the quiet park with a mask the
+    // shape of the trees themselves (scripts/tree-mask.mjs, from the
+    // colour-keyed matte grown a little), so the far shore, the water
+    // and most of the sky are kept and only the trees are painted away.
+    // The first try masked whole boxes and the model repainted the far
+    // shore flat, without its bandshell.
+    id: 'empty-view', dir, size: '1536x1024', src: 'latest:scene-04/ref/quiet-park', maskFile: 'assets/raw/scene-04/ref/tree-mask.png', noRef: true,
     preamble: 'The image is a pointillist painting of a park on a lake: small dots and dashes of pure colour, sunlit.',
-    prompt: `In the masked areas only, remove the big framing trees — the trunks at the left and right and the canopy of leaves across the top — and continue what lies behind them: the pale blue sky with its light clouds, the far shore's treeline continued to both edges at the same height, the water, and at the bottom left the lawn and path continued in the same dots. Keep the tree shadows on the grass. Change nothing outside the masked areas.`,
+    prompt: `In the masked areas only, remove the two big elms in the foreground — their trunks, branches and leaves — and continue exactly what lies behind them in the same dots, colours and light: the sky with its light clouds where leaves were, the far shore's treeline at the same height and the water where the trunks crossed them, the path and the lawn with its dappled shadow where the trunks met the ground. Change nothing outside the masked areas.`,
   },
 ];
