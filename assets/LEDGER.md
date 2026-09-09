@@ -749,3 +749,16 @@ through that camera, and since a callout is laid out only while it is
 on, the NaN stayed in the DOM. A real window never has zero height; the
 resize now ignores a zero-size window, and a walk through the
 equinox's windows leaves no NaN anywhere in the overlay.
+
+### 13c · after the critique
+
+Three changes from a critique of the seat. Every text in the world now
+has one rule: the HUD's label, hint and clock and the caption carry
+the survey's halo of the ground behind them, so the one instruction
+the piece gives survives a bright frame. The held second's thermal
+comes at seven seconds, after the blink, so the visitor arrives in
+colour. The seated eye is at 2.5, looking a little further down, so the
+lake takes a fifth of the frame instead of a seventh, the framing card
+raised half a unit to keep only the canopy's fringe in view; and the
+lying man went back to the wall, small, so the bandshell keeps the
+centre of the frame to itself.

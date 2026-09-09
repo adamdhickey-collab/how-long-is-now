@@ -43,6 +43,18 @@ body {
   user-select: none;
 }
 
+/* Every text in the world has one rule: a faint halo of the ground
+   behind it, the survey's own, so a label survives a bright frame. */
+.hud__scale,
+.hud__hint,
+.clock,
+.caption {
+  text-shadow:
+    0 0 2px var(--ground),
+    0 0 6px color-mix(in srgb, var(--ground) 85%, transparent),
+    0 0 14px color-mix(in srgb, var(--ground) 55%, transparent);
+}
+
 .hud__scale {
   font-size: clamp(0.8rem, 1.1vw, 1rem);
   font-weight: 500;

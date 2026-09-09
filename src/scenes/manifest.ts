@@ -838,16 +838,17 @@ export const scenes: Scene[] = [
     // grass, as a thermal reading that arrives on its own time.
     hold: { of: 'scene-04-year', at: 0, life: ['jogger'] },
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
-      to: { y: 1.9, z: 16, lookY: 0.5 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.5, z: 16, lookY: 0.35 },
     },
     // The ramp spread across what one August afternoon holds: the lake
     // at 24 °C sits low and blue, the sunned grass at 32 near the top.
     instruments: [
-      // Lighter than it was: over the pointillist park the reading at
-      // full strength was a beige wash, and the first thing noticed should
-      // not take the afternoon's colour away.
-      { kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.3, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+      // Lighter than it was, and later: over the pointillist park the
+      // reading at full strength was a beige wash, and the first thing
+      // noticed should not take the afternoon's colour away before the
+      // visitor has arrived in it. It comes after the blink.
+      { kind: 'thermal', from: 0, to: 1, after: 7, strength: 0.3, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
     ],
     // Someone blinks: the viewer, once, after the reading has settled
     // and the second has been sat in long enough to forget the eye.
@@ -864,8 +865,8 @@ export const scenes: Scene[] = [
     // wind on the water first, then the air, through the radar.
     hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5 },
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
-      to: { y: 1.9, z: 16, lookY: 0.5 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.5, z: 16, lookY: 0.35 },
     },
     instruments: [
       { kind: 'flow', from: 0.06, to: 1 },
@@ -898,8 +899,8 @@ export const scenes: Scene[] = [
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
     },
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
-      to: { y: 1.9, z: 16, lookY: 0.5 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.5, z: 16, lookY: 0.35 },
     },
     instruments: [
       { kind: 'arc', from: 0.02, to: 1 },
@@ -921,7 +922,7 @@ export const scenes: Scene[] = [
     // which is fixed to the sky and not to the ground, stays in the frame
     // for the whole year.
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
       to: { y: 9.5, z: 27, lookY: 9.5 },
     },
     plates: [
@@ -1006,7 +1007,7 @@ export const scenes: Scene[] = [
         height: 4.27,
         // High enough that only the canopy's fringe hangs into the top
         // of the frame; the trunks run out of its foot.
-        baseY: 0.1,
+        baseY: 0.6,
         shade: 0.08,
         images: {
           'LATE SUMMER': 'plates/scene-04/park/trees-late-summer.webp',
@@ -1038,7 +1039,7 @@ export const scenes: Scene[] = [
           { id: 'family', cell: 1, x: 7.2, z: 6.6 },
           { id: 'man-dog', cell: 4, x: -6.4, z: 6.8 },
           { id: 'chair', cell: 6, x: -9.2, z: 5.6 },
-          { id: 'lying', cell: 8, x: 3.2, z: 7.6 },
+          { id: 'lying', cell: 8, x: 4.0, z: 6.2 },
           { id: 'somali-family', cell: 9, x: -4.6, z: 9.2 },
           { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6 },
           { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4 },
@@ -1375,7 +1376,7 @@ export const scenes: Scene[] = [
     // left the eye. What is left is a drop: twenty units down to the seat.
     camera: {
       from: { y: 20, z: 28, lookY: 14 },
-      to: { y: 1.9, z: 16, lookY: 0.5 },
+      to: { y: 2.5, z: 16, lookY: 0.35 },
       ease: 'fall',
     },
     cameraAt: { from: 0.56, to: 1 },
@@ -1398,8 +1399,8 @@ export const scenes: Scene[] = [
     // a lean forward: the grass a little larger, the frame a little
     // tighter, over the whole scene.
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
-      to: { y: 1.8, z: 14.6, lookY: 0.45 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.4, z: 14.6, lookY: 0.3 },
     },
     labelAt: [
       { from: 0, label: '1 SECOND' },
@@ -1591,8 +1592,8 @@ export const scenes: Scene[] = [
     // and then the interface itself.
     hold: { of: 'scene-04-year', at: 0 },
     camera: {
-      from: { y: 1.9, z: 16, lookY: 0.5 },
-      to: { y: 1.9, z: 16, lookY: 0.5 },
+      from: { y: 2.5, z: 16, lookY: 0.35 },
+      to: { y: 2.5, z: 16, lookY: 0.35 },
     },
     instruments: [
       { kind: 'ring', from: 0, to: 0.18, strength: 0.5 },
