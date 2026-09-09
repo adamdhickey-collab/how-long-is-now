@@ -2146,19 +2146,49 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       // Shadows soften as the light goes and on snow.
       set.shadowMat.opacity = alpha * there * 0.34 * (1 - night * 0.6) * (1 - s.airFall * 0.5);
       const life = holder?.life;
-      for (const p of set.placed) {
+      for (let i = 0; i < set.placed.length; i++) {
+        const p = set.placed[i];
         const walker = p.def.speed !== undefined && f.walk;
         p.mesh.visible = !!set.mat.map && there > 0 && (!walker || !life || life.includes(p.def.id));
         p.shadow.visible = p.mesh.visible;
         // Every figure faces the camera, feet where they stand: from the
         // seat a card, from the year's height a person seen from above.
         p.mesh.quaternion.copy(camera.quaternion);
+        const size = p.def.size ?? f.size;
         if (walker && f.walk && !reducedMotion) {
           const span = f.walk.to - f.walk.from;
           const travelled = (p.x0 - f.walk.from + (p.def.speed ?? 0) * elapsed) % span;
           p.mesh.position.x = f.walk.from + (travelled < 0 ? travelled + span : travelled);
-          p.shadow.position.x = p.mesh.position.x + (p.def.size ?? f.size) * 0.06;
+          p.shadow.position.x = p.mesh.position.x + size * 0.06;
         }
+        // The sheet's life, on its own phase per placement: breath and
+        // sway for those who sit, a stride's bob and lean for those who
+        // walk, a wobble for those who ride, a heel for the sails.
+        const l = f.life;
+        let lift = 0;
+        let tilt = 0;
+        let breathe = 1;
+        if (l && !reducedMotion) {
+          const phase = i * 2.399;
+          if (l.breath) breathe = 1 + l.breath * Math.sin(elapsed * 1.5 + phase);
+          if (l.sway) tilt += l.sway * Math.sin(elapsed * 0.45 + phase);
+          const speed = p.def.speed ?? 0;
+          const pace = Math.min(Math.abs(speed), 3);
+          if (pace > 0 && !p.def.ride) {
+            const cadence = 1.4 + pace * 0.5;
+            lift = ((l.bob ?? 0) * pace * Math.abs(Math.sin(Math.PI * cadence * elapsed + phase))) / 1.4;
+            tilt -= ((l.lean ?? 0) * Math.sign(speed) * pace) / 3;
+          } else if (pace > 0 && p.def.ride) {
+            tilt += (l.wobble ?? 0) * Math.sin(elapsed * 1.7 + phase);
+          }
+          if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
+        }
+        p.mesh.scale.y = breathe;
+        p.mesh.position.y = f.baseY + (size / 2) * breathe + lift;
+        if (tilt) p.mesh.rotateZ(tilt * D2R);
+        // The shadow pools smaller under a foot that has left the ground.
+        const off = lift > 0 ? 1 - Math.min(lift / (size * 0.06), 1) * 0.3 : 1;
+        p.shadow.scale.set(size * 0.62 * off, size * 0.22 * off, 1);
       }
     }
 

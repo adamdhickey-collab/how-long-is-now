@@ -61,6 +61,20 @@ export const layers = [
     size: LANDSCAPE,
     prompt: `Layer 6 again, more people passing: a 3 by 3 grid of nine separate figures on flat pure white, each cell one moving figure seen from the side at eye level, all facing right, late-summer light from the left: a man walking a golden dog on a lead, a small child running, a woman jogging, a teenager on a skateboard, an older woman walking with a small dog, a young man walking a bicycle beside him, a woman walking with a coffee cup, two children running together, a man walking with a toddler on his shoulders. White between the cells, no grid lines.`,
   },
+  // The walkers' other stride: each sheet redrawn with every figure in
+  // the opposite phase, cut in as a second frame and alternated.
+  {
+    id: 'movers-stride',
+    size: LANDSCAPE,
+    refs: ['assets/raw/scene-04/park/movers-v1.png'],
+    prompt: `The first image is a sheet of figures walking, running and riding in a grid; the second is the style reference. Redraw the first image exactly — the same grid and cells, the same figures with the same clothes, colours, size and position in each cell, the same flat pure white — with every figure in the opposite phase of its stride: the other leg forward and the arms swung the other way for those on foot, the pedals and wheels a quarter turn on for the rider. Nothing else changes.`,
+  },
+  {
+    id: 'movers-b-stride',
+    size: LANDSCAPE,
+    refs: ['assets/raw/scene-04/park/movers-b-v1.png'],
+    prompt: `The first image is a sheet of figures walking, running and riding in a grid; the second is the style reference. Redraw the first image exactly — the same grid and cells, the same figures with the same clothes, colours, size and position in each cell, the same flat pure white — with every figure in the opposite phase of its stride: the other leg forward and the arms swung the other way for those on foot, the wheels a quarter turn on for those on wheels, the dogs' legs likewise. Nothing else changes.`,
+  },
   {
     id: 'foreground',
     size: LANDSCAPE,

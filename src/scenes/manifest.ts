@@ -95,9 +95,20 @@ export interface Figures {
   atlas: { image: string; cols: number; rows: number; count: number };
   size: number;
   baseY: number;
-  places: { id: string; cell: number; x: number; z: number; size?: number; speed?: number }[];
+  places: { id: string; cell: number; x: number; z: number; size?: number; speed?: number; ride?: boolean }[];
   walk?: { from: number; to: number };
   present?: Window | Window[];
+  /**
+   * How the figures move where they are, so nobody is a statue. Sitters
+   * breathe: the cutout rises and falls by this fraction over a few
+   * seconds, and sways by this many degrees over ten. Walkers bob with
+   * their stride — this much, in world units, at a walking pace, more
+   * at a run — and lean into it by this many degrees; a placement that
+   * rides rather than walks wobbles by this many degrees instead. Sails
+   * heel by this many degrees. All in real time; stilled under reduced
+   * motion.
+   */
+  life?: { breath?: number; sway?: number; bob?: number; lean?: number; wobble?: number; heel?: number };
 }
 
 /**
@@ -1003,6 +1014,7 @@ export const scenes: Scene[] = [
         atlas: { image: 'plates/scene-04/park/sitters.webp', cols: 3, rows: 6, count: 18 },
         size: 2.7,
         baseY: 0,
+        life: { breath: 0.012, sway: 0.5 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1, edge: 0.04 },
@@ -1028,6 +1040,7 @@ export const scenes: Scene[] = [
         size: 2.6,
         baseY: 0,
         walk: { from: -34, to: 34 },
+        life: { bob: 0.045, lean: 4, wobble: 1.5 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1, edge: 0.04 },
@@ -1036,13 +1049,13 @@ export const scenes: Scene[] = [
           { id: 'jogger', cell: 0, x: -20, z: 4.7, speed: 2.6 },
           { id: 'woman', cell: 1, x: 8, z: 4.8, speed: -1.25 },
           { id: 'man', cell: 2, x: 24, z: 4.7, speed: 1.4 },
-          { id: 'cyclist', cell: 3, x: -30, z: 4.6, speed: 4.4 },
+          { id: 'cyclist', cell: 3, x: -30, z: 4.6, speed: 4.4, ride: true },
           { id: 'family', cell: 4, x: -4, z: 4.9, speed: -0.9 },
           { id: 'stroller', cell: 5, x: 16, z: 4.8, speed: 1.1 },
           { id: 'dog-walker', cell: 6, x: 30, z: 4.7, speed: 1.3 },
           { id: 'child', cell: 7, x: -12, z: 4.9, speed: 2.2 },
           { id: 'runner', cell: 8, x: 2, z: 4.6, speed: -2.4 },
-          { id: 'skater', cell: 9, x: -26, z: 4.8, speed: 3.2 },
+          { id: 'skater', cell: 9, x: -26, z: 4.8, speed: 3.2, ride: true },
           { id: 'small-dog', cell: 10, x: 20, z: 4.9, speed: -0.9 },
           { id: 'bike-walker', cell: 11, x: -18, z: 4.7, speed: 1.2 },
         ],
@@ -1054,6 +1067,7 @@ export const scenes: Scene[] = [
         size: 6,
         baseY: -0.3,
         walk: { from: -70, to: 70 },
+        life: { heel: 3, breath: 0.006 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1, edge: 0.04 },
@@ -1075,6 +1089,7 @@ export const scenes: Scene[] = [
         atlas: { image: 'plates/scene-04/park/sitters-autumn.webp', cols: 3, rows: 3, count: 9 },
         size: 2.5,
         baseY: 0,
+        life: { breath: 0.012, sway: 0.5 },
         present: { from: 0.2, to: 0.42, edge: 0.04 },
         places: [
           { id: 'sweater-couple', cell: 0, x: -5, z: 9 },
@@ -1091,14 +1106,15 @@ export const scenes: Scene[] = [
         size: 2.3,
         baseY: 0,
         walk: { from: -34, to: 34 },
+        life: { bob: 0.045, lean: 4, wobble: 1.5 },
         present: { from: 0.2, to: 0.42, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -20, z: 4.7, speed: 2.5 },
           { id: 'dog-walker', cell: 1, x: 10, z: 4.8, speed: -1.2 },
-          { id: 'cyclist', cell: 2, x: -30, z: 4.6, speed: 4.2 },
+          { id: 'cyclist', cell: 2, x: -30, z: 4.6, speed: 4.2, ride: true },
           { id: 'raker', cell: 3, x: -14, z: 5.0 },
           { id: 'coffee-friends', cell: 4, x: 22, z: 4.8, speed: 1.1 },
-          { id: 'kid-bike', cell: 5, x: -8, z: 4.9, speed: 2.0 },
+          { id: 'kid-bike', cell: 5, x: -8, z: 4.9, speed: 2.0, ride: true },
           { id: 'old-couple', cell: 6, x: 30, z: 4.7, speed: -0.8 },
           { id: 'stroller-jogger', cell: 7, x: 2, z: 4.8, speed: 2.2 },
         ],
@@ -1112,6 +1128,7 @@ export const scenes: Scene[] = [
         atlas: { image: 'plates/scene-04/park/ice-winter.webp', cols: 3, rows: 3, count: 9 },
         size: 3.0,
         baseY: 0,
+        life: { breath: 0.008 },
         present: { from: 0.46, to: 0.64, edge: 0.04 },
         places: [
           { id: 'ice-house', cell: 0, x: -34, z: -44 },
@@ -1130,16 +1147,17 @@ export const scenes: Scene[] = [
         size: 2.5,
         baseY: 0,
         walk: { from: -60, to: 60 },
+        life: { bob: 0.04, lean: 4, wobble: 2 },
         present: { from: 0.46, to: 0.64, edge: 0.04 },
         places: [
-          { id: 'skater', cell: 0, x: -10, z: -24, speed: 2.4 },
-          { id: 'skating-couple', cell: 1, x: 20, z: -28, speed: -1.6 },
-          { id: 'hockey-player', cell: 2, x: 34, z: -26, speed: 2.8 },
+          { id: 'skater', cell: 0, x: -10, z: -24, speed: 2.4, ride: true },
+          { id: 'skating-couple', cell: 1, x: 20, z: -28, speed: -1.6, ride: true },
+          { id: 'hockey-player', cell: 2, x: 34, z: -26, speed: 2.8, ride: true },
           { id: 'sled-puller', cell: 3, x: -30, z: -16, speed: 0.9 },
           { id: 'parka-dog', cell: 4, x: 12, z: 4.8, speed: -1.0 },
           { id: 'runner-tights', cell: 5, x: -25, z: 4.7, speed: 2.4 },
           { id: 'runner-yellow', cell: 6, x: 5, z: 4.7, speed: -2.2 },
-          { id: 'fat-bike', cell: 7, x: 26, z: 4.6, speed: 3.4 },
+          { id: 'fat-bike', cell: 7, x: 26, z: 4.6, speed: 3.4, ride: true },
           { id: 'auger-man', cell: 8, x: 0, z: -40, speed: -0.7 },
         ],
       },
@@ -1149,6 +1167,7 @@ export const scenes: Scene[] = [
         atlas: { image: 'plates/scene-04/park/sitters-spring.webp', cols: 3, rows: 3, count: 9 },
         size: 2.5,
         baseY: 0,
+        life: { breath: 0.012, sway: 0.5 },
         present: { from: 0.68, to: 0.88, edge: 0.04 },
         places: [
           { id: 'takeout-couple', cell: 0, x: -4, z: 8.8 },
@@ -1166,13 +1185,14 @@ export const scenes: Scene[] = [
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
+        life: { bob: 0.045, lean: 4, wobble: 1.5 },
         present: { from: 0.68, to: 0.88, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -18, z: 4.7, speed: 2.6 },
-          { id: 'rollerblader', cell: 1, x: 8, z: 4.6, speed: -3.0 },
+          { id: 'rollerblader', cell: 1, x: 8, z: 4.6, speed: -3.0, ride: true },
           { id: 'dog-coffee', cell: 2, x: 24, z: 4.8, speed: 1.2 },
-          { id: 'child-bike-parent', cell: 3, x: -30, z: 4.8, speed: 1.8 },
-          { id: 'cyclist', cell: 4, x: 14, z: 4.6, speed: 4.6 },
+          { id: 'child-bike-parent', cell: 3, x: -30, z: 4.8, speed: 1.8, ride: true },
+          { id: 'cyclist', cell: 4, x: 14, z: 4.6, speed: 4.6, ride: true },
           { id: 'umbrella-man', cell: 5, x: -6, z: 4.7, speed: -1.3 },
           { id: 'teens', cell: 6, x: 30, z: 4.8, speed: 1.0 },
           { id: 'stroller-rain', cell: 7, x: -2, z: 4.9, speed: -1.1 },

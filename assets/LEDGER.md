@@ -625,3 +625,13 @@ Overflow from the side too: the red shirt of the group in the cell to
 the lying man's left ran sideways into his cell and rode along as a
 needle down his tile's edge. `ownBlobs` now clears small blobs touching
 any edge of a cell, not only the top and bottom.
+
+### 10g · life
+
+Nobody is a statue. Each sheet declares its `life` in the manifest:
+sitters breathe (the cutout rises and falls a little over a few
+seconds, on its own phase) and sway by half a degree over ten; walkers
+bob with a stride whose cadence follows their pace and lean into it,
+more at a run, the shadow pooling smaller under a foot that has left
+the ground; placements that ride — bikes, skates, a skateboard —
+wobble instead; sails heel. Real time, stilled under reduced motion.
