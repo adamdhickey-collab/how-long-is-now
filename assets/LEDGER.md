@@ -566,9 +566,9 @@ ground; the seat's own cards (the elms, the foreground) still fade as
 the eye rises. The lifetime (scene 05, held at 1) sees the summer
 crowd's return window, which is where people as appearances begins.
 
-Known: the winter stills' cells carry a little of their drawn snow
-ground past the key, a paler patch under the house and the sled on the
-ice; a tighter key for that sheet, or a snowier ice, would hide it.
+The winter stills' snow-ground patches (a paler box under the house
+and the sled) went with `ice-winter` v2, generated under the crowd
+prompts' "nothing beneath anyone" rule, which the first sheet predated.
 
 ### 10e · polish
 

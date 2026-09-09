@@ -1140,7 +1140,7 @@ export const scenes: Scene[] = [
           { id: 'bonfire', cell: 4, x: 24, z: -36 },
           { id: 'sled', cell: 5, x: -7, z: 7.4 },
           { id: 'hockey-net', cell: 6, x: 36, z: -26 },
-          { id: 'kneeling-pair', cell: 7, x: 4, z: -18 },
+          { id: 'standing-pair', cell: 7, x: 4, z: -18 },
           { id: 'kneeling-child', cell: 8, x: -22, z: -20 },
         ],
       },
