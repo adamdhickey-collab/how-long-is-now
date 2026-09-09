@@ -112,7 +112,20 @@ export interface Figures {
    * heel by this many degrees. All in real time; stilled under reduced
    * motion.
    */
-  life?: { breath?: number; sway?: number; bob?: number; lean?: number; wobble?: number; heel?: number };
+  life?: {
+    breath?: number;
+    sway?: number;
+    bob?: number;
+    lean?: number;
+    wobble?: number;
+    heel?: number;
+    /**
+     * Whether a sheet drawn in both phases of its stride uses them. Two
+     * drawings do not make a walk — the feet slide and the figure ghosts
+     * — so this is off, and the figures glide as the cutouts they are.
+     */
+    gait?: boolean;
+  };
 }
 
 /**
@@ -1056,7 +1069,7 @@ export const scenes: Scene[] = [
         size: 2.6,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.022, lean: 3, wobble: 1 },
+        life: { sway: 0.25 },
         present: [
           { from: 0, to: 0.12, edge: 0.04 },
           { from: 0.93, to: 1.06, edge: 0.04 },
@@ -1122,7 +1135,7 @@ export const scenes: Scene[] = [
         size: 2.3,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.022, lean: 3, wobble: 1 },
+        life: { sway: 0.25 },
         present: { from: 0.2, to: 0.42, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -20, z: 4.7, speed: 2.5 },
@@ -1163,7 +1176,7 @@ export const scenes: Scene[] = [
         size: 2.5,
         baseY: 0,
         walk: { from: -60, to: 60 },
-        life: { bob: 0.02, lean: 3, wobble: 1.2 },
+        life: { sway: 0.25 },
         present: { from: 0.46, to: 0.64, edge: 0.04 },
         places: [
           { id: 'skater', cell: 0, x: -10, z: -24, speed: 2.4, ride: true },
@@ -1201,7 +1214,7 @@ export const scenes: Scene[] = [
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
-        life: { bob: 0.022, lean: 3, wobble: 1 },
+        life: { sway: 0.25 },
         present: { from: 0.68, to: 0.88, edge: 0.04 },
         places: [
           { id: 'runner', cell: 0, x: -18, z: 4.7, speed: 2.6 },

@@ -2272,10 +2272,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
             const step = Math.sin(Math.PI * cadence * elapsed + phase);
             lift = ((l.bob ?? 0) * pace * step * step) / 1.4;
             tilt -= ((l.lean ?? 0) * Math.sign(speed) * pace) / 3;
-            blend = 0.5 - 0.5 * Math.cos(Math.PI * cadence * elapsed + phase);
+            if (l.gait) blend = 0.5 - 0.5 * Math.cos(Math.PI * cadence * elapsed + phase);
           } else if (pace > 0 && p.def.ride) {
             tilt += (l.wobble ?? 0) * Math.sin(elapsed * 1.7 + phase);
-            blend = 0.5 - 0.5 * Math.cos(elapsed * 4.0 + phase);
+            if (l.gait) blend = 0.5 - 0.5 * Math.cos(elapsed * 4.0 + phase);
           }
           if (l.heel) tilt += l.heel * Math.sin(elapsed * 0.9 + phase);
         }

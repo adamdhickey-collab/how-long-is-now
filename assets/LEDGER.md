@@ -762,3 +762,17 @@ lake takes a fifth of the frame instead of a seventh, the framing card
 raised half a unit to keep only the canopy's fringe in view; and the
 lying man went back to the wall, small, so the bandshell keeps the
 centre of the frame to itself.
+
+### 13d · the walk, withdrawn
+
+Judged in motion twice, the walkers' gait looked bad both ways: cut
+hard between two frames it was a flip-book; crossfaded it ghosted; and
+either way the feet slid against the ground, which no bob or lean can
+hide, because two drawings are not a walk. Withdrawn. Walkers and
+riders glide as the cutouts they are — no frame swap, no bob, no lean,
+a quarter-degree sway, a steady shadow — which is what a Seurat's
+figures do. The stride frames stay in the atlases behind `life.gait`,
+off. The way to a real walk is a drawn cycle of six or more frames per
+figure, which the image model does not produce consistently; a
+stop-motion step, the figure advancing a stride's length as it swaps
+pose and standing between, is the one untried alternative.
