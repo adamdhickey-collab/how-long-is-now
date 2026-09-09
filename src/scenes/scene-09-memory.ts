@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import type { MemoryCorridor, Month, Scene } from './manifest';
-import { opening } from './loading';
+import { opening, plateUrl } from './loading';
 
 const INK = 0xe8e6e1;
 const DIM = 0x8a877f;
@@ -229,7 +229,7 @@ export function createMemoryScene(world: THREE.Scene, def: Scene, reducedMotion:
     if (!m.atlas) return;
     const { image, cols, count } = m.atlas;
     opening
-      .then(() => loader.loadAsync(`${import.meta.env.BASE_URL}${image}`))
+      .then(() => loader.loadAsync(plateUrl(image)))
       .then((tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.wrapS = THREE.ClampToEdgeWrapping;

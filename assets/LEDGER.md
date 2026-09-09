@@ -569,3 +569,42 @@ crowd's return window, which is where people as appearances begins.
 Known: the winter stills' cells carry a little of their drawn snow
 ground past the key, a paler patch under the house and the sled on the
 ice; a tighter key for that sheet, or a snowier ice, would hide it.
+
+### 10e · polish
+
+What made the park look thrown together, and what fixed it:
+
+1. **Every figure floated.** No contact shadow, and each sitter sat on
+   its own drawn patch of grass that matched nothing. Now every cutout
+   has a soft dark ellipse at its feet, offset to the right and toward
+   the seat as the afternoon light would have it, softening at night
+   and on snow; and all four sitter sheets were regenerated with
+   "nothing drawn beneath anyone" (`sitters` v2, `sitters-b` v2,
+   `sitters-autumn` v2, `sitters-spring` v2).
+2. **A neighbour's feet in the tile.** In a raw sheet the older couple's
+   chair legs overflow their cell into the one below, so the
+   grandmother's tile carried their feet and the seat showed a row of
+   legs at the water's edge. The fragments recipe now clears, within
+   each cell, any small blob touching the cell's top or bottom edge
+   (`ownBlobs`), and keeps a group's own separate things.
+3. **The shore was a hedge.** The shoreline's shrubs, tiled twelve
+   times, read as a wall of bushes. `shoreline` v3 is a low stone wall
+   with a few tufts and open path. Every seasonal edit of it grew trees
+   again, so the one wall serves all four seasons; a stone wall does.
+4. **The canopy was a lid.** `trees` v2 is an airy, open canopy with
+   white showing through and slimmer trunks, in all four seasons.
+5. **The lawn was one flat green.** Its shader now darkens and cools the
+   grass under the elms with a dapple and brightens it toward the
+   water, the shade lifting as the eye rises past the canopy.
+6. **The lake was a band.** A fine glitter across it where the wind
+   roughens it, and a lighter cobalt.
+7. **The thermal bleached and then muddied.** Over pale plates the
+   reading's luminance shading took a plate past white; it is now
+   capped at the ramp's own brightness. The held second's thermal is
+   at 0.3 (was 0.55), the year's at 0.55 (was full), so a reading
+   leaves the afternoon its colour.
+8. **The cache, for the last time.** Every plate URL now carries the
+   build's id (`plateUrl` in `scenes/loading.ts`), so a plate recut
+   under the same name is never read as the one before.
+
+Spring's lawn tile went to v3 (no shadows drawn on it) on the way.

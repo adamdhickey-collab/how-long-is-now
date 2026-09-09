@@ -142,7 +142,6 @@ const PARK = {
   // cross-fades hold their composition and the plate one height.
   band: {
     'far-shore': [300, 552],
-    shoreline: [440, 753],
   },
 };
 
@@ -152,32 +151,31 @@ const SCENES = {
     { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v1.png', recipe: 'strip', key: true },
     { id: 'far-shore', variant: 'winter', raw: 'far-shore-winter-v1.png', recipe: 'strip', key: true },
     { id: 'far-shore', variant: 'spring', raw: 'far-shore-spring-v1.png', recipe: 'strip', key: true },
-    { id: 'shoreline', variant: 'late-summer', raw: 'shoreline-v2.png', recipe: 'strip', key: true },
-    { id: 'shoreline', variant: 'autumn', raw: 'shoreline-autumn-v2.png', recipe: 'strip', key: true },
-    { id: 'shoreline', variant: 'winter', raw: 'shoreline-winter-v2.png', recipe: 'strip', key: true },
-    { id: 'shoreline', variant: 'spring', raw: 'shoreline-spring-v2.png', recipe: 'strip', key: true },
+    // One wall for all four seasons: every seasonal edit of it grew
+    // trees above the wall, and a stone wall does not change anyway.
+    { id: 'shoreline', raw: 'shoreline-v3.png', recipe: 'strip', key: true },
     { id: 'lawn', variant: 'late-summer', raw: 'lawn-v1.png', recipe: 'plain' },
     { id: 'lawn', variant: 'autumn', raw: 'lawn-autumn-v2.png', recipe: 'plain' },
     { id: 'lawn', variant: 'winter', raw: 'lawn-winter-v2.png', recipe: 'plain' },
-    { id: 'lawn', variant: 'spring', raw: 'lawn-spring-v2.png', recipe: 'plain' },
+    { id: 'lawn', variant: 'spring', raw: 'lawn-spring-v3.png', recipe: 'plain' },
     // The framing card keeps its whole canvas in every season, so the
     // trunks stand in the same place whatever hangs from them.
-    { id: 'trees', variant: 'late-summer', raw: 'trees-v1.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'autumn', raw: 'trees-autumn-v1.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'winter', raw: 'trees-winter-v1.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'spring', raw: 'trees-spring-v1.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'late-summer', raw: 'trees-v2.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'autumn', raw: 'trees-autumn-v2.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'winter', raw: 'trees-winter-v2.png', recipe: 'plain', key: true },
+    { id: 'trees', variant: 'spring', raw: 'trees-spring-v2.png', recipe: 'plain', key: true },
     { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
     // Two sheets of sitters into one atlas of eighteen; the world places
     // each group at most once, so nobody is on the lawn twice.
-    { id: 'sitters', raw: ['sitters-v1.png', 'sitters-b-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'sitters', raw: ['sitters-v2.png', 'sitters-b-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'boats', raw: ['boats-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     // The crowd through the year (LEDGER 10d): who is in the park in
     // each season, a sheet of nine each.
-    { id: 'sitters-autumn', raw: ['sitters-autumn-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'sitters-autumn', raw: ['sitters-autumn-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'movers-autumn', raw: ['movers-autumn-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'ice-winter', raw: ['ice-winter-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'movers-winter', raw: ['movers-winter-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'sitters-spring', raw: ['sitters-spring-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'sitters-spring', raw: ['sitters-spring-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     { id: 'movers-spring', raw: ['movers-spring-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
     // The second walkers sheet came as three rows with the third cut off
     // by the frame; its top two rows are kept and cut on the first's grid.
@@ -354,6 +352,58 @@ async function corridorBay(file, _ext, p) {
   return sharp(file).extract({ left: 0, top, width: meta.width, height: Math.min(height, meta.height - top) });
 }
 
+/**
+ * A cell of a sheet as its own RGBA buffer, with the blobs that are not
+ * its own cleared: connected regions of alpha that touch the cell's top
+ * or bottom edge and are small beside the largest are a neighbour's
+ * overflow, and go. A group's own separate things — a bottle, a paddle,
+ * a gosling — sit inside the cell and stay.
+ */
+function ownBlobs(data, width, x0, y0, w, h) {
+  const cell = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    data.copy(cell, y * w * 4, ((y0 + y) * width + x0) * 4, ((y0 + y) * width + x0 + w) * 4);
+  }
+  const label = new Int32Array(w * h);
+  const blobs = [];
+  const queue = new Int32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (label[i] || cell[i * 4 + 3] <= 12) continue;
+    const id = blobs.length + 1;
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = i;
+    label[i] = id;
+    const blob = { id, area: 0, top: false, bottom: false };
+    while (head < tail) {
+      const j = queue[head++];
+      blob.area++;
+      const x = j % w;
+      const y = (j - x) / w;
+      if (y === 0) blob.top = true;
+      if (y === h - 1) blob.bottom = true;
+      const near = [];
+      if (x > 0) near.push(j - 1);
+      if (x < w - 1) near.push(j + 1);
+      if (y > 0) near.push(j - w);
+      if (y < h - 1) near.push(j + w);
+      for (const k of near) {
+        if (!label[k] && cell[k * 4 + 3] > 12) {
+          label[k] = id;
+          queue[tail++] = k;
+        }
+      }
+    }
+    blobs.push(blob);
+  }
+  const largest = Math.max(0, ...blobs.map((b) => b.area));
+  const drop = new Set(blobs.filter((b) => (b.top || b.bottom) && b.area < largest * 0.3).map((b) => b.id));
+  if (drop.size) {
+    for (let i = 0; i < w * h; i++) if (drop.has(label[i])) cell[i * 4 + 3] = 0;
+  }
+  return cell;
+}
+
 /** The tight box of everything with alpha in a raw RGBA buffer region. */
 function alphaBox(data, width, x0, y0, w, h) {
   let minX = w;
@@ -385,12 +435,16 @@ async function fragmentAtlas(files, p = {}) {
     const ch = Math.floor(info.height / gridY);
     for (let r = 0; r < gridY; r++) {
       for (let c = 0; c < gridX; c++) {
-        const box = alphaBox(data, info.width, c * cw, r * ch, cw, ch);
+        // The cell alone, with whatever a neighbour let overflow into it
+        // — chair legs, feet, a hat brim — taken out: a small blob that
+        // touches the cell's top or bottom edge is not this cell's own.
+        const cell = ownBlobs(data, info.width, c * cw, r * ch, cw, ch);
+        const box = alphaBox(cell, cw, 0, 0, cw, ch);
         if (!box || box.width < cw * 0.1 || box.height < ch * 0.1) {
           console.log(`  ${path.basename(file)} cell ${r},${c}: empty, skipped`);
           continue;
         }
-        const cut = await sharp(file)
+        const cut = await sharp(cell, { raw: { width: cw, height: ch, channels: 4 } })
           .extract(box)
           .resize({ width: inner, height: inner, fit: 'inside' })
           .png()

@@ -23,12 +23,12 @@ export const layers = [
   {
     id: 'boats',
     size: LANDSCAPE,
-    prompt: `Layer 2, the boats: a 3 by 3 grid of nine separate small sailboats on flat pure white, white sails catching late-summer light, seen from across the water at eye level, a few with tiny figures aboard, each boat alone in its cell with no water drawn. White between the cells, no grid lines.`,
+    prompt: `Layer 2, the boats: a 3 by 3 grid of nine separate small sailboats on flat pure white, white sails catching late-summer light, seen from across the water at eye level, a few with tiny figures aboard, each boat alone in its cell with no water drawn. Sailboats only: nothing on this lake has a motor. White between the cells, no grid lines.`,
   },
   {
     id: 'shoreline',
     size: LANDSCAPE,
-    prompt: `Layer 3, the near shoreline, drawn flat: a low stone sea wall along the east shore of Lake Harriet, the paved walking path just behind it, and low shrubs and wildflowers along the path, seen straight on from the lawn at seated eye level so the path runs level across the whole image with no perspective — the wall's top edge horizontal, the path a level band behind it. One wide strip across the middle of the image; everything above and below is flat pure white. No people, no water, no grass beyond the path.`,
+    prompt: `Layer 3, the near shoreline, drawn flat and quiet: a low stone sea wall along the east shore of Lake Harriet, its top edge horizontal, and above it only a narrow, open band of the paved path with a few small low tufts of grass and tiny wildflowers here and there at its far edge — nothing tall, nothing dense, no shrubs, no trees, mostly open path. Seen straight on from the lawn at seated eye level with no perspective. One wide, low strip across the middle of the image; everything above and below is flat pure white. No people, no water.`,
   },
   {
     id: 'lawn',
@@ -38,12 +38,12 @@ export const layers = [
   {
     id: 'sitters',
     size: LANDSCAPE,
-    prompt: `Layer 5, the people on the lawn: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left: a couple on a picnic blanket, a family with a small child, a woman reading, two friends with a cooler, a man with a dog lying down, a person in a folding chair, a woman with a stroller beside her, three people talking, a man lying back on his elbows. Each group on its own small patch of blanket or grass only, white between the cells, no grid lines.`,
+    prompt: `Layer 5, the people on the lawn: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left: a couple on a picnic blanket, a family with a small child, a woman reading, two friends with a cooler, a man with a dog lying down, a person in a folding chair, a woman with a stroller beside her, three people talking, a man lying back on his elbows. Nothing drawn beneath anyone — no grass, no ground, no shadow — a blanket only where a group has one, otherwise the figures sit directly on the flat white. White between the cells, no grid lines.`,
   },
   {
     id: 'sitters-b',
     size: LANDSCAPE,
-    prompt: `Layer 5 again, more people on the lawn, and this is Minneapolis: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left. Clothes in the colours the city wears — navy and red, purple and gold, forest green and cream — with no logos, lettering or emblems anywhere. The nine: a Somali family on a blanket, the mother in a bright hijab; an older Scandinavian-looking couple in folding chairs sharing a thermos; a man in a navy cap reading a paperback; a woman in a purple hoodie lying back on her elbows; a Hmong grandmother with two small grandchildren and a picnic; two friends in green and red plaid shirts with a cooler; a teenager in a light-blue basketball jersey lying on the grass with headphones; a woman with a wooden canoe paddle beside her blanket, looking at the water; a Black man with a bike helmet on the grass beside him and a growler. Each group on its own small patch of blanket or grass only, white between the cells, no grid lines.`,
+    prompt: `Layer 5 again, more people on the lawn, and this is Minneapolis: a 3 by 3 grid of nine separate small scenes on flat pure white, each cell one group sitting on the grass seen from behind or the side at seated eye level, late-summer light from the left. Clothes in the colours the city wears — navy and red, purple and gold, forest green and cream — with no logos, lettering or emblems anywhere. The nine: a Somali family on a blanket, the mother in a bright hijab; an older Scandinavian-looking couple in folding chairs sharing a thermos; a man in a navy cap reading a paperback; a woman in a purple hoodie lying back on her elbows; a Hmong grandmother with two small grandchildren and a picnic; two friends in green and red plaid shirts with a cooler; a teenager in a light-blue basketball jersey lying on the grass with headphones; a woman with a wooden canoe paddle beside her blanket, looking at the water; a Black man with a bike helmet on the grass beside him and a growler. Nothing drawn beneath anyone — no grass, no ground, no shadow — a blanket only where a group has one, otherwise the figures sit directly on the flat white. White between the cells, no grid lines.`,
   },
   {
     id: 'movers',
@@ -63,7 +63,7 @@ export const layers = [
   {
     id: 'trees',
     size: LANDSCAPE,
-    prompt: `Layer 8, the framing trees: a large elm trunk at the far left edge and another at the far right edge, both rising from the bottom of the frame up out of the top, and their leafy canopy hanging across the top quarter of the image from both sides, in dappled late-summer light, seen from beneath them on the lawn. Everything between the trunks below the canopy is flat pure white.`,
+    prompt: `Layer 8, the framing trees, light and open: a slender elm trunk at the far left edge and another at the far right edge, both rising from the bottom of the frame up out of the top, and their canopy hanging only across the top fifth of the image from both sides — an airy, open canopy of small leaf clusters with plenty of flat pure white showing through it, sunlit yellow-green, not a dense dark mass — seen from beneath them on the lawn in late-summer light. Everything between the trunks below the canopy is flat pure white.`,
   },
 ];
 
@@ -81,9 +81,9 @@ const SEASONS = {
 
 const TURNING = [
   { id: 'far-shore', from: 'far-shore-v1.png', size: LANDSCAPE, keep: 'the treeline, the bandshell and its crowd exactly where they are, and the flat pure white above and below' },
-  { id: 'shoreline', from: 'shoreline-v2.png', size: LANDSCAPE, keep: 'the wall, its top edge and the low shrubs exactly where they are and exactly the same height — no trees, nothing taller than the shrubs, nothing on the ground in front of the wall — and the flat pure white above and below' },
-  { id: 'lawn', from: 'lawn-v1.png', size: SQUARE, keep: 'it as the ground only, seen from directly above and filled edge to edge — grass, or what now covers the grass, with no trees, no branches, no trunks, no objects and no white — still tiling seamlessly' },
-  { id: 'trees', from: 'trees-v1.png', size: LANDSCAPE, keep: 'both trunks and every branch exactly where they are, and the flat pure white between the trunks below the canopy' },
+  { id: 'shoreline', from: 'shoreline-v3.png', size: LANDSCAPE, keep: 'the wall and its top edge exactly where they are, the path above it just as open and low — no shrubs, no trees, nothing taller than the small tufts, nothing on the ground in front of the wall — and the flat pure white above and below' },
+  { id: 'lawn', from: 'lawn-v1.png', size: SQUARE, keep: 'it as the ground only, seen from directly above and filled edge to edge — grass, or what now covers the grass, lit evenly, with no trees, no branches, no trunks, no shadows of anything, no objects and no white — still tiling seamlessly' },
+  { id: 'trees', from: 'trees-v2.png', size: LANDSCAPE, keep: 'both trunks and every branch exactly where they are, the canopy just as open with the flat white showing through it, and the flat pure white between the trunks below the canopy' },
 ];
 
 export const seasonLayers = Object.entries(SEASONS).flatMap(([season, when]) =>
@@ -103,7 +103,7 @@ export const seasonLayers = Object.entries(SEASONS).flatMap(([season, when]) =>
  * different, thinner life takes the park until it comes back. Run with
  * `--crowd`; the manifest entries follow once the sheets are looked at.
  */
-const CROWD_STYLE = `The same pointillist style, the same white ground, the same 3 by 3 grid of separate cells with white between them and no grid lines, no logos or lettering anywhere; this is Minneapolis, in the colours the city wears — navy and red, purple and gold, forest green and cream — and its people. Every couple is a man and a woman.`;
+const CROWD_STYLE = `The same pointillist style, the same white ground, the same 3 by 3 grid of separate cells with white between them and no grid lines, no logos or lettering anywhere; this is Minneapolis, in the colours the city wears — navy and red, purple and gold, forest green and cream — and its people. Every couple is a man and a woman. Nothing drawn beneath anyone — no grass, no snow, no ground, no shadow — a blanket only where a group has one; figures and things stand directly on the flat white.`;
 
 export const crowdLayers = [
   {

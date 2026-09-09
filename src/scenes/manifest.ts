@@ -704,7 +704,7 @@ const LATE_SUMMER: Palette = {
   haze: 0xbfd0d8,
   canopy: 0x2f4128,
   bank: 0x1b2418,
-  water: 0x2f72c4,
+  water: 0x3a80d2,
   sun: 0xffe6b0,
   cloudCover: 0.32,
   cloudLit: 0xfaf8f2,
@@ -818,7 +818,10 @@ export const scenes: Scene[] = [
     // The ramp spread across what one August afternoon holds: the lake
     // at 24 °C sits low and blue, the sunned grass at 32 near the top.
     instruments: [
-      { kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.55, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
+      // Lighter than it was: over the pointillist park the reading at
+      // full strength was a beige wash, and the first thing noticed should
+      // not take the afternoon's colour away.
+      { kind: 'thermal', from: 0, to: 1, after: 2.5, strength: 0.3, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
     ],
     // Someone blinks: the viewer, once, after the reading has settled
     // and the second has been sat in long enough to forget the eye.
@@ -922,16 +925,12 @@ export const scenes: Scene[] = [
         id: 'far-bank',
         z: 4,
         width: 96,
-        height: 1.63,
+        height: 1.06,
         baseY: -0.1,
         shade: 0.08,
         lip: 0.42,
-        images: {
-          'LATE SUMMER': 'plates/scene-04/park/shoreline-late-summer.webp',
-          AUTUMN: 'plates/scene-04/park/shoreline-autumn.webp',
-          WINTER: 'plates/scene-04/park/shoreline-winter.webp',
-          SPRING: 'plates/scene-04/park/shoreline-spring.webp',
-        },
+        // A stone wall is the same wall all year.
+        images: { '*': 'plates/scene-04/park/shoreline.webp' },
         imageRepeat: 12,
       },
       // The lawn: the ground itself, from the wall back past the seat,
@@ -1008,8 +1007,8 @@ export const scenes: Scene[] = [
         places: [
           { id: 'family', cell: 1, x: 5.2, z: 8.6 },
           { id: 'man-dog', cell: 4, x: -6.4, z: 6.8, size: 2.1 },
-          { id: 'chair', cell: 5, x: -9.2, z: 5.6, size: 1.8 },
-          { id: 'lying', cell: 8, x: 1.2, z: 11.4, size: 2.1 },
+          { id: 'chair', cell: 6, x: -9.2, z: 5.6, size: 1.8 },
+          { id: 'lying', cell: 8, x: 1.6, z: 10.4, size: 1.8 },
           { id: 'somali-family', cell: 9, x: -4.6, z: 9.2, size: 2.2 },
           { id: 'thermos-couple', cell: 10, x: 5.4, z: 10.6, size: 2.2 },
           { id: 'purple-hoodie', cell: 12, x: 7.6, z: 6.4, size: 1.9 },
@@ -1204,10 +1203,13 @@ export const scenes: Scene[] = [
         period: 6,
         scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } },
       },
+      // Softer than full over the pointillist park: cold ground read at
+      // full strength was a dark wash over a pale spring lawn.
       {
         kind: 'thermal',
         from: 0.3,
         to: 0.9,
+        strength: 0.55,
         ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0],
         range: [-10, 36],
       },

@@ -14,3 +14,13 @@ export const opening = new Promise<void>((resolve) => {
 export function opened(): void {
   open();
 }
+
+/**
+ * The URL a plate is fetched from. It carries the build's id, and in
+ * development the moment, so a plate recut under the same name is never
+ * read from the browser's cache as the one before it.
+ */
+export function plateUrl(path: string): string {
+  const v = import.meta.env.DEV ? Date.now().toString(36) : __BUILD__;
+  return `${import.meta.env.BASE_URL}${path}?v=${v}`;
+}

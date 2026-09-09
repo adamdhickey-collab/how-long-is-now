@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { mixHex, seasonAt, seasonWeights, type Figures, type Instrument, type Plate, type Scene, type Season } from './manifest';
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
-import { opened } from './loading';
+import { opened, plateUrl } from './loading';
 import { createLeaf, type LeafFigure } from './scene-07-leaf';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
@@ -1129,8 +1129,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
             float field = uTempBase + thermalDrift(gl_FragCoord.xy * 0.004);
             float t = field + (lum - 0.45) * 0.35;
             // The blades keep their light: the ramp is shaded by the
-            // image's own luminance, so the bank stays a bank.
-            vec3 heat = thermalRamp(t) * (0.55 + 0.9 * lum);
+            // image's own luminance, so the bank stays a bank — and never
+            // brighter than the ramp itself, so a pale plate is not
+            // bleached to white by its reading.
+            vec3 heat = thermalRamp(t) * (0.35 + 0.65 * lum);
             heat = mix(heat, uThermalInk, isotherm(field) * 0.25);
             diffuseColor.rgb = mix(diffuseColor.rgb, heat, uThermal * 0.92);
           }
@@ -1185,7 +1187,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       layers.push({ key, mat, mesh });
     });
     const load = (l: ImageLayer) =>
-      loader.loadAsync(`${import.meta.env.BASE_URL}${p.images![l.key]}`).then((tex) => {
+      loader.loadAsync(plateUrl(p.images![l.key])).then((tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         if (p.imageRepeat) {
           tex.wrapS = THREE.MirroredRepeatWrapping;
@@ -1235,6 +1237,38 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     [nearBank],
     true,
   );
+  // The light on the lawn: we sit under the elms, so the grass near the
+  // seat is in dappled shade and brightens toward the water, where the
+  // afternoon has it. A plain tile would be one flat green.
+  // How much the shade under the elms is there: all of it from the seat,
+  // none once the eye has risen and the elms are no longer overhead.
+  const lawnSeated = { value: 1 };
+  if (nearBankDef.ground) {
+    for (const l of nearImg?.layers ?? []) {
+      const prev = l.mat.onBeforeCompile;
+      l.mat.onBeforeCompile = (shader, renderer) => {
+        prev(shader, renderer);
+        shader.uniforms.uSeated = lawnSeated;
+        shader.vertexShader = shader.vertexShader
+          .replace('void main() {', 'varying vec2 vLawn;\nvoid main() {')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vLawn = (modelMatrix * vec4(position, 1.0)).xz;');
+        shader.fragmentShader = shader.fragmentShader
+          .replace('void main() {', 'varying vec2 vLawn;\nuniform float uSeated;\nvoid main() {')
+          .replace(
+            '#include <map_fragment>',
+            `#include <map_fragment>
+            {
+              float under = smoothstep(7.5, 13.5, vLawn.y) * uSeated;
+              float dapple = 0.5 + 0.5 * sin(vLawn.x * 1.1 + sin(vLawn.y * 1.7) * 1.4) * sin(vLawn.y * 0.9 + vLawn.x * 0.3);
+              float shade = under * (0.16 + 0.16 * dapple);
+              float sun = 0.08 * smoothstep(9.0, 4.5, vLawn.y);
+              diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.82, 0.9, 1.08), shade);
+              diffuseColor.rgb *= 1.0 - shade * 0.55 + sun;
+            }`,
+          );
+      };
+    }
+  }
   // The bench: one object, nearest of all the plates, and the only one
   // that is not a band across the frame. It takes the thermal like the
   // ground does — a bench in the sun is the first warm thing noticed.
@@ -1289,17 +1323,38 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   interface Placed {
     def: Figures['places'][number];
     mesh: THREE.Mesh;
+    shadow: THREE.Mesh;
     x0: number;
   }
   interface FigureSet {
     def: Figures;
     mat: THREE.MeshBasicMaterial;
+    shadowMat: THREE.MeshBasicMaterial;
     placed: Placed[];
     loaded: Promise<void>;
   }
+  // What sets a cutout on the ground: a soft dark ellipse at its feet,
+  // the afternoon's shadow pooled under it, drawn on the lawn or the ice.
+  const shadowTex = canvasTexture(128, 64, (ctx) => {
+    const g = ctx.createRadialGradient(64, 32, 0, 64, 32, 32);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(0.5, 'rgba(0,0,0,0.55)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.scale(2, 1);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+  });
+  const shadowGeo = new THREE.PlaneGeometry(1, 1);
   const figureSets: FigureSet[] = (def.figures ?? []).map((f) => {
     const mat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, alphaTest: 0.02, opacity: 0 });
     thermalPlate(mat);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      color: 0x0b1626,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+    });
     const { cols, rows } = f.atlas;
     const placed = f.places.map((pl) => {
       const size = pl.size ?? f.size;
@@ -1319,10 +1374,18 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       mesh.visible = false;
       mesh.name = `${f.id}:${pl.id}`;
       group.add(mesh);
-      return { def: pl, mesh, x0: pl.x };
+      const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+      shadow.rotation.x = -Math.PI / 2;
+      // A little to the right and toward us: the sun is ahead and left.
+      shadow.position.set(pl.x + size * 0.06, f.baseY + 0.015, pl.z + size * 0.05);
+      shadow.scale.set(size * 0.62, size * 0.22, 1);
+      shadow.renderOrder = mesh.renderOrder - 0.005;
+      shadow.visible = false;
+      group.add(shadow);
+      return { def: pl, mesh, shadow, x0: pl.x };
     });
     const loaded = new THREE.TextureLoader()
-      .loadAsync(`${import.meta.env.BASE_URL}${f.atlas.image}`)
+      .loadAsync(plateUrl(f.atlas.image))
       .then((tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
@@ -1333,7 +1396,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       .catch((err) => {
         console.warn(`[scene-04] ${f.id}: the sheet failed to load`, err);
       });
-    return { def: f, mat, placed, loaded };
+    return { def: f, mat, shadowMat, placed, loaded };
   });
 
   // ---- the lake: haze toward the far shore, and the sun's path on it.
@@ -1394,6 +1457,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         sparkle = sparkle * sparkle * sparkle;
         float glint = band * sparkle * far * smoothstep(0.0, 0.35, uSunElev);
         col += uSun * glint * 0.9;
+        // And a fine glitter everywhere the wind roughens it, small and
+        // quick, brighter toward the far shore where the sun is.
+        float fa = sin(vWorld.x * 7.3 + uTime * 0.8 + sin(vWorld.z * 2.1) * 2.0);
+        float fb = sin(vWorld.z * 9.4 - uTime * 1.3 + cos(vWorld.x * 1.3) * 1.5);
+        float fine = pow(max(fa * fb, 0.0), 7.0) * (0.25 + 0.75 * far) * smoothstep(0.0, 0.3, uSunElev);
+        col += mix(uSun, vec3(1.0), 0.5) * fine * 0.55;
 
         // The thermal reading of the lake: the season's water temperature,
         // a little warmer where the sun's path lies, drifting slowly.
@@ -2058,6 +2127,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // on the lawn — is a card seen from above once the camera leaves it,
     // so it goes as the eye rises and is back by the time the fall lands.
     const seated = clamp01((3.6 - camera.position.y) / 1.4);
+    lawnSeated.value = seated;
     if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
     if (treesImg) setImage(treesImg, nightShade(treesDef!.shade ?? 0), presence(treesDef) * seated);
 
@@ -2069,10 +2139,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       const there = presence(f as unknown as Plate);
       setTint(set.mat, 0xffffff, nightShade(0.1));
       set.mat.opacity = alpha * there;
+      // Shadows soften as the light goes and on snow.
+      set.shadowMat.opacity = alpha * there * 0.34 * (1 - night * 0.6) * (1 - s.airFall * 0.5);
       const life = holder?.life;
       for (const p of set.placed) {
         const walker = p.def.speed !== undefined && f.walk;
         p.mesh.visible = !!set.mat.map && there > 0 && (!walker || !life || life.includes(p.def.id));
+        p.shadow.visible = p.mesh.visible;
         // Every figure faces the camera, feet where they stand: from the
         // seat a card, from the year's height a person seen from above.
         p.mesh.quaternion.copy(camera.quaternion);
@@ -2080,6 +2153,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           const span = f.walk.to - f.walk.from;
           const travelled = (p.x0 - f.walk.from + (p.def.speed ?? 0) * elapsed) % span;
           p.mesh.position.x = f.walk.from + (travelled < 0 ? travelled + span : travelled);
+          p.shadow.position.x = p.mesh.position.x + (p.def.size ?? f.size) * 0.06;
         }
       }
     }
