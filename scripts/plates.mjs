@@ -428,36 +428,42 @@ async function fragmentAtlas(files, p = {}) {
   const cols = p.cols ?? FRAGMENTS.cols;
   const [gridX, gridY] = Array.isArray(p.grid) ? p.grid : [p.grid ?? FRAGMENTS.grid, p.grid ?? FRAGMENTS.grid];
   const inner = Math.round(tile * (1 - margin * 2));
-  const tiles = [];
+  // First every cell's own contents and its box; then one scale for the
+  // whole atlas, the largest cutout filling a tile, so a wide group and a
+  // lone figure keep the proportions they were drawn at side by side.
+  const cells = [];
   for (const file of files) {
     const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const cw = Math.floor(info.width / gridX);
     const ch = Math.floor(info.height / gridY);
     for (let r = 0; r < gridY; r++) {
       for (let c = 0; c < gridX; c++) {
-        // The cell alone, with whatever a neighbour let overflow into it
-        // — chair legs, feet, a hat brim — taken out: a small blob that
-        // touches the cell's top or bottom edge is not this cell's own.
         const cell = ownBlobs(data, info.width, c * cw, r * ch, cw, ch);
         const box = alphaBox(cell, cw, 0, 0, cw, ch);
         if (!box || box.width < cw * 0.1 || box.height < ch * 0.1) {
           console.log(`  ${path.basename(file)} cell ${r},${c}: empty, skipped`);
           continue;
         }
-        const cut = await sharp(cell, { raw: { width: cw, height: ch, channels: 4 } })
-          .extract(box)
-          .resize({ width: inner, height: inner, fit: 'inside' })
-          .png()
-          .toBuffer({ resolveWithObject: true });
-        // Centred, or stood on a common baseline so a sheet of figures
-        // all have their feet at the tile's foot.
-        tiles.push({
-          input: cut.data,
-          left: Math.round((tile - cut.info.width) / 2),
-          top: p.align === 'bottom' ? tile - Math.round(tile * margin) - cut.info.height : Math.round((tile - cut.info.height) / 2),
-        });
+        cells.push({ cell, cw, ch, box });
       }
     }
+  }
+  const maxDim = Math.max(...cells.map((k) => Math.max(k.box.width, k.box.height)));
+  const factor = inner / maxDim;
+  const tiles = [];
+  for (const k of cells) {
+    const cut = await sharp(k.cell, { raw: { width: k.cw, height: k.ch, channels: 4 } })
+      .extract(k.box)
+      .resize({ width: Math.max(1, Math.round(k.box.width * factor)), height: Math.max(1, Math.round(k.box.height * factor)) })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+    // Centred, or stood on a common baseline so a sheet of figures
+    // all have their feet at the tile's foot.
+    tiles.push({
+      input: cut.data,
+      left: Math.round((tile - cut.info.width) / 2),
+      top: p.align === 'bottom' ? tile - Math.round(tile * margin) - cut.info.height : Math.round((tile - cut.info.height) / 2),
+    });
   }
   const rows = Math.ceil(tiles.length / cols);
   const composite = tiles.map((t, i) => ({
@@ -465,7 +471,7 @@ async function fragmentAtlas(files, p = {}) {
     left: (i % cols) * tile + t.left,
     top: Math.floor(i / cols) * tile + t.top,
   }));
-  console.log(`  ${tiles.length} fragments into a ${cols} × ${rows} atlas`);
+  console.log(`  ${tiles.length} fragments into a ${cols} × ${rows} atlas, the largest ${maxDim} px across a tile`);
   return sharp({
     create: { width: cols * tile, height: rows * tile, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   }).composite(composite);

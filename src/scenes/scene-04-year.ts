@@ -1359,12 +1359,16 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const placed = f.places.map((pl) => {
       const size = pl.size ?? f.size;
       const geo = new THREE.PlaneGeometry(size, size);
+      // The cell's rectangle, pulled a little inside the tile: at its
+      // very edge a texel is half the neighbour's, and a wide neighbour
+      // shows as a sliver down the quad's side.
       const col = pl.cell % cols;
       const row = Math.floor(pl.cell / cols);
-      const u0 = col / cols;
-      const u1 = (col + 1) / cols;
-      const v1 = 1 - row / rows;
-      const v0 = 1 - (row + 1) / rows;
+      const inset = 0.03;
+      const u0 = (col + inset) / cols;
+      const u1 = (col + 1 - inset) / cols;
+      const v1 = 1 - (row + inset) / rows;
+      const v0 = 1 - (row + 1 - inset) / rows;
       geo.setAttribute('uv', new THREE.Float32BufferAttribute([u0, v1, u1, v1, u0, v0, u1, v0], 2));
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(pl.x, f.baseY + size / 2, pl.z);

@@ -608,3 +608,15 @@ What made the park look thrown together, and what fixed it:
    under the same name is never read as the one before.
 
 Spring's lawn tile went to v3 (no shadows drawn on it) on the way.
+
+### 10f · proportion and slivers
+
+Two faults the seat still showed at full size, both the atlas's doing.
+A cutout was scaled to fill its own tile, so a wide couple's people
+came out smaller than a lone seated woman's; a sheet is now cut at one
+scale — the largest cutout fills a tile, the rest keep the proportions
+they were drawn at — and `size` is the world size of a tile, one per
+sheet, with no placement having a size of its own. And a quad sampled
+its texture rectangle to the tile's very edge, where a texel is half
+the neighbour's, which showed as a sliver of a neighbour down a quad's
+side; the rectangle is now pulled three percent inside the tile.
