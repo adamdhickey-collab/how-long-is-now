@@ -75,6 +75,12 @@ export const layers = [
     refs: ['assets/raw/scene-04/park/movers-b-v1.png'],
     prompt: `The first image is a sheet of figures walking, running and riding in a grid; the second is the style reference. Redraw the first image exactly — the same grid and cells, the same figures with the same clothes, colours, size and position in each cell, the same flat pure white — with every figure in the opposite phase of its stride: the other leg forward and the arms swung the other way for those on foot, the wheels a quarter turn on for those on wheels, the dogs' legs likewise. Nothing else changes.`,
   },
+  ...['movers-autumn', 'movers-winter', 'movers-spring'].map((id) => ({
+    id: `${id}-stride`,
+    size: LANDSCAPE,
+    refs: [`assets/raw/scene-04/park/${id}-v1.png`],
+    prompt: `The first image is a sheet of figures walking, running, riding, skating or pulling in a grid; the second is the style reference. Redraw the first image exactly — the same grid and cells, the same figures with the same clothes, colours, size and position in each cell, the same flat pure white — with every figure in the opposite phase of its stride: the other leg forward and the arms swung the other way for those on foot, the wheels a quarter turn on for those on wheels, the gliding leg swapped for those on skates or skis, the dogs' legs likewise. Nothing else changes.`,
+  })),
   {
     id: 'foreground',
     size: LANDSCAPE,

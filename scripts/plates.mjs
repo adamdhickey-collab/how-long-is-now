@@ -172,11 +172,11 @@ const SCENES = {
     // The crowd through the year (LEDGER 10d): who is in the park in
     // each season, a sheet of nine each.
     { id: 'sitters-autumn', raw: ['sitters-autumn-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-autumn', raw: ['movers-autumn-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'movers-autumn', raw: ['movers-autumn-v1.png', 'movers-autumn-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
     { id: 'ice-winter', raw: ['ice-winter-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-winter', raw: ['movers-winter-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'movers-winter', raw: ['movers-winter-v1.png', 'movers-winter-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
     { id: 'sitters-spring', raw: ['sitters-spring-v2.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
-    { id: 'movers-spring', raw: ['movers-spring-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 3 },
+    { id: 'movers-spring', raw: ['movers-spring-v1.png', 'movers-spring-stride-v1.png'], recipe: 'fragments', key: true, align: 'bottom', grid: [3, 3], cols: 6 },
     // The second walkers sheet came as three rows with the third cut off
     // by the frame; its top two rows are kept and cut on the first's grid.
     // Then the same twelve in the other phase of their stride, as the

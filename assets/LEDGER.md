@@ -657,3 +657,9 @@ still — five centimetres on the card at the seat, a third of a unit on
 the shore ninety units back. Stilled under reduced motion. With the
 sitters breathing, the walkers striding and the sails heeling, nothing
 in the seat is a still image any more except the wall.
+
+The seasons' walkers got their other stride the same way, one edit per
+sheet (`movers-autumn-stride`, `movers-winter-stride`,
+`movers-spring-stride`), all three consistent on the first try — the
+skaters' gliding leg swapped, the sled and the dogs likewise — cut in
+as the second nine cells of each atlas.

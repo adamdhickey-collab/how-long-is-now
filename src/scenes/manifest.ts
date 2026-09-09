@@ -1105,7 +1105,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'movers-autumn',
-        atlas: { image: 'plates/scene-04/park/movers-autumn.webp', cols: 3, rows: 3, count: 9 },
+        atlas: { image: 'plates/scene-04/park/movers-autumn.webp', cols: 6, rows: 3, count: 18, frames: 2 },
         size: 2.3,
         baseY: 0,
         walk: { from: -34, to: 34 },
@@ -1146,7 +1146,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'movers-winter',
-        atlas: { image: 'plates/scene-04/park/movers-winter.webp', cols: 3, rows: 3, count: 9 },
+        atlas: { image: 'plates/scene-04/park/movers-winter.webp', cols: 6, rows: 3, count: 18, frames: 2 },
         size: 2.5,
         baseY: 0,
         walk: { from: -60, to: 60 },
@@ -1184,7 +1184,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'movers-spring',
-        atlas: { image: 'plates/scene-04/park/movers-spring.webp', cols: 3, rows: 3, count: 9 },
+        atlas: { image: 'plates/scene-04/park/movers-spring.webp', cols: 6, rows: 3, count: 18, frames: 2 },
         size: 2.0,
         baseY: 0,
         walk: { from: -34, to: 34 },
