@@ -1187,3 +1187,46 @@ one visitor at a time. The lawn empties with the light; the boats
 only sail by day. The seasonal sheets keep their places and take the
 same on-and-off; the three walking sheets of autumn, winter and
 spring are gone. Reduced motion cuts instead of dissolving.
+
+### 18l · the rise, re-tuned
+
+Step 5. Late in the rise the bottom corners went black: a lying plate
+covered only what the seat's frame could see, which ends just short of
+the seat, and the camera then backed past it. The lying plates now run
+on a frame's width to either side, sampled through the same eye — the
+rays beyond the frame's edges still meet the ground — and a skirt
+behind the seat at the near row's texel density, the texture mirrored
+on; the lawn and the water continue under and beside the camera. Below
+the treeline the sky band carries forty rows of the real sky mirrored
+down before the flat, so the band the eye is shown when the far shore
+parts from the sky has the sky's dots in it. The year ends a little
+higher and looking a little down — y 10.5, z 28, at y 7 — so the lake
+carries the end of the year rather than the empty sky, and the
+lifetime starts from there. And the base behind the trees is the empty view whole rather than
+the empty view inside the matte: outside the mask it is the painting
+to the pixel, inside it one continuous answer, so the matte's edge no
+longer crosses the model's blend and leaves a ragged row of blocks
+along the far treeline's top; the seasons fill the whole mask the
+same way.
+
+### 18m · the grade
+
+Adam asked what to do first to make the opening scene look finished;
+a 1:1 crop beside the reference answered it: the quiet park the model
+returned is paler, smoother and lower in contrast than the painting,
+and the people drawn from the painting's own crops sat on it like
+cutouts on a print. The bands are now graded to the reference by
+distribution: per region (sky, far shore, water, ground) and channel,
+the quiet park's histogram over the background — the painting's people
+left out — is mapped onto the reference's by quantile. No pixel is
+paired with any other, which matters: a first try, a lookup by
+position, paired the quiet park's repainted dapples with the
+painting's shadows and turned the lawn to mud. The seasons, whose
+colours the curves were not learned on, take the same lift as a gain
+on the spread of luminance (×1.28) and on saturation. The grade runs
+before anything else that reads colour, so the matte, the lines and
+the fill are found on the graded frame. A per-pixel JSON parse in the
+first cut made the run hang for ten minutes; the lines are read once. The seasons' lookups now read their dots' share per region from the
+pair itself — snow carries little of the summer lawn's contrast, a
+spring lawn nearly all of it — where a fixed six tenths had left a
+season's continuation flatter than its painting.

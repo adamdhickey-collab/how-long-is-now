@@ -20,6 +20,7 @@
  * lightness, the water's near edge by blueness, column by column.
  */
 import sharp from 'sharp';
+import { LIFE_BOXES } from './reference-layers.mjs';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const FEATHER = 5;
@@ -150,37 +151,132 @@ function lowpass(data, w, h, r) {
  * local colour, and the image's own dots — its difference from its
  * low-pass — ride on top, so the texture is the painting's, not a wash.
  */
-function seasonLookup(summer, season, regionOfPainting = () => 0, regions = 1) {
+function seasonLookup(summer, season, regionOfPainting = () => 0, regions = 1, opts = {}) {
   const N = 24;
   const R = 3;
   const lpS = lowpass(summer.data, summer.w, summer.h, R);
   const lpT = lowpass(season.data, season.w, season.h, R);
   const cell = (r, g, b) => ((r * N) >> 8) * N * N + ((g * N) >> 8) * N + ((b * N) >> 8);
   const tables = [];
-  for (let reg = 0; reg < regions; reg++) tables.push({ sum: new Float64Array(N * N * N * 3), cnt: new Uint32Array(N * N * N), lut: new Float32Array(N * N * N * 3), filled: new Uint8Array(N * N * N) });
+  for (let reg = 0; reg < regions; reg++) tables.push({ sum: new Float64Array(N * N * N * 3), cnt: new Uint32Array(N * N * N), lut: new Float32Array(N * N * N * 3), filled: new Uint8Array(N * N * N), dS: 0, dT: 0, sS: 0, sT: 0, n: 0 });
+  const sat = (d, o) => { const mx = Math.max(d[o], d[o + 1], d[o + 2]); return mx ? (mx - Math.min(d[o], d[o + 1], d[o + 2])) / mx : 0; };
   for (let y = 0; y < summer.h; y++) for (let x = 0; x < summer.w; x++) {
+    if (opts.exclude && opts.exclude(x, y)) continue;
     const i = y * summer.w + x;
     const o = i * 4;
     const t = tables[regionOfPainting(x, y)];
     const c = cell(lpS[o], lpS[o + 1], lpS[o + 2]);
     t.cnt[c]++;
     for (let k = 0; k < 3; k++) t.sum[c * 3 + k] += lpT[o + k];
+    // the dots' strength either side, and the saturation, for the grade
+    for (let k = 0; k < 3; k++) { t.dS += Math.abs(summer.data[o + k] - lpS[o + k]); t.dT += Math.abs(season.data[o + k] - lpT[o + k]); }
+    t.sS += sat(summer.data, o); t.sT += sat(season.data, o); t.n++;
   }
   for (const t of tables) fillTable(t, N);
+  // How much the dots ride on: a fixed share (a season: snow does not
+  // carry grass's contrast) or, for a grade, the target's own strength
+  // over the source's, per region.
+  const gains = tables.map((t) => (opts.detailGain === 'auto' ? Math.min(2.4, Math.max(0.7, t.n && t.dS ? t.dT / t.dS : 1)) : opts.detailGain ?? 0.6));
+  const satGain = tables.reduce((a, t) => a + (t.n && t.sS ? t.sT / t.sS : 1), 0) / tables.length;
+  if (opts.detailGain === 'auto') console.log(`  grade: dots × ${gains.map((g) => g.toFixed(2)).join(' ')}, saturation × ${satGain.toFixed(2)}`);
   /** Apply to an RGBA buffer of the given size; regionAt gives a pixel's region. */
-  return (data, w, h, regionAt = () => 0) => {
+  const apply = (data, w, h, regionAt = () => 0) => {
     const lp = lowpass(data, w, h, R);
     const out = Buffer.from(data);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const o = (y * w + x) * 4;
-      const t = tables[regionAt(x, y)];
+      const reg = regionAt(x, y);
+      const t = tables[reg];
       const c = cell(lp[o], lp[o + 1], lp[o + 2]);
       if (!t.filled[c]) continue;
-      // the dots ride on at six tenths: snow does not carry grass's contrast
-      for (let k = 0; k < 3; k++) out[o + k] = Math.max(0, Math.min(255, Math.round(t.lut[c * 3 + k] + 0.6 * (data[o + k] - lp[o + k]))));
+      for (let k = 0; k < 3; k++) out[o + k] = Math.max(0, Math.min(255, Math.round(t.lut[c * 3 + k] + gains[reg] * (data[o + k] - lp[o + k]))));
     }
     return out;
   };
+  apply.lift = { contrast: gains.reduce((a, b) => a + b, 0) / gains.length, sat: Math.min(1.8, Math.max(0.8, satGain)) };
+  return apply;
+}
+
+/**
+ * The grade as distribution matching (18m): per region and channel, the
+ * source's histogram over the background is mapped onto the reference's
+ * by quantile, so the brightness, contrast and colour of each band are
+ * the reference's — without pairing any pixel with any other, which the
+ * quiet park's repainted dapples and leaves do not allow. The lift for
+ * the seasons is the reference's spread of luminance over the source's,
+ * and of saturation.
+ */
+function gradeCurves(src, ref, regionOf, regions, exclude) {
+  const hist = () => Array.from({ length: regions }, () => [new Float64Array(256), new Float64Array(256), new Float64Array(256)]);
+  const hs = hist(), hr = hist();
+  const stat = Array.from({ length: regions }, () => ({ n: 0, ls: 0, ls2: 0, lr: 0, lr2: 0, ss: 0, sr: 0 }));
+  const lum = (d, o) => 0.299 * d[o] + 0.587 * d[o + 1] + 0.114 * d[o + 2];
+  const sat = (d, o) => { const mx = Math.max(d[o], d[o + 1], d[o + 2]); return mx ? (mx - Math.min(d[o], d[o + 1], d[o + 2])) / mx : 0; };
+  for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
+    if (exclude(x, y)) continue;
+    const r = regionOf(x, y);
+    const o = (y * src.w + x) * 4;
+    for (let c = 0; c < 3; c++) { hs[r][c][src.data[o + c]]++; hr[r][c][ref.data[o + c]]++; }
+    const st = stat[r];
+    const a = lum(src.data, o), b = lum(ref.data, o);
+    st.n++; st.ls += a; st.ls2 += a * a; st.lr += b; st.lr2 += b * b; st.ss += sat(src.data, o); st.sr += sat(ref.data, o);
+  }
+  const curves = [];
+  for (let r = 0; r < regions; r++) {
+    curves.push([0, 1, 2].map((c) => {
+      const cs = new Float64Array(256), cr = new Float64Array(256);
+      let a = 0, b = 0;
+      for (let v = 0; v < 256; v++) { a += hs[r][c][v]; cs[v] = a; b += hr[r][c][v]; cr[v] = b; }
+      const map = new Uint8Array(256);
+      if (!a || !b) { for (let v = 0; v < 256; v++) map[v] = v; return map; }
+      let j = 0;
+      for (let v = 0; v < 256; v++) {
+        const q = cs[v] / a;
+        while (j < 255 && cr[j] / b < q) j++;
+        map[v] = j;
+      }
+      return map;
+    }));
+  }
+  let contrast = 1, satGain = 1, n = 0;
+  for (const st of stat) {
+    if (st.n < 500) continue;
+    const sdS = Math.sqrt(Math.max(1e-6, st.ls2 / st.n - (st.ls / st.n) ** 2));
+    const sdR = Math.sqrt(Math.max(1e-6, st.lr2 / st.n - (st.lr / st.n) ** 2));
+    contrast += sdR / sdS; satGain += st.ss ? st.sr / st.ss : 1; n++;
+  }
+  const lift = { contrast: n ? Math.min(1.8, Math.max(0.8, (contrast - 1) / n)) : 1, sat: n ? Math.min(1.8, Math.max(0.8, (satGain - 1) / n)) : 1 };
+  console.log(`  grade: luminance spread × ${lift.contrast.toFixed(2)}, saturation × ${lift.sat.toFixed(2)} (${regions} regions, quantile matched)`);
+  const apply = (data, w, h, regionAt) => {
+    const out = Buffer.from(data);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      const cv = curves[regionAt(x, y)];
+      out[o] = cv[0][data[o]]; out[o + 1] = cv[1][data[o + 1]]; out[o + 2] = cv[2][data[o + 2]];
+    }
+    return out;
+  };
+  apply.lift = lift;
+  return apply;
+}
+
+/** A scalar lift — the dots' contrast and the saturation — for an image
+ *  whose colours the grade's lookup cannot be trusted on: a season. */
+function liftImage(img, lift) {
+  const R = 3;
+  const lp = lowpass(img.data, img.w, img.h, R);
+  const out = Buffer.from(img.data);
+  for (let i = 0; i < img.w * img.h; i++) {
+    const o = i * 4;
+    const r = lp[o] + lift.contrast * (img.data[o] - lp[o]);
+    const g = lp[o + 1] + lift.contrast * (img.data[o + 1] - lp[o + 1]);
+    const b = lp[o + 2] + lift.contrast * (img.data[o + 2] - lp[o + 2]);
+    const l = 0.299 * r + 0.587 * g + 0.114 * b;
+    out[o] = Math.max(0, Math.min(255, Math.round(l + (r - l) * lift.sat)));
+    out[o + 1] = Math.max(0, Math.min(255, Math.round(l + (g - l) * lift.sat)));
+    out[o + 2] = Math.max(0, Math.min(255, Math.round(l + (b - l) * lift.sat)));
+  }
+  return { data: out, w: img.w, h: img.h };
 }
 
 /** A table's means, and its empty cells taking the nearest filled. */
@@ -212,6 +308,16 @@ function fillTable({ sum, cnt, lut, filled }, N) {
 async function seasoned(outpaint, summer, season, lookup) {
   const map = lookup ?? seasonLookup(summer, season);
   return { data: map(outpaint.data, outpaint.w, outpaint.h, regionAtWide), w: outpaint.w, h: outpaint.h, map };
+}
+
+/** A pixel's region in the wide frame, from given lines. */
+function regionAtWideWith(L, x, y) {
+  if (!L) return 0;
+  const c = Math.max(0, Math.min(WIDE[0] - 1, x));
+  if (y < L.skyTop[c]) return 0;
+  if (y < L.waterFar[c]) return 1;
+  if (y < L.waterNear[c]) return 2;
+  return 3;
 }
 
 /** A pixel's region in the wide frame, from the summer's lines. */
@@ -308,8 +414,37 @@ async function prepare(files, opts = {}) {
   // season as a picture had the model recompose it: elms moved, new
   // trees on the lawn. A mapping moves nothing.
   regionLines = opts.lines === 'summer' && existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null;
+  // The grade (18m): the model's quiet park is paler and smoother than
+  // the reference painting. A lookup learned from the quiet park to the
+  // reference over the background — the painting's people left out —
+  // per region where the lines are known, with the reference's own dot
+  // strength, brings every band to the painting's colour and contrast.
+  // A season, whose colours the lookup was not learned on, takes the
+  // same lift as a contrast and a saturation gain.
+  let grade = null;
+  if (opts.grade) {
+    const ref = await load(opts.grade);
+    const gradeSource = opts.seasonOf ? await load(opts.seasonOf) : painting;
+    const linesForGrade = regionLines ?? (existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null);
+    const regionP = (x, y) => {
+      const L = linesForGrade;
+      if (!L) return 0;
+      const c = Math.max(0, Math.min(WIDE[0] - 1, x + ORIGIN[0]));
+      const yy = y + ORIGIN[1];
+      if (yy < L.skyTop[c]) return 0;
+      if (yy < L.waterFar[c]) return 1;
+      if (yy < L.waterNear[c]) return 2;
+      return 3;
+    };
+    const exclude = (x, y) => LIFE_BOXES.some(([bx, by, bw, bh]) => x >= bx && x < bx + bw && y >= by && y < by + bh);
+    grade = gradeCurves(gradeSource, ref, regionP, linesForGrade ? 4 : 1, exclude);
+  }
   const summerPainting = opts.seasonOf ? await load(opts.seasonOf) : null;
-  const lookup = summerPainting ? seasonLookup(summerPainting, painting, (x, y) => regionAtWide(x + ORIGIN[0], y + ORIGIN[1]), regionLines ? 4 : 1) : null;
+  if (grade && summerPainting) summerPainting.data = grade(summerPainting.data, summerPainting.w, summerPainting.h, (x, y) => regionAtWide(x + ORIGIN[0], y + ORIGIN[1]));
+  if (grade && opts.seasonOf) painting.data = liftImage(painting, grade.lift).data;
+  // The dots' share per region is read from the pair itself: snow carries
+  // little of the summer lawn's contrast, a spring lawn nearly all of it.
+  const lookup = summerPainting ? seasonLookup(summerPainting, painting, (x, y) => regionAtWide(x + ORIGIN[0], y + ORIGIN[1]), regionLines ? 4 : 1, { detailGain: 'auto' }) : null;
   const outpaint = outpaintIn && lookup ? await seasoned(outpaintIn, summerPainting, painting, lookup) : outpaintIn;
   // The empty view from v2 on was painted through a mask the shape of the
   // trees and is faithful everywhere else; v1 was not.
@@ -322,6 +457,12 @@ async function prepare(files, opts = {}) {
   const ox = outpaint ? ORIGIN[0] : 0;
   const oy = outpaint ? ORIGIN[1] : 0;
   const { w, h } = quiet;
+  if (grade && !opts.seasonOf) {
+    const L = regionLines ?? (existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null);
+    const regionW = (x, y) => regionAtWideWith(L, x, y);
+    quiet.data = grade(quiet.data, w, h, regionW);
+    empty.data = grade(empty.data, w, h, regionW);
+  }
   if (empty.masked) {
     // the mask itself, as a field in the frame: 1 where the model painted
     const mk = await load('assets/raw/scene-04/ref/tree-mask.png');
@@ -458,8 +599,12 @@ async function prepare(files, opts = {}) {
       const o = i * 4;
       const k = mBase[i];
       let fo = -1;
-      if (k > 0 && empty.masked) {
-        fo = o; // the empty view, faithful behind the trees
+      if (empty.masked) {
+        // The empty view is the painting to the pixel outside the mask and
+        // one continuous answer inside it (18l): taking it whole leaves no
+        // step where the matte's edge crossed the model's blend, which had
+        // put a ragged row of blocks along the far treeline's top.
+        fo = o;
       } else if (k > 0) {
         if (trunkAt(x, y)) {
           // the run of matte this row is in, and the side we are nearer
@@ -480,7 +625,8 @@ async function prepare(files, opts = {}) {
       for (let c = 0; c < 3; c++) {
         const fill = fo >= 0 && fo !== o ? quiet.data[fo + c] : Math.min(255, empty.data[o + c] * (empty.gain?.[c] ?? 1));
         // (fo === o means the empty view at this very pixel)
-        base[o + c] = Math.round(quiet.data[o + c] * (1 - k) + fill * k);
+        const kk = empty.masked ? 1 : k;
+        base[o + c] = Math.round(quiet.data[o + c] * (1 - kk) + fill * kk);
       }
       base[o + 3] = 255;
     }
@@ -494,11 +640,13 @@ async function prepare(files, opts = {}) {
     const sm = await load(MATTE);
     const sb = await load(BASE);
     for (let i = 0; i < w * h; i++) m[i] = sm.data[i * 4] > 127 ? 1 : 0;
-    const mBase2 = morph(m, w, h, 2, -1);
+    // The fill covers the whole mask the model painted through, as the
+    // summer's does, softened a little at its edge.
+    const region = empty.mask ? blur(morph(empty.mask, w, h, 2, 1), w, h, 3) : morph(m, w, h, 2, -1);
     const filled = lookup(sb.data, w, h, regionAtWide);
     for (let i = 0; i < w * h; i++) {
       const o = i * 4;
-      const k = mBase2[i];
+      const k = Math.min(1, region[i]);
       for (let c = 0; c < 3; c++) base[o + c] = Math.round(quiet.data[o + c] * (1 - k) + filled[o + c] * k);
     }
   } else if (!lookup) {
@@ -627,13 +775,19 @@ function skyBelow(out, base, skyTop, w, h) {
     for (let k = -R; k <= R; k++) { const xx = x + k; if (xx >= 0 && xx < w) { acc += col[xx * 3 + c]; n++; } }
     sm[x * 3 + c] = acc / n;
   }
+  // Just below the line, a strip of the real sky mirrored down — forty
+  // rows of haze and dots, what the eye is shown when the far shore
+  // parts from the sky as it rises — easing into the flat beyond it.
+  const STRIP = 28;
   for (let x = 0; x < w; x++) {
     const top = Math.round(skyTop[x]) - 4;
     for (let y = Math.max(0, top); y < h; y++) {
       const o = (y * w + x) * 4;
-      // a few rows of ease from the real sky into the flat
-      const k = Math.min(1, (y - top) / 6);
-      for (let c = 0; c < 3; c++) out[o + c] = Math.round(base[o + c] * (1 - k) + sm[x * 3 + c] * k);
+      const d = y - top;
+      const sy = Math.max(0, 2 * top - 1 - y);
+      const so = (sy * w + x) * 4;
+      const k = Math.min(1, Math.max(0, (d - STRIP * 0.6) / (STRIP * 0.4)));
+      for (let c = 0; c < 3; c++) out[o + c] = Math.round(base[so + c] * (1 - k) + sm[x * 3 + c] * k);
     }
   }
 }

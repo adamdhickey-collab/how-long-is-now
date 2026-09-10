@@ -136,6 +136,15 @@ export function buildComposition(
       const pos: number[] = [];
       const uv: number[] = [];
       const idx: number[] = [];
+      // A lying plate runs on past the frame (session 18l): a column's
+      // width to either side, sampled through the same eye — the rays
+      // beyond the frame's edges still meet the ground — and a skirt
+      // behind the seat, where no ray from the seat can reach, laid at
+      // the near row's texel density. The texture mirrors on, so the
+      // lawn and the water continue under and beside the camera once it
+      // has risen and backed away.
+      const sideX = p.lay ? iw2 : 0;
+      const cols = p.lay ? Math.round(n * 3) : n;
       let plane: THREE.Plane;
       if (p.lay) {
         floor.constant = -baseY;
@@ -156,9 +165,10 @@ export function buildComposition(
       const y0 = Math.max(iy, farRow);
       const h2 = iy + ih2 - y0;
       let farZ = z;
+      let rows = n;
       for (let r = 0; r <= n; r++) {
-        for (let c = 0; c <= n; c++) {
-          const px = ix + (iw2 * c) / n;
+        for (let c = 0; c <= cols; c++) {
+          const px = ix - sideX + ((iw2 + 2 * sideX) * c) / cols;
           const py = y0 + (h2 * r) / n;
           if (!unproject(px, py, plane, hit)) hit.set(0, baseY, z);
           farZ = Math.min(farZ, hit.z);
@@ -166,11 +176,31 @@ export function buildComposition(
           uv.push((px - ix) / iw2, 1 - (py - iy) / ih2);
         }
       }
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          const a = r * (n + 1) + c;
+      if (p.lay) {
+        // The skirt: from the near row back to well behind the seat, the
+        // texture continuing at the near row's density in v.
+        const nearRow = n * (cols + 1);
+        const nearZ = pos[nearRow * 3 + 2];
+        const prevZ = pos[(n - 1) * (cols + 1) * 3 + 2];
+        const vPerZ = (h2 / n / ih2) / Math.max(1e-3, nearZ - prevZ);
+        const skirtTo = eye.position.z + 30;
+        const SKIRT_ROWS = 6;
+        for (let r = 1; r <= SKIRT_ROWS; r++) {
+          const zz = nearZ + ((skirtTo - nearZ) * r) / SKIRT_ROWS;
+          for (let c = 0; c <= cols; c++) {
+            const o = (nearRow + c) * 3;
+            pos.push(pos[o], pos[o + 1], zz);
+            const uo = (nearRow + c) * 2;
+            uv.push(uv[uo], uv[uo + 1] - (zz - nearZ) * vPerZ);
+          }
+        }
+        rows = n + SKIRT_ROWS;
+      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const a = r * (cols + 1) + c;
           const b = a + 1;
-          const d = a + n + 1;
+          const d = a + cols + 1;
           const e = d + 1;
           idx.push(a, d, b, b, d, e);
         }
@@ -181,8 +211,8 @@ export function buildComposition(
       geo.setIndex(idx);
       geo.computeBoundingSphere();
       tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.ClampToEdgeWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.wrapS = p.lay ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
+      tex.wrapT = p.lay ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
       tex.anisotropy = 8;
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
       onMaterial?.(mat, p);

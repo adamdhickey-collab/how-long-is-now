@@ -1062,7 +1062,9 @@ export const scenes: Scene[] = [
     // for the whole year.
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
-      to: { y: 9.5, z: 27, lookY: 9.5 },
+      // Ends a little higher and looking a little down (18l): the lake
+      // carries the end of the year, not the empty sky above it.
+      to: { y: 10.5, z: 28, lookY: 7 },
     },
     // The park is laid out from the reference painting (session 18,
     // LEDGER 18): every plate names its box in the painting's 1536 × 1024
@@ -1744,8 +1746,8 @@ export const scenes: Scene[] = [
       appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
     },
     camera: {
-      from: { y: 9.5, z: 27, lookY: 9.5 },
-      to: { y: 20, z: 44, lookY: 16 },
+      from: { y: 10.5, z: 28, lookY: 7 },
+      to: { y: 20, z: 44, lookY: 14 },
     },
     // Two instruments, both about the years: the band and the rings.
     // The roots — the far shore cut open, the stand's network under it —

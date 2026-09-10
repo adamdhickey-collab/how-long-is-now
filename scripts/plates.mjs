@@ -162,6 +162,7 @@ const SCENES = {
       recipe: `ref-${id}`,
       budgetKb: id === 'ground' ? 1500 : 1000,
       lines: 'keep',
+      grade: 'assets/raw/park/reference.png',
     })),
     // The seasons (18j): the same bands from each season's edits, cut
     // along the summer's lines.
@@ -176,6 +177,7 @@ const SCENES = {
         budgetKb: id === 'ground' ? 1500 : 1000,
         lines: 'summer',
         seasonOf: 'assets/raw/scene-04/ref/quiet-park-v1.png',
+        grade: 'assets/raw/park/reference.png',
       })),
     ),
     ...[
