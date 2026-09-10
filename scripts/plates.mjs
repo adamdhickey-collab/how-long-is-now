@@ -208,6 +208,38 @@ const SCENES = {
   ],
   // New people for every season (18r): one cutout each, keyed like the
   // painting's elements.
+  // The frame beyond the painting (18t): boughs overhead, trunks either
+  // side, the grass at our feet — the pull-back's own foreground, so the
+  // elms never end in a straight cut and the lawn never runs out.
+  'scene-04/frame': [
+    ...['boughs-summer', 'boughs-autumn', 'boughs-winter', 'boughs-spring', 'boughs-summer-b', 'boughs-autumn-b', 'boughs-winter-b', 'boughs-spring-b', 'trunk-left', 'trunk-right'].map((id) => ({
+      id,
+      raw: `${id}-v1.png`,
+      recipe: 'cutout',
+      key: true,
+      alphaQuality: 100,
+      budgetKb: 900,
+      // January's boughs carry snow along their tops: white on white, so
+      // the paper is judged against the border's own colour and no
+      // enclosed patch is taken for a hole.
+      pockets: !/winter/.test(id),
+      strict: /winter/.test(id),
+      ground: false,
+      whole: true,
+    })),
+    ...['summer', 'autumn', 'winter', 'spring'].map((season) => ({
+      id: `turf-${season}`,
+      raw: `turf-${season}-v2.png`,
+      recipe: 'turf',
+      budgetKb: 700,
+      alphaQuality: 90,
+      // the painting's own nearest lawn, in the wide frame's pixels
+      match: {
+        file: `public/plates/scene-04/ref/ground${season === 'summer' ? '' : `-${season}`}.webp`,
+        box: { left: 900, top: 1370, width: 1200, height: 160 },
+      },
+    })),
+  ],
   'scene-04/people': [
     ...['frisbee-pair', 'sunbather', 'ice-cream-kids', 'guitar', 'grandparents', 'kayak', 'raker', 'leaf-pile-kids', 'coffee-walkers', 'photographer', 'pumpkin-family', 'autumn-dog', 'bench-reader', 'autumn-jogger', 'skaters', 'sledders', 'snowman-builders', 'winter-walkers', 'hockey-kids', 'winter-dog', 'thermos-pair', 'ice-fisher', 'kite-flyer', 'geese-kids', 'spring-picnic', 'bike-walker', 'blossom-photo', 'stroller-pair', 'spring-dog', 'painter'].map((id) => ({
       id,
@@ -987,6 +1019,49 @@ async function plain(file) {
   return sharp(file);
 }
 
+/**
+ * The turf at our feet (18t): grass painted as its own element, graded
+ * to the painting's own near lawn — its per-channel distribution matched
+ * to the ground plate's nearest rows, so it is the same grass in the
+ * same light — and its far edge eased to nothing, so where it meets the
+ * painting's grass there is no line, only more grass.
+ */
+async function turf(file, _ext, p = {}) {
+  const src = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = src.info;
+  const tgt = await sharp(p.match.file).extract(p.match.box).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const N = 64;
+  const quantiles = (buf, c) => {
+    const v = [];
+    for (let i = c; i < buf.length; i += 3) v.push(buf[i]);
+    v.sort((a, b) => a - b);
+    return Array.from({ length: N + 1 }, (_, k) => v[Math.round((k * (v.length - 1)) / N)]);
+  };
+  const out = Buffer.alloc(w * h * 4);
+  for (let c = 0; c < 3; c++) {
+    const a = quantiles(src.data, c);
+    const b = quantiles(tgt.data, c);
+    const lut = new Uint8Array(256);
+    for (let v = 0; v < 256; v++) {
+      let k = 0;
+      while (k < N - 1 && a[k + 1] < v) k++;
+      const span = Math.max(1, a[k + 1] - a[k]);
+      const t = Math.min(1, Math.max(0, (v - a[k]) / span));
+      lut[v] = Math.round(Math.min(255, Math.max(0, b[k] + (b[k + 1] - b[k]) * t)));
+    }
+    for (let i = 0; i < w * h; i++) out[i * 4 + c] = lut[src.data[i * 3 + c]];
+  }
+  // The far edge is the image's top: eased over the top third, so the
+  // new grass arrives out of the painting's own rather than against it.
+  const fade = Math.max(1, Math.round(h * (p.fadeFar ?? 0.12)));
+  for (let y = 0; y < h; y++) {
+    const t = Math.min(1, y / fade);
+    const alpha = Math.round(255 * (t * t * (3 - 2 * t)));
+    for (let x = 0; x < w; x++) out[(y * w + x) * 4 + 3] = alpha;
+  }
+  return sharp(out, { raw: { width: w, height: h, channels: 4 } });
+}
+
 async function cutout(file, _ext, p = {}) {
   let { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   // A plate may keep only the pieces whose centre falls in a span of its
@@ -1059,6 +1134,10 @@ async function cutout(file, _ext, p = {}) {
     file = fadedFile;
     data = out;
   }
+  // A plate placed in the world rather than by a box in the painting
+  // (18t) keeps its whole frame: the transparent margin is where it is
+  // on purpose, and the quad the manifest gives it is that frame.
+  if (p.whole) return sharp(file);
   const box = alphaBox(data, info.width, 0, 0, info.width, info.height);
   if (!box) throw new Error(`${file}: nothing in it`);
   const pad = CUTOUT.pad;
@@ -1111,6 +1190,7 @@ const RECIPES = {
   'ref-water': refWater,
   'ref-ground': refGround,
   'ref-trees': refTrees,
+  turf,
   'ref-check': refCheck,
   canopy: canopyStrip,
   cutout,

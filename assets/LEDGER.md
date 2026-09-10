@@ -1402,3 +1402,66 @@ image's last row. The lying plates carry projective texture
 coordinates (`uvq`, divided in the fragment), so the water no longer
 shears in diagonal streaks near the far shore. The season fill's outer band is matched to the inner
 across the frame's edge (`matchAcross`).
+
+
+### 18t · the frame beyond the painting
+
+Adam, on the year at its widest in October: the trees clearly cut off,
+and extending the canvas is not working. Both true. The pull-back was
+fed by an outpainted continuation on every side, and at the edges it
+read as patchwork — the canopy ending in a straight line at the
+painting's top, blocks of a differently coloured treeline at the sides,
+wedges of another green on the lawn. The measure that decided the
+answer: with the year's own camera marked up, everything outside the
+painting at the widest point is foreground — the bottom third, the two
+side margins, a strip of sky. The lake and the far shore never leave
+the painting at any height the year reaches. So the pull-back does not
+need more distance; it needs more of where we are sitting. Leaning back
+from a blanket shows the boughs overhead, the trunks either side and
+the grass at one's feet, and those are now painted as their own
+elements — ten of them, in the painting's hand, isolated on white
+(`--frame` in `scripts/generate.mjs`, `frameLayers`): two swags of
+boughs per season, left and right, each its own picture so the top of
+the frame is not symmetrical about its centre; a trunk for either side,
+bare of leaves as the painting's own trunks are, the same bark in every
+season; and the turf underfoot per season, graded to the painting's
+nearest lawn by quantile so it is the same grass in the same light,
+its far edge eased to nothing so it arrives out of the painting's own
+rather than against it. The turf was painted twice: the first set had
+long blades, which at a grazing angle combed into stripes, so the
+second asks for an even mat of small dots at the painting's own scale
+that looks the same turned any way up. It runs from the foot of the
+seat's view back past the camera, so the ground plate's skirt — one
+row of grass repeated, which reads as stripes of its own from above —
+is never seen again.
+
+They are placed in world coordinates rather than projected from the
+painting — `world` on a plate, a quad the manifest gives its centre and
+size, with `uvq` carrying w = 1 since its texture maps affinely and the
+projective correction the painting's plates need would be wrong here.
+All of them stand outside the seat's frame: the trunks past x ±4.7 at
+the elms' depth, the turf past the foot of the view at z 13.3, the
+boughs above the painting's top. `beyond` gives them the seat's rule in
+reverse — nothing at all while we sit in the painting, arriving over
+the first hand's breadth of pull-back, and gone again with the elms as
+the eye rises past them, since a bough overhead is only overhead while
+we are under it. The seat frame is unchanged to the pixel, which is
+the whole point of it.
+
+Two things followed from having the boughs. April's derived canopy —
+the summer silhouette punched by value noise, the season's own colours
+through it — had been coming back as scattered blotches with no tree
+under them, because April's pale leaves against a pale sky survive a
+thinning meant for October's gold badly; it keeps nearly all of the
+silhouette now, and both it and October keep their trunks, which the
+noise had been punching holes in. And the boughs hang from the seat in
+every season but late summer (`exceptSeason`): the painting owns the
+frame in its own season, and there is no painting of October to match,
+so in October the new art is simply the canopy.
+
+The lawn beyond the frame's sides is now the painting's own grass
+mirrored outward about each edge rather than the continuation's, whose
+green is a different green in every season — done on the graded frame,
+so the tone matches by construction, which the first attempt inside
+`widen()` did not. Grass takes a mirror without showing it. The lake and the far shore keep the continuation,
+since a second bandshell would not.

@@ -88,8 +88,8 @@ export function buildComposition(
 
   const plates: CompositionPlate[] = [];
   for (const [index, p] of (def.plates ?? []).entries()) {
-    if (!p.ref || !p.images) continue;
-    const [bx, by, bw, bh] = p.ref;
+    if ((!p.ref && !p.world) || !p.images) continue;
+    const [bx, by, bw, bh] = p.ref ?? [0, 0, 0, 0];
     const baseY = p.baseY ?? 0;
     // The plane the plate lives on. Standing plates whose feet are on
     // the ground find their z where the box's bottom row meets it.
@@ -111,6 +111,48 @@ export function buildComposition(
     const build = (key: string, tex: THREE.Texture, i: number) => {
       const iw = (tex.image as HTMLImageElement).width;
       const ih = (tex.image as HTMLImageElement).height;
+      // A plate placed in the world (18t) is its own quad: the texture
+      // maps affinely across it, so `uvq` carries w = 1 and the
+      // fragment's division is the identity — the projective correction
+      // the painting's own plates need would be wrong here.
+      if (p.world) {
+        const { x: wx, y: wy, z: wz, w: ww, h: wh, flip, u } = p.world;
+        const [u0, u1] = u ?? [0, 1];
+        const pos: number[] = [];
+        const uv: number[] = [];
+        const uvq: number[] = [];
+        for (const [cu, cv] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+          const su = flip ? u1 - (u1 - u0) * cu : u0 + (u1 - u0) * cu;
+          // A lying plate runs from its far edge (v 1) to its near one.
+          if (p.lay) pos.push(wx + (cu - 0.5) * ww, wy, wz + (0.5 - cv) * wh);
+          else pos.push(wx + (cu - 0.5) * ww, wy + (cv - 0.5) * wh, wz);
+          uv.push(su, cv);
+          uvq.push(su, cv, 1);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setAttribute('uvq', new THREE.Float32BufferAttribute(uvq, 3));
+        geo.setIndex([0, 1, 2, 2, 1, 3]);
+        geo.computeBoundingSphere();
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.MirroredRepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.anisotropy = 8;
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false, side: THREE.DoubleSide });
+        cp.width = ww;
+        onMaterial?.(mat, p, { height: wh, texel: [1 / iw, 1 / ih] });
+        const mesh = new THREE.Mesh(geo, mat);
+        // Ordered as the projected plates are: a lying plate by its far
+        // edge, a standing one by its depth.
+        const orderZ = p.lay ? wz - wh / 2 - 0.5 : wz;
+        mesh.renderOrder = orderZ / 20 - 1.3 + index * 0.001 + i * 0.0001;
+        mesh.frustumCulled = false;
+        mesh.name = `${p.id}:${key}`;
+        group.add(mesh);
+        cp.layers.push({ key, mat, mesh });
+        return;
+      }
       const wide = comp.wide;
       const isWide = !!wide && Math.abs(iw - wide.frame[0]) <= 2 && Math.abs(ih - wide.frame[1]) <= 2;
       const whole = !isWide && Math.abs(iw / ih - FW / FH) < 0.01 && iw >= FW * 0.9;

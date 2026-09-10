@@ -540,6 +540,29 @@ async function prepare(files, opts = {}) {
     quiet.data = grade(quiet.data, w, h, regionW);
     empty.data = grade(empty.data, w, h, regionW);
   }
+  // The lawn beyond the frame's sides (18t): the painting's own grass
+  // mirrored outward about each edge, not the continuation's, whose
+  // green is a different green in every season and which showed as two
+  // wedges either side of the near lawn as the eye drew back. Done here,
+  // on the graded frame, so the tone matches by construction. Grass is a
+  // texture and takes a mirror without showing it; the lake and the far
+  // shore keep the continuation, since a second bandshell would not.
+  if (outpaint) {
+    const L = regionLines ?? (existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null);
+    const pw = 1536, ph = 1024;
+    for (let y = oy; y < Math.min(h, oy + ph); y++) {
+      for (let x = 0; x < w; x++) {
+        if (x >= ox && x < ox + pw) continue;
+        const mx = x < ox ? 2 * ox - 1 - x : 2 * (ox + pw) - 1 - x;
+        if (mx < ox || mx >= ox + pw) continue;
+        const lawn = L ? L.waterNear[mx] + 6 : oy + 566;
+        if (y < lawn) continue;
+        const o = (y * w + x) * 4;
+        const so = (y * w + mx) * 4;
+        quiet.data[o] = quiet.data[so]; quiet.data[o + 1] = quiet.data[so + 1]; quiet.data[o + 2] = quiet.data[so + 2];
+      }
+    }
+  }
   if (empty.masked) {
     // the mask itself, as a field in the frame: 1 where the model painted
     const mk = await load('assets/raw/scene-04/ref/tree-mask.png');
@@ -1048,11 +1071,18 @@ async function prepare(files, opts = {}) {
       // The season's own picture within the summer's silhouette (18s):
       // the summer leaves through the lookup came out a slab of mud.
       treesRGB = quiet.data;
-      const thin = opts.season === 'autumn' ? 0.38 : 0.55;
+      // April's leaves are pale against a pale sky, so little of its
+      // canopy survives a thinning meant for October's (18t): it came
+      // back as scattered blotches with no tree under them. April keeps
+      // nearly all of the silhouette — its own art hangs the thin new
+      // growth in front — and both keep their trunks, which the noise
+      // had been punching holes in.
+      const thin = opts.season === 'autumn' ? 0.38 : 0.2;
       const mt = new Float32Array(w * h);
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = y * w + x;
         if (!m[i]) continue;
+        if (trunkAt(x, y)) { mt[i] = 1; continue; }
         // coarse clumps thin, fine dots thin more: leaves go in patches
         const n1 = vnoise(x / 26, y / 26, 7.1), n2 = vnoise(x / 7, y / 7, 3.3);
         mt[i] = 0.6 * n1 + 0.4 * n2 > thin ? 1 : 0;

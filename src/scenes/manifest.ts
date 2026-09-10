@@ -90,6 +90,23 @@ export interface Plate {
    * declares are ignored.
    */
   ref?: [number, number, number, number];
+  /**
+   * A plate placed in the world instead of projected from the painting
+   * (18t): the boughs overhead, the trunks either side and the grass at
+   * our feet, which the pull-back reveals. `x`, `y`, `z` are the quad's
+   * centre and `w`, `h` its size in world units — for a `lay` plate, `h`
+   * is its depth and `y` the ground it lies on. `flip` mirrors it in u;
+   * `u` runs the texture more than once across it, mirrored at each
+   * whole number, so a wide plate is not one stretched image.
+   */
+  world?: { x: number; y: number; z: number; w: number; h: number; flip?: boolean; u?: [number, number] };
+  /**
+   * Beyond the seat's frame (18t): nothing at the seat, arriving as the
+   * eye leaves it — `from` is the camera height it starts at and `over`
+   * how far it takes — and gone again with the elms as the eye rises,
+   * since a bough overhead is only overhead while we are under it.
+   */
+  beyond?: { from: number; over: number; exceptSeason?: string };
   /** With `ref`: the plate lies on the ground (y = baseY) from the
    *  box's nearest row to its furthest, instead of standing at z. */
   lay?: boolean;
@@ -1188,6 +1205,25 @@ export const scenes: Scene[] = [
       // Just behind the bicycle that leans on the trunk (its feet put it
       // at about 11.5) and the three nearest people, ahead of everyone else.
       { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/ref/trees.webp', AUTUMN: 'plates/scene-04/ref/trees-autumn.webp', WINTER: 'plates/scene-04/ref/trees-winter.webp', SPRING: 'plates/scene-04/ref/trees-spring.webp' } },
+      // The frame beyond the painting (18t). The pull-back used to be fed
+      // by the continuation on every side, and its far edges read as
+      // patchwork — the canopy cut off straight at the painting's top,
+      // blocks of another treeline at the sides, wedges of another green
+      // on the lawn. What leaning back from a blanket actually shows is
+      // not more distance but more of where we are sitting, so these are
+      // painted as their own elements and placed just outside the seat's
+      // frame: two swags of boughs overhead (the second mirrored), a
+      // trunk either side, and the grass at our feet. The lake and the
+      // far shore need no extending — they stay inside the painting at
+      // every height the year reaches.
+      { id: 'boughs-left', z: 11.5, seat: true, beyond: { from: 2.52, over: 0.35, exceptSeason: 'LATE SUMMER' }, world: { x: -3.6, y: 4.2, z: 11.5, w: 8.4, h: 5.6 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/boughs-summer.webp', AUTUMN: 'plates/scene-04/frame/boughs-autumn.webp', WINTER: 'plates/scene-04/frame/boughs-winter.webp', SPRING: 'plates/scene-04/frame/boughs-spring.webp' } },
+      { id: 'boughs-right', z: 11.5, seat: true, beyond: { from: 2.52, over: 0.35, exceptSeason: 'LATE SUMMER' }, world: { x: 3.6, y: 4.2, z: 11.5, w: 8.4, h: 5.6 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/boughs-summer-b.webp', AUTUMN: 'plates/scene-04/frame/boughs-autumn-b.webp', WINTER: 'plates/scene-04/frame/boughs-winter-b.webp', SPRING: 'plates/scene-04/frame/boughs-spring-b.webp' } },
+      // The trunks are bark in every season, as the painting's own are:
+      // one image under all four, so they stack rather than cross-fade
+      // and never go half-there at the turn of a season.
+      { id: 'trunk-left', z: 11, beyond: { from: 2.52, over: 0.35 }, world: { x: -6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-left.webp', AUTUMN: 'plates/scene-04/frame/trunk-left.webp', WINTER: 'plates/scene-04/frame/trunk-left.webp', SPRING: 'plates/scene-04/frame/trunk-left.webp' } },
+      { id: 'trunk-right', z: 11, beyond: { from: 2.52, over: 0.35 }, world: { x: 6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-right.webp', AUTUMN: 'plates/scene-04/frame/trunk-right.webp', WINTER: 'plates/scene-04/frame/trunk-right.webp', SPRING: 'plates/scene-04/frame/trunk-right.webp' } },
+      { id: 'turf', lay: true, z: 16.8, beyond: { from: 2.52, over: 0.35 }, world: { x: 0, y: 0, z: 19.6, w: 20, h: 12.8 }, width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/frame/turf-summer.webp', AUTUMN: 'plates/scene-04/frame/turf-autumn.webp', WINTER: 'plates/scene-04/frame/turf-winter.webp', SPRING: 'plates/scene-04/frame/turf-spring.webp' } },
       // The nearest people, each one its own plate at its own distance, redrawn from the painting and fitted into its box there. All August: there for the second and gone once the year turns.
       {
         // Nearer the bicycle than the painting had her, by a little (18g):

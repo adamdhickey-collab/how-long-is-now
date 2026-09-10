@@ -1914,7 +1914,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (p.lay || p.feet) thermalPlate(mat);
     // The living painting (18n): each plate boils in its kind's measure.
     if (def.boil) {
-      const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : p.id === 'trees' ? BOIL.trees : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : BOIL.still;
+      const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : /^(trees|boughs|trunk)/.test(p.id) ? BOIL.trees : p.id === 'turf' ? BOIL.ground : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : BOIL.still;
       installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283, p.id === 'sky' ? 'sky' : p.id === 'far-bank' ? 'water' : 'ground');
     }
   });
@@ -2469,7 +2469,18 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     for (const cp of composition?.plates ?? []) {
       if (!cp.ready) continue;
       const p = cp.def;
-      let there = presence(p) * (p.seat ? seated : 1);
+      // Beyond the seat's frame (18t): nothing while we sit in the
+      // painting, arriving as the eye leaves it, and gone with the elms
+      // as the eye rises past them.
+      let there = presence(p) * (p.seat || p.beyond ? seated : 1);
+      if (p.beyond) {
+        const arrived = clamp01((camera.position.y - p.beyond.from) / p.beyond.over);
+        // The painting owns the frame in its own season only: in the
+        // others these boughs hang from the seat, since there is no
+        // painting of October to match.
+        const its = p.beyond.exceptSeason ? weightOf(p.beyond.exceptSeason) : 1;
+        there *= Math.max(arrived, 1 - its);
+      }
       if (p.kind && cp.foot) {
         li++;
         if (seats) {
