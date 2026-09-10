@@ -1918,6 +1918,39 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283);
     }
   });
+  // Contact shadows (18q): a soft cool ellipse under each standing
+  // element on the lawn or the path, made once a plate has its width,
+  // drawn just under it in the order, moved with it through the lapse.
+  const plateShadowTex = canvasTexture(128, 64, (c) => {
+    const g = c.createRadialGradient(64, 32, 0, 64, 32, 64);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.45, 'rgba(255,255,255,0.8)');
+    g.addColorStop(0.8, 'rgba(255,255,255,0.25)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.save();
+    c.scale(1, 0.5);
+    c.fillStyle = g;
+    c.fillRect(0, 0, 128, 128);
+    c.restore();
+  });
+  const shadowsDef = def.composition?.shadows;
+  const plateShadows = new Map<object, THREE.Mesh>();
+  const shadowFor = (cp: { def: Plate; foot?: { x: number; z: number }; width?: number; layers: { mesh: THREE.Mesh }[] }) => {
+    if (!shadowsDef || !cp.foot || !cp.width || !cp.layers.length) return null;
+    let m = plateShadows.get(cp);
+    if (m) return m;
+    const w = cp.width * 1.05;
+    const mat = new THREE.MeshBasicMaterial({ map: plateShadowTex, color: shadowsDef.color, transparent: true, depthWrite: false, opacity: 0, fog: false });
+    m = new THREE.Mesh(new THREE.PlaneGeometry(w, w * shadowsDef.depth), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.renderOrder = cp.layers[0].mesh.renderOrder - 0.0005;
+    m.frustumCulled = false;
+    m.name = `${cp.def.id}:shadow`;
+    group.add(m);
+    plateShadows.set(cp, m);
+    return m;
+  };
+
   // The time lapse's spots (18k): where each kind's elements stand in the
   // painting, so a visitor arriving takes a place the painting had.
   const spots: Record<string, { x: number; z: number }[]> = {};
@@ -2342,6 +2375,17 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         setTint(l.mat, 0xffffff, nightShade(p.shade ?? 0));
         l.mat.opacity = alpha * there * (w <= 0 ? 0 : i === front ? w : 1);
       });
+      // Its shadow: on the lawn or the path only, under the feet and a
+      // little to the right, as dark as the sun is high.
+      if (shadowsDef && cp.foot && (p.kind === 'lawn' || p.kind === 'path' || p.id === 'bicycle')) {
+        const sh = shadowFor(cp);
+        if (sh) {
+          const off = cp.layers[0].mesh.position;
+          // a little toward the viewer: the pool in front of the feet is what shows
+          sh.position.set(cp.foot.x + off.x + (cp.width ?? 0) * shadowsDef.lean, 0.012, cp.foot.z + off.z + (cp.width ?? 0) * shadowsDef.depth * 0.25);
+          (sh.material as THREE.MeshBasicMaterial).opacity = alpha * there * shadowsDef.strength * (0.25 + 0.75 * daylight);
+        }
+      }
     }
 
     // The figures: there for their window of the year, dimmed with the

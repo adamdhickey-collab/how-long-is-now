@@ -696,6 +696,14 @@ export interface Scene {
      * past the frame the boxes are measured in.
      */
     wide?: { frame: [number, number]; origin: [number, number] };
+    /**
+     * Contact shadows (session 18q): a soft cool ellipse on the ground
+     * under every standing element on the lawn or the path, its width the
+     * element's, `depth` of that width deep, leaning `lean` of it to the
+     * right as the painting's light falls, at `strength` in full sun and
+     * fading with the light. The boats keep their painted reflections.
+     */
+    shadows?: { strength: number; lean: number; depth: number; color: number };
   };
   /**
    * The lake. It stops at the far shore rather than running to a true
@@ -1099,7 +1107,13 @@ export const scenes: Scene[] = [
     // the way down the frame, just above the painting's own far
     // waterline, so every row of water lies on the ground — a lying
     // plate cannot show a row that is above the horizon.
-    composition: { frame: [1536, 1024], fov: 55, wide: { frame: [3072, 2048], origin: [768, 512] } },
+    composition: {
+      frame: [1536, 1024],
+      fov: 55,
+      wide: { frame: [3072, 2048], origin: [768, 512] },
+      // The shadow's blue is the palette's own: the summer lake's deep.
+      shadows: { strength: 0.42, lean: 0.24, depth: 0.34, color: 0x24425f },
+    },
     // The painting lives: strokes shifting at a hand-drawn nine frames a
     // second, the people breathing, the elms swaying, the water shimmering.
     boil: { fps: 9, amount: 1 },

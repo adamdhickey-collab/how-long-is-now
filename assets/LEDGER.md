@@ -1278,3 +1278,14 @@ everything like emulsion; the exposure flickering by about a percent,
 a new value each frame. The stroke wander stays, quieter, so the paint
 still lives while the forms hold. All of it under `grain.film` in the
 manifest and zero under reduced motion.
+
+### 18q · contact shadows
+
+Under every standing element on the lawn or the path, and the bicycle,
+a soft cool ellipse on the ground: the element's own width across, a
+third of that deep, leaning a quarter of it to the right as the
+painting's light falls, pooled a little toward the viewer, in the
+palette's lake blue at 0.42 in full sun and fading with the light.
+Made once a plate has its width, drawn just under it in the order,
+and moved with it through the time lapse. The boats keep their
+painted reflections. Declared under `composition.shadows`.

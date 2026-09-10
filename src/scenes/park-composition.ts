@@ -32,6 +32,8 @@ export interface CompositionPlate {
   z: number;
   /** Where the plate's feet meet the ground, for one that has them. */
   foot?: { x: number; z: number };
+  /** The plate's world width, once built. */
+  width?: number;
 }
 
 export interface Composition {
@@ -216,11 +218,13 @@ export function buildComposition(
       tex.anisotropy = 8;
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
       // The plate's world height, for whatever the material does with it.
-      let minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      let minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity, minX = Infinity, maxX = -Infinity;
       for (let i = 0; i < pos.length; i += 3) {
+        minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]);
         minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
         minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
       }
+      cp.width = maxX - minX;
       onMaterial?.(mat, p, { height: p.lay ? maxZ - minZ : maxY - minY, texel: [1 / iw, 1 / ih] });
       const mesh = new THREE.Mesh(geo, mat);
       // Back to front by depth: the nearest plate draws last. Lying
