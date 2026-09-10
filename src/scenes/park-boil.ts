@@ -24,6 +24,28 @@ export const boilClock = {
   uBoilTc: { value: 0 },
   /** 0–1, the manifest's amount; 0 under reduced motion. */
   uBoilOn: { value: 0 },
+  /**
+   * The grain (session 18o): one dot screen over every plate, in screen
+   * space, at the painting's own dot scale — so the people drawn at four
+   * times the painting's resolution and the backdrop drawn at one share
+   * a surface, matte edges soften into dots, and the softness of a
+   * painting shown larger than it was made is hidden. Each dot sits on
+   * a lattice jittered anew on the boil's clock, so the screen itself
+   * boils; still when the boil is.
+   */
+  uGrainPx: { value: 6 },
+  uGrainAmp: { value: 0 },
+  uGrainTint: { value: 0 },
+  /**
+   * Old film (18p): the dot screen re-thrown every rendered frame rather
+   * than on the paint's clock, a fine grain over every pixel like
+   * emulsion, and the exposure flickering by a hair. `uFrame` counts
+   * rendered frames; `uFilmNoise` and `uFilmFlicker` are the amounts;
+   * `uFilmGain` is this frame's exposure, set each frame.
+   */
+  uFrame: { value: 0 },
+  uFilmNoise: { value: 0 },
+  uFilmGain: { value: 1 },
 };
 
 export interface BoilSetting {
@@ -41,15 +63,18 @@ export interface BoilSetting {
 
 /** How each kind of plate lives. */
 export const BOIL: Record<string, BoilSetting> = {
-  figure: { wander: 1.6, flicker: 0.12, breath: 0.012, sway: 0.008 },
-  boat: { wander: 1.2, flicker: 0.1, breath: 0.004, sway: 0.02 },
-  // Gentle: the elms' plate carries a ring of the sky behind the leaves,
-  // and a strong sway would drag a ghost of sky with it.
-  trees: { wander: 0.6, flicker: 0.05, breath: 0, sway: 0.006, canopy: true },
+  // No breath and no sway (18p): a figure that rises and falls read as
+  // unnatural. The forms hold; the paint and the grain are what lives,
+  // the way old film is alive while its subject sits still.
+  figure: { wander: 1.0, flicker: 0.08, breath: 0, sway: 0 },
+  boat: { wander: 0.8, flicker: 0.07, breath: 0, sway: 0 },
+  trees: { wander: 0.6, flicker: 0.05, breath: 0, sway: 0, canopy: true },
   water: { wander: 1.4, flicker: 0.08, breath: 0, sway: 0 },
   ground: { wander: 0.6, flicker: 0.05, breath: 0, sway: 0 },
   shore: { wander: 0.5, flicker: 0.04, breath: 0, sway: 0 },
   sky: { wander: 0.4, flicker: 0.03, breath: 0, sway: 0 },
+  /** A plate that does not boil but still takes the grain (the bicycle). */
+  still: { wander: 0, flicker: 0, breath: 0, sway: 0 },
 };
 
 const NOISE_GLSL = /* glsl */ `
@@ -73,6 +98,34 @@ const NOISE_GLSL = /* glsl */ `
     vec2 q = vec2(boilNoise(p + t * 3.1), boilNoise(p + 17.3 - t * 2.7));
     q += 0.5 * vec2(boilNoise(p * 2.3 + 5.1 + t), boilNoise(p * 2.3 - 9.7 + t * 1.3));
     return (q / 1.5) - 0.5;
+  }
+  vec3 boilHash3(vec2 p) {
+    return vec3(boilHash(p), boilHash(p + 31.7), boilHash(p + 63.1));
+  }
+  /**
+   * The dot screen: for a fragment, how far inside the nearest dot it is
+   * (0 outside, 1 at a dot's heart) and that dot's own random, over a
+   * lattice of period px whose points are thrown within their cells,
+   * thrown again at each tick of t.
+   */
+  vec4 grainDot(vec2 frag, float px, float t) {
+    vec2 cell = floor(frag / px);
+    float best = 1e9;
+    vec2 bestCell = cell;
+    for (int j = -1; j <= 1; j++) {
+      for (int i = -1; i <= 1; i++) {
+        vec2 c = cell + vec2(float(i), float(j));
+        vec2 jitter = vec2(boilHash(c + t * 0.37), boilHash(c + 11.3 - t * 0.53)) - 0.5;
+        vec2 pt = (c + 0.5 + jitter * 0.7) * px;
+        float d = distance(frag, pt);
+        if (d < best) { best = d; bestCell = c; }
+      }
+    }
+    // Each dot its own size, so the screen is a hand's dots, not a press's.
+    vec3 own = boilHash3(bestCell);
+    float r = px * (0.34 + 0.2 * own.z);
+    float inside = 1.0 - smoothstep(r - px * 0.22, r + px * 0.1, best);
+    return vec4(inside, own);
   }
 `;
 
@@ -125,6 +178,7 @@ export function installBoil(
       .replace(
         'void main() {',
         `uniform float uBoilT, uBoilOn, uBoilWander, uBoilFlicker, uBoilPhase;
+        uniform float uGrainPx, uGrainAmp, uGrainTint, uFrame, uFilmNoise, uFilmGain;
         uniform vec2 uBoilTexel;
         varying vec2 vBoilUv;
         ${NOISE_GLSL}
@@ -145,7 +199,21 @@ export function installBoil(
         #define vMapUv boiledUv
         #include <map_fragment>
         #undef vMapUv
-        diffuseColor.rgb *= 1.0 + boilDots * uBoilFlicker * 2.0 * uBoilOn;`,
+        diffuseColor.rgb *= 1.0 + boilDots * uBoilFlicker * 2.0 * uBoilOn;
+        if (uGrainAmp > 0.0) {
+          // The dot screen: a dot's heart a shade brighter, the ground
+          // between dots a shade darker, and each dot its own faint cast —
+          // the neighbouring colours of a pointillist's touch.
+          // The screen is thrown again every frame the piece draws — film's
+          // grain, never the same twice — and held still when the boil is.
+          vec4 g = grainDot(gl_FragCoord.xy, uGrainPx, uFrame * uBoilOn);
+          float lumMod = 1.0 + uGrainAmp * (g.x * 0.9 - 0.5);
+          vec3 dotCast = (g.yzw - 0.5) * uGrainTint * g.x;
+          diffuseColor.rgb = clamp(diffuseColor.rgb * lumMod + dotCast, 0.0, 1.0);
+          // Emulsion: a fine grain per pixel, and the frame's own exposure.
+          float film = boilHash(gl_FragCoord.xy * 0.731 + uFrame * 1.13 * uBoilOn) - 0.5;
+          diffuseColor.rgb = clamp(diffuseColor.rgb * (uFilmGain + film * uFilmNoise * uBoilOn), 0.0, 1.0);
+        }`,
       );
   };
   mat.needsUpdate = true;

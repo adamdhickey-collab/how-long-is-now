@@ -1249,3 +1249,32 @@ shimmer faintly; the boats heel. One clock, declared in the manifest
 motion the amount is zero. Verified by two frames half a second apart:
 a fifth of the pixels change, all of them on figures, leaves and water,
 none on the seams.
+
+### 18o · the grain
+
+One dot screen over every plate of the park, in the same shader as
+the boil: a lattice in screen space at the reference's dot scale
+(`grain: { size: 3.2, amount: 0.22, tint: 0.06 }` in CSS pixels, sized
+to the device's), each cell's dot thrown within it and given its own
+size and a faint colour cast of its own, re-thrown on the boil's clock
+so the screen itself boils. The people drawn at four times the
+painting's resolution and the backdrop drawn at one now share a
+surface; matte edges break into dots; the softness of a painting shown
+larger than it was made hides under them. Only the park's plates take
+it, so the other scenes are untouched. The first cut named a variable
+`cast`, a reserved word in GLSL: every plate's shader failed, and for
+a minute the live page showed the fills behind the elms as blocks —
+which Adam caught. Fixed; the bicycle, which does not boil, takes the
+grain through a still setting.
+
+### 18p · old film
+
+Adam did not like the people rising and falling: unnatural. He asked
+for the feel of old grainy film — the grain never the same two frames
+running, the subject sitting still. So: no breath and no sway on
+anything; the dot screen re-thrown every rendered frame rather than
+on the paint's nine-a-second clock; a fine grain per pixel over
+everything like emulsion; the exposure flickering by about a percent,
+a new value each frame. The stroke wander stays, quieter, so the paint
+still lives while the forms hold. All of it under `grain.film` in the
+manifest and zero under reduced motion.

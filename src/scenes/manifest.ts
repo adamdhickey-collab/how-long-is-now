@@ -664,6 +664,21 @@ export interface Scene {
    */
   boil?: { fps: number; amount: number };
   /**
+   * The grain (session 18o): one dot screen over every plate of the park
+   * in screen space, dots `size` CSS pixels across, modulating luminance
+   * by `amount` and casting each dot its own faint colour by `tint`. The
+   * surface the people and the backdrop share. The lattice re-throws on
+   * the boil's clock; still under reduced motion.
+   */
+  grain?: {
+    size: number;
+    amount: number;
+    tint: number;
+    /** Old film (18p): a fine grain per pixel by `noise`, and the exposure
+     *  flickering by up to `flicker`, both re-thrown every frame. */
+    film?: { noise: number; flicker: number };
+  };
+  /**
    * The painting the world is laid out from (session 18): the frame's
    * size in pixels, and the vertical field of view the seat's camera
    * sees it through when the viewport has the frame's shape. Plates
@@ -1088,6 +1103,12 @@ export const scenes: Scene[] = [
     // The painting lives: strokes shifting at a hand-drawn nine frames a
     // second, the people breathing, the elms swaying, the water shimmering.
     boil: { fps: 9, amount: 1 },
+    // The reference's dots are four or five of its pixels across; on a
+    // frame that shows the painting about screen-wide that is three CSS
+    // pixels or so.
+    // Old film: the dot screen re-thrown every frame, a fine emulsion
+    // grain over it, the exposure flickering by a hair.
+    grain: { size: 3.2, amount: 0.22, tint: 0.06, film: { noise: 0.07, flicker: 0.012 } },
     // The year as a time lapse: three days' stay, two days' gap, so the
     // August crowd flickers through its window of the year.
     lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.6 },

@@ -1914,8 +1914,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (p.lay || p.feet) thermalPlate(mat);
     // The living painting (18n): each plate boils in its kind's measure.
     if (def.boil) {
-      const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : p.id === 'trees' ? BOIL.trees : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : null;
-      if (setting) installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283);
+      const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : p.id === 'trees' ? BOIL.trees : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : BOIL.still;
+      installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283);
     }
   });
   // The time lapse's spots (18k): where each kind's elements stand in the
@@ -2299,6 +2299,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       boilClock.uBoilTc.value = elapsed;
       boilClock.uBoilT.value = Math.floor(elapsed * def.boil.fps) / def.boil.fps;
       boilClock.uBoilOn.value = reducedMotion ? 0 : def.boil.amount;
+    }
+    // The grain: its dots sized in device pixels from the manifest's CSS
+    // pixels, so the screen's own density does not change the paint's.
+    if (def.grain) {
+      boilClock.uGrainPx.value = def.grain.size * Math.min(window.devicePixelRatio || 1, 3);
+      boilClock.uGrainAmp.value = def.grain.amount;
+      boilClock.uGrainTint.value = def.grain.tint;
+      // Film: every drawn frame a new throw of the grain and its own
+      // exposure, none of it under reduced motion.
+      const film = def.grain.film;
+      boilClock.uFrame.value = reducedMotion ? 0 : (boilClock.uFrame.value + 1) % 4096;
+      boilClock.uFilmNoise.value = film?.noise ?? 0;
+      boilClock.uFilmGain.value = film && !reducedMotion ? 1 + (Math.random() * 2 - 1) * film.flicker : 1;
     }
     // The world's clock for the time lapse: the holder's span run by its
     // scroll, or the year's own; a holder with no span has no lapse.
