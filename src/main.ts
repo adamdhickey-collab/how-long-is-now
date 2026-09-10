@@ -375,6 +375,7 @@ function frame(now: number) {
           grow: active.hold.grow,
           life: active.hold.life,
           appearances: active.hold.appearances,
+          lapse: active.hold.lapse,
         }
       : undefined,
   );

@@ -30,6 +30,8 @@ export interface CompositionPlate {
   opened: Promise<void>;
   /** Nearest z of the plate: for the render order and for `feet`. */
   z: number;
+  /** Where the plate's feet meet the ground, for one that has them. */
+  foot?: { x: number; z: number };
 }
 
 export interface Composition {
@@ -87,11 +89,15 @@ export function buildComposition(
     // The plane the plate lives on. Standing plates whose feet are on
     // the ground find their z where the box's bottom row meets it.
     let z = p.z;
+    let foot: { x: number; z: number } | undefined;
     if (p.feet && !p.lay) {
       floor.constant = -baseY;
-      if (unproject(bx + bw / 2, by + bh, floor, hit)) z = hit.z;
+      if (unproject(bx + bw / 2, by + bh, floor, hit)) {
+        z = hit.z;
+        foot = { x: hit.x, z: hit.z };
+      }
     }
-    const cp: CompositionPlate = { def: p, layers: [], ready: false, opened: Promise.resolve(), z };
+    const cp: CompositionPlate = { def: p, layers: [], ready: false, opened: Promise.resolve(), z, foot };
     plates.push(cp);
 
     // Everything below needs the image's own size, so the mesh is built

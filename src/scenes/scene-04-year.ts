@@ -15,7 +15,7 @@
  */
 
 import * as THREE from 'three';
-import { mixHex, seasonAt, seasonWeights, type Figures, type Instrument, type Plate, type Scene, type Season } from './manifest';
+import { mixHex, seasonAt, seasonWeights, type Figures, type Instrument, type Plate, type Scene, type Season, Lapse } from './manifest';
 import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened, plateUrl } from './loading';
@@ -167,6 +167,8 @@ export interface Hold {
   life?: string[];
   /** People as appearances, for a holder running decades. */
   appearances?: { period: number; dwell: number; trace: number; rarer: number };
+  /** The holder's time lapse on the world's clock, see Lapse. */
+  lapse?: Lapse;
 }
 
 /** The record's band holds at most this many years, one figure each. */
@@ -1909,6 +1911,46 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   const composition = buildComposition(group, def, new THREE.TextureLoader(), (mat, p) => {
     if (p.lay || p.feet) thermalPlate(mat);
   });
+  // The time lapse's spots (18k): where each kind's elements stand in the
+  // painting, so a visitor arriving takes a place the painting had.
+  const spots: Record<string, { x: number; z: number }[]> = {};
+  for (const cp of composition?.plates ?? []) {
+    if (cp.def.kind && cp.foot) (spots[cp.def.kind] ??= []).push(cp.foot);
+  }
+  /** A cheap, stable hash in [0, 1). */
+  const hash01 = (a: number, b: number) => {
+    const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  /**
+   * Where an element is in its time lapse at world time T: visible 0–1
+   * and the spot it has taken. Its time runs in slots of dwell + gap,
+   * offset by its own phase; the first slot is its own place in the
+   * painting, so the lapse begins as the painting and departs from it.
+   */
+  const lapseAt = (lapse: Lapse, i: number, T: number, own: { x: number; z: number }, kind: string) => {
+    const L = lapse.dwell + lapse.gap;
+    const density = lapse.density ?? 0.65;
+    const edge = Math.max(1e-3, (lapse.edge ?? 0.12) * lapse.dwell);
+    const ease = (v: number) => v * v * (3 - 2 * v);
+    // The first stay is the painting's own: everyone is where they were
+    // painted at time zero and leaves in their own time, between half a
+    // dwell and one and a half, so the painting comes apart one visitor
+    // at a time rather than all at once.
+    const first = lapse.dwell * (0.5 + hash01(i, 1));
+    if (T < first) return { vis: ease(Math.min(1, (first - T) / edge)), at: own };
+    // After that, slots of dwell + gap, each taken by chance at a spot of
+    // the kind chosen for it.
+    const T2 = T - first;
+    const k = Math.floor(T2 / L) + 1;
+    const f = T2 - (k - 1) * L;
+    if (hash01(i + 3, k) > density) return { vis: 0, at: own };
+    let vis = 0;
+    if (f < lapse.dwell) vis = ease(Math.min(1, f / edge, (lapse.dwell - f) / edge));
+    const pool = spots[kind] ?? [own];
+    const at = pool[Math.floor(hash01(i + 7, k) * pool.length) % pool.length];
+    return { vis, at };
+  };
   if (composition) {
     for (const cp of composition.plates) {
       if (cp.def === skyDef) sky.visible = false;
@@ -2245,10 +2287,26 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // The painting's plates: each for its window of the year, dimmed
     // with the night, its seasons cross-faded as the drawn plates are,
     // and what is only real from the seat going as the eye rises.
+    // The world's clock for the time lapse: the holder's span run by its
+    // scroll, or the year's own; a holder with no span has no lapse.
+    const lapse = holder ? (holder.seconds ? holder.lapse : undefined) : def.lapse;
+    const worldT = holder ? (holder.seconds ?? 0) * holder.local : local * def.timeRate;
+    let li = 0;
     for (const cp of composition?.plates ?? []) {
       if (!cp.ready) continue;
       const p = cp.def;
-      const there = presence(p) * (p.seat ? seated : 1);
+      let there = presence(p) * (p.seat ? seated : 1);
+      if (p.kind && cp.foot) {
+        li++;
+        if (lapse) {
+          const { vis, at } = lapseAt(lapse, li, worldT, cp.foot, p.kind);
+          // The lawn empties with the light: no one arrives in the dark.
+          there *= reducedMotion ? (vis > 0.5 ? 1 : 0) : vis * (p.kind === 'water' ? daylight : 0.15 + 0.85 * daylight);
+          for (const l of cp.layers) l.mesh.position.set(at.x - cp.foot.x, 0, at.z - cp.foot.z);
+        } else {
+          for (const l of cp.layers) l.mesh.position.set(0, 0, 0);
+        }
+      }
       let front = -1;
       cp.layers.forEach((l, i) => {
         if (weightOf(l.key) > 0) front = i;
@@ -2321,6 +2379,10 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         // sail somewhere else along its span each time, leaving a trace.
         const ap = holder?.appearances;
         let vis = 1;
+        if (lapse && !ap) {
+          const at = lapseAt(lapse, 200 + i + set.def.id.length * 13, worldT, { x: p.def.x, z: p.def.z }, '');
+          vis = reducedMotion ? (at.vis > 0.5 ? 1 : 0) : at.vis * (0.15 + 0.85 * daylight);
+        }
         if (ap) {
           if (reducedMotion) {
             vis = 0.35;

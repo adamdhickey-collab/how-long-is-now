@@ -1167,3 +1167,23 @@ Winter and spring sit in their continuations without an edge; autumn's
 sky is the least settled. Below the treeline the sky band now carries a smear of the sky's
 own colour just above it rather than the sky mirrored, whose clouds
 had read as a symmetric ledge once the far shore parted from the sky.
+
+### 18k · the time lapse
+
+Step 4. The people are stills that come and go on the world's own
+clock, in place of walkers animated in stride. A `Lapse` in the
+manifest — a dwell and a gap in the world's seconds, a dissolve edge,
+a density — on the ten minutes (150 s stay, 100 s gap), the day (an
+hour and a half, an hour), and the year (three days, two); the
+holder's scroll is the clock, so scrubbing back shows the same
+afternoon. Every element of the painting names its ground — lawn,
+path or water — and the spots of a kind are where its elements stand
+in the painting, so an arriving visitor takes a place the painting
+had; moved in the world at its true size, a figure is larger nearer
+without being told. The first stay is the painting's own: everyone is
+where they were painted at time zero and leaves in their own time,
+between half a dwell and one and a half, so the painting comes apart
+one visitor at a time. The lawn empties with the light; the boats
+only sail by day. The seasonal sheets keep their places and take the
+same on-and-off; the three walking sheets of autumn, winter and
+spring are gone. Reduced motion cuts instead of dissolving.

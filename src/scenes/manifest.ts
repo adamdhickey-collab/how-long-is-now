@@ -108,6 +108,33 @@ export interface Plate {
   /** Only real from the seat: fades as the camera rises, like the elms
    *  we sit under. */
   seat?: boolean;
+  /**
+   * What ground the element keeps to, for the time lapse (session 18k):
+   * an element with a kind comes and goes on the world's clock and, each
+   * time it comes, takes one of the spots its kind's elements stand on
+   * in the painting. One without a kind stays where it was painted.
+   */
+  kind?: 'lawn' | 'path' | 'water';
+}
+
+/**
+ * The time lapse (session 18k): people as stills that come and go on
+ * the world's own clock rather than walkers animated in stride. Each
+ * element's time is cut into slots of `dwell + gap` world seconds,
+ * offset by its own phase; in a slot it is present with probability
+ * `density`, at a spot of its kind chosen for that slot, arriving and
+ * leaving over `edge` of its dwell. Scroll is the clock, so scrubbing
+ * back shows the same afternoon again.
+ */
+export interface Lapse {
+  /** How long a visitor stays, in the world's seconds. */
+  dwell: number;
+  /** How long their spot is empty after, in the world's seconds. */
+  gap: number;
+  /** The dissolve in and out, as a fraction of the dwell. */
+  edge?: number;
+  /** The chance a slot is taken, 0–1. */
+  density?: number;
 }
 
 /**
@@ -627,6 +654,8 @@ export interface Scene {
    * field stands down for any scene that declares plates.
    */
   plates?: Plate[];
+  /** The scene's own time lapse, when it runs the world's clock itself. */
+  lapse?: Lapse;
   /**
    * The painting the world is laid out from (session 18): the frame's
    * size in pixels, and the vertical field of view the seat's camera
@@ -755,6 +784,8 @@ export interface Scene {
      * motion every figure stands faint and still instead.
      */
     appearances?: { period: number; dwell: number; trace: number; rarer: number };
+    /** The holder's time lapse, on the span of world time it covers. */
+    lapse?: Lapse;
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -968,7 +999,11 @@ export const scenes: Scene[] = [
     // runs ten minutes of the world's own motion. The camera does not
     // move; the environment does. And the world starts to be read: the
     // wind on the water first, then the air, through the radar.
-    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5 },
+    // Ten minutes as a time lapse: a visitor stays two and a half
+    // minutes, the spot is empty for a minute or two, and the crowd is
+    // two thirds full — so the painting's people leave one by one and
+    // others take their places as the scroll runs.
+    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5, lapse: { dwell: 150, gap: 100, edge: 0.15, density: 0.65 } },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
@@ -998,6 +1033,9 @@ export const scenes: Scene[] = [
       seconds: 86_400,
       churn: 24,
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
+      // A day as a time lapse: an hour and a half's stay, an hour's gap;
+      // the lawn empties with the light.
+      lapse: { dwell: 5400, gap: 4200, edge: 0.1, density: 0.6 },
     },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
@@ -1038,6 +1076,9 @@ export const scenes: Scene[] = [
     // waterline, so every row of water lies on the ground — a lying
     // plate cannot show a row that is above the horizon.
     composition: { frame: [1536, 1024], fov: 55, wide: { frame: [3072, 2048], origin: [768, 512] } },
+    // The year as a time lapse: three days' stay, two days' gap, so the
+    // August crowd flickers through its window of the year.
+    lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.6 },
     plates: [
       // The whole-frame layers cut from the painting with its people
       // painted out: the sky and the far shore stand at the back, the
@@ -1061,6 +1102,7 @@ export const scenes: Scene[] = [
         // Nearer the bicycle than the painting had her, by a little (18g):
         // a box may run past the frame's edge.
         id: 'reader',
+        kind: 'lawn',
         z: 12,
         ref: [-45, 640, 420, 293],
         feet: true,
@@ -1077,6 +1119,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'couple',
+        kind: 'lawn',
         z: 12,
         ref: [375, 600, 530, 335],
         feet: true,
@@ -1093,6 +1136,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'man-dog',
+        kind: 'lawn',
         z: 12,
         ref: [960, 680, 490, 320],
         feet: true,
@@ -1125,6 +1169,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'sitters-lawn',
+        kind: 'lawn',
         z: 12,
         ref: [585, 462, 225, 138],
         feet: true,
@@ -1140,6 +1185,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'straw-hat',
+        kind: 'lawn',
         z: 12,
         ref: [800, 420, 300, 295],
         feet: true,
@@ -1155,6 +1201,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'family',
+        kind: 'lawn',
         z: 12,
         ref: [1225, 505, 305, 220],
         feet: true,
@@ -1170,6 +1217,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'chairs',
+        kind: 'lawn',
         z: 12,
         ref: [1300, 400, 236, 130],
         feet: true,
@@ -1186,6 +1234,7 @@ export const scenes: Scene[] = [
       // On the path and at the water's edge.
       {
         id: 'jogger',
+        kind: 'path',
         z: 12,
         ref: [160, 400, 100, 205],
         feet: true,
@@ -1201,6 +1250,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'edge-family',
+        kind: 'path',
         z: 12,
         ref: [430, 398, 130, 165],
         feet: true,
@@ -1218,6 +1268,7 @@ export const scenes: Scene[] = [
         // The two children at the water's edge; the woman who sat on the
         // wall beside them was asked away (LEDGER 18g), so the box is theirs.
         id: 'wall-group',
+        kind: 'path',
         z: 12,
         ref: [678, 398, 60, 114],
         feet: true,
@@ -1233,6 +1284,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'standing-group',
+        kind: 'path',
         z: 12,
         ref: [762, 345, 145, 155],
         feet: true,
@@ -1248,6 +1300,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'dog-walkers',
+        kind: 'path',
         z: 12,
         ref: [1075, 355, 220, 140],
         feet: true,
@@ -1266,6 +1319,7 @@ export const scenes: Scene[] = [
       // it, and the water's depth places them. The z is the fallback.
       {
         id: 'sailboat',
+        kind: 'water',
         z: -40,
         ref: [225, 238, 100, 125],
         feet: true,
@@ -1281,6 +1335,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'sails-mid',
+        kind: 'water',
         z: -110,
         ref: [535, 252, 75, 60],
         feet: true,
@@ -1296,6 +1351,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'sailboat-right',
+        kind: 'water',
         z: -80,
         ref: [695, 252, 65, 85],
         feet: true,
@@ -1311,6 +1367,7 @@ export const scenes: Scene[] = [
       },
       {
         id: 'sails-far',
+        kind: 'water',
         z: -140,
         ref: [1120, 305, 90, 32],
         feet: true,
@@ -1345,25 +1402,6 @@ export const scenes: Scene[] = [
           { id: 'hat-dog', cell: 7, x: 10, z: 9.5 },
         ],
       },
-      {
-        id: 'movers-autumn',
-        atlas: { image: 'plates/scene-04/park/movers-autumn.webp', cols: 6, rows: 3, count: 18, frames: 2 },
-        size: 2.3,
-        baseY: 0,
-        walk: { from: -34, to: 34 },
-        life: { sway: 0.25, gait: true },
-        present: { from: 0.2, to: 0.42, edge: 0.04 },
-        places: [
-          { id: 'runner', cell: 0, x: -20, z: 4.7, speed: 2.5 },
-          { id: 'dog-walker', cell: 1, x: 10, z: 4.8, speed: -1.2 },
-          { id: 'cyclist', cell: 2, x: -30, z: 4.6, speed: 4.2, ride: true },
-          { id: 'raker', cell: 3, x: -14, z: 5.0 },
-          { id: 'coffee-friends', cell: 4, x: 22, z: 4.8, speed: 1.1 },
-          { id: 'kid-bike', cell: 5, x: -8, z: 4.9, speed: 2.0, ride: true },
-          { id: 'old-couple', cell: 6, x: 30, z: 4.7, speed: -0.8 },
-          { id: 'stroller-jogger', cell: 7, x: 2, z: 4.8, speed: 2.2 },
-        ],
-      },
       // Mid January: the lake is the park. What stays put on the ice —
       // a fishing house, a man on a bucket, a bonfire, a rink's net — and
       // a snowman and a sled on the lawn; skaters and a skier and a man
@@ -1386,26 +1424,6 @@ export const scenes: Scene[] = [
           { id: 'kneeling-child', cell: 8, x: -22, z: -20 },
         ],
       },
-      {
-        id: 'movers-winter',
-        atlas: { image: 'plates/scene-04/park/movers-winter.webp', cols: 6, rows: 3, count: 18, frames: 2 },
-        size: 2.5,
-        baseY: 0,
-        walk: { from: -60, to: 60 },
-        life: { sway: 0.25, gait: true },
-        present: { from: 0.46, to: 0.64, edge: 0.04 },
-        places: [
-          { id: 'skater', cell: 0, x: -10, z: -24, speed: 2.4, ride: true },
-          { id: 'skating-couple', cell: 1, x: 20, z: -28, speed: -1.6, ride: true },
-          { id: 'hockey-player', cell: 2, x: 34, z: -26, speed: 2.8, ride: true },
-          { id: 'sled-puller', cell: 3, x: -30, z: -16, speed: 0.9 },
-          { id: 'parka-dog', cell: 4, x: 12, z: 4.8, speed: -1.0 },
-          { id: 'runner-tights', cell: 5, x: -25, z: 4.7, speed: 2.4 },
-          { id: 'runner-yellow', cell: 6, x: 5, z: 4.7, speed: -2.2 },
-          { id: 'fat-bike', cell: 7, x: 26, z: 4.6, speed: 3.4, ride: true },
-          { id: 'auger-man', cell: 8, x: 0, z: -40, speed: -0.7 },
-        ],
-      },
       // Late April: the first blankets back, in jackets, and the geese.
       {
         id: 'sitters-spring',
@@ -1422,26 +1440,6 @@ export const scenes: Scene[] = [
           { id: 'goslings', cell: 5, x: -9, z: 5.6 },
           { id: 'sketchbook', cell: 6, x: 8, z: 11.4 },
           { id: 'kite-boy', cell: 8, x: -12, z: 9 },
-        ],
-      },
-      {
-        id: 'movers-spring',
-        atlas: { image: 'plates/scene-04/park/movers-spring.webp', cols: 6, rows: 3, count: 18, frames: 2 },
-        size: 2.0,
-        baseY: 0,
-        walk: { from: -34, to: 34 },
-        life: { sway: 0.25, gait: true },
-        present: { from: 0.68, to: 0.88, edge: 0.04 },
-        places: [
-          { id: 'runner', cell: 0, x: -18, z: 4.7, speed: 2.6 },
-          { id: 'rollerblader', cell: 1, x: 8, z: 4.6, speed: -3.0, ride: true },
-          { id: 'dog-coffee', cell: 2, x: 24, z: 4.8, speed: 1.2 },
-          { id: 'child-bike-parent', cell: 3, x: -30, z: 4.8, speed: 1.8, ride: true },
-          { id: 'cyclist', cell: 4, x: 14, z: 4.6, speed: 4.6, ride: true },
-          { id: 'umbrella-man', cell: 5, x: -6, z: 4.7, speed: -1.3 },
-          { id: 'teens', cell: 6, x: 30, z: 4.8, speed: 1.0 },
-          { id: 'stroller-rain', cell: 7, x: -2, z: 4.9, speed: -1.1 },
-          { id: 'geese-walking', cell: 8, x: -12, z: 5.2, speed: 0.4 },
         ],
       },
     ],
