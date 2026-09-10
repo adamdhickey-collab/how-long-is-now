@@ -172,13 +172,16 @@ export function installBoil(
       .replace(
         'void main() {',
         `uniform float uBoilTc, uBoilOn, uBoilBreath, uBoilSway, uBoilPhase, uBoilCanopy;
+        attribute vec3 uvq;
         varying vec2 vBoilUv;
+        varying vec3 vUvq;
         void main() {`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
         vBoilUv = uv;
+        vUvq = uvq;
         {
           // From the feet up: the top breathes and leans, the foot stays.
           float up = uBoilCanopy > 0.5 ? uv.y * uv.y : uv.y;
@@ -197,6 +200,7 @@ export function installBoil(
         uniform vec3 uLightGround, uLightZenith, uLightHorizon;
         uniform vec2 uBoilTexel;
         varying vec2 vBoilUv;
+        varying vec3 vUvq;
         ${NOISE_GLSL}
         void main() {`,
       )
@@ -204,14 +208,17 @@ export function installBoil(
         '#include <map_fragment>',
         `vec2 boilOff = vec2(0.0);
         float boilDots = 0.0;
+        // The exact pixel of the painting for this fragment: the projective
+        // coordinates divided here, not interpolated flat (18s).
+        vec2 projUv = vUvq.z > 0.0 ? vUvq.xy / vUvq.z : vMapUv;
         if (uBoilOn > 0.0) {
           // The field is read in texels, so a stroke's wander is a stroke's
           // wander whatever the plate's size on screen.
-          vec2 texelUv = vBoilUv / uBoilTexel;
+          vec2 texelUv = projUv / uBoilTexel;
           boilOff = boilField(texelUv * 0.045 + uBoilPhase, uBoilT) * uBoilWander * uBoilTexel * uBoilOn;
           boilDots = boilNoise(texelUv * 0.5 + uBoilT * 7.0 + uBoilPhase) - 0.5;
         }
-        vec2 boiledUv = vMapUv + boilOff;
+        vec2 boiledUv = projUv + boilOff;
         #define vMapUv boiledUv
         #include <map_fragment>
         #undef vMapUv

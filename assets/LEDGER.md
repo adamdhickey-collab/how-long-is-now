@@ -1338,3 +1338,67 @@ continuation has above the frame; a season's elm plate keeps, within
 the summer's silhouette, what differs from the sky filled behind it —
 October's warm haze between bare branches matches its fill and goes,
 the branches stay.
+
+### 18s · the seams
+
+Three defects Adam circled at 1:1, all in the cut, none in the paint.
+Thin dark verticals down the far bank, the path and the lawn, and
+whole strips of ground gone when the plate was drawn alone: the near
+shoreline was found per column by where blue stops, and a column whose
+blue was a shadow on the lawn dipped the line by hundreds of pixels,
+so the ground and water bands met along hard vertical edges — one
+feathering over, one running under — that the renderer's filtering
+left as two half-alphas, a quarter darker in a one-pixel line. The
+line is held to a broad median now (`waterNear` ± 12 px of a 301-px
+median). Beige blobs with a pale ring in the sky between the elms, and
+a halo around every leaf: sky rows behind the canopy mirrored down from
+the continuation above the frame, whose sky carries warm clouds; and a
+straight hairline at the treeline's top where that rule handed over to
+the sideways one. The sky behind the leaves is now the painting's own
+sky, thrown: laid in six-pixel cells, each a cell of real sky taken at
+random from the clear runs of a nearby row that has enough of them
+(sky by colour, eight pixels clear of any leaf, no paler than the row's
+sky, so no cloud fragments), each sample shifted to the mean colour of
+the destination row's own clear sky — bluer at the top, paler at the
+treeline, as the painting is. Two ways were tried and thrown out on
+the way: the same row mirror-tiled in from each run's own edges fell
+out of phase row to row and streaked, and one clear patch mirror-tiled
+over the canopy made a lattice of its own symmetry and bands of its
+gradient. Below the sky the rows behind the leaves and trunks keep the
+row rule — the painting's own row, mirror-tiled in from the nearest
+clear pixels either side of the run, the painting's columns first and
+the continuation only where the painting offers under sixty pixels —
+and a mirrored source that is sky, near the treeline, takes the thrown
+sky instead, so the treeline's top under the canopy follows the
+mirrored silhouette rather than a straight line. The treeline's own
+line under the canopy, where the scan had found the canopy's lower
+edge or a tuft's, is interpolated between the columns where the
+treeline is seen — in both passes, before the fill and on the base
+after it, else the far shore's top edge stepped into rectangles. A
+white outline that survived all of that turned out to be the elm
+plate itself: its matte is confined to the mask the empty view was
+painted through, whose edge is straight, and along that cut it kept a
+band of pale sky between the leaves' last fringe, a pale strip with a
+rectangular edge over the bluer sky behind. Within sixteen pixels of the
+matte's boundary a pale pixel — light and nearly grey, whatever its
+cast, since the haze is a greenish white the sky's own key does not
+admit — goes, so the edge ends on leaves. And the last of the outline was the painting's own pale glow around
+every leaf cluster, kept in the base just outside the matte, where a
+sharp-edged plate over it read as a rim: the fill now runs twelve
+pixels past the matte, not three, so the leaves sit on plain sky.
+Islands of the matte that are pieces of the far treeline
+(off the canopy, lying below the treeline's line) go too; tufts of
+leaves stay trees. October's and April's canopies are the season's
+own picture within the summer's silhouette, thinned toward bare — the
+summer leaves through the lookup came out a slab of mud.
+Islands of the matte under 6000 px that do not reach the frame's top
+— clouds the empty view painted differently — are dropped; the picture
+keeps its own pixels there. Trunks at the foot of the view: the
+continuation below the frame drew trees, and the 140-px seam pulled
+them into the painting's bottom rows; the strip below the foot is now
+the picture mirrored about its foot, and the ground skirt behind the
+seat samples forty pixels inside the plate's own foot rather than the
+image's last row. The lying plates carry projective texture
+coordinates (`uvq`, divided in the fragment), so the water no longer
+shears in diagonal streaks near the far shore. The season fill's outer band is matched to the inner
+across the frame's edge (`matchAcross`).

@@ -176,6 +176,7 @@ const SCENES = {
         recipe: `ref-${id}`,
         budgetKb: id === 'ground' ? 1500 : 1000,
         lines: 'summer',
+        season,
         seasonOf: 'assets/raw/scene-04/ref/quiet-park-v1.png',
         grade: 'assets/raw/park/reference.png',
       })),

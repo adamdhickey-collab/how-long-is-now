@@ -117,10 +117,31 @@ async function widen(painting, outpaint) {
       console.log(`  continuation fitted to the painting, ${R} region(s): ${fits.map((fit) => fit.map(([a, b]) => `${a.toFixed(2)}x${b >= 0 ? '+' : ''}${b.toFixed(0)}`).join(' ')).join(' | ')}`);
     }
   }
+  // Below the frame's foot the continuation drew trees — trunks that
+  // rode into the painting's bottom rows through the seam and stood at
+  // the foot of the view (18s). The strip under the seat is the picture
+  // mirrored about its foot instead: the lawn running on, and nothing the
+  // painting does not have. Only its first rows are ever seen.
+  {
+    const foot = oy + painting.h;
+    for (let y = foot; y < H; y++) {
+      const sy = Math.max(0, 2 * foot - 1 - y);
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        const inFrame = x >= ox && x < ox + painting.w && sy >= oy;
+        const so = inFrame ? ((sy - oy) * painting.w + x - ox) * 4 : (sy * W + x) * 4;
+        const from = inFrame ? painting.data : big;
+        big[o] = from[so]; big[o + 1] = from[so + 1]; big[o + 2] = from[so + 2];
+      }
+    }
+  }
   const data = Buffer.from(big);
   for (let y = 0; y < painting.h; y++) {
     for (let x = 0; x < painting.w; x++) {
-      const d = Math.min(x, y, painting.w - 1 - x, painting.h - 1 - y);
+      // No seam along the foot: below it is the picture mirrored, and the
+      // continuation's own rendering of the bottom rows carried trunks
+      // and a haze of lake into the lawn (18s).
+      const d = Math.min(x, y, painting.w - 1 - x);
       const k = Math.min(1, d / SEAM);
       const o = ((y + oy) * W + x + ox) * 4;
       const i = (y * painting.w + x) * 4;
@@ -129,6 +150,58 @@ async function widen(painting, outpaint) {
     }
   }
   return { data, w: W, h: H };
+}
+
+/** A small value noise in [0, 1). */
+function vnoise(x, y, seed) {
+  const h2 = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7 + seed * 74.7) * 43758.5453; return v - Math.floor(v); };
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const fx = x - xi, fy = y - yi;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = h2(xi, yi), b = h2(xi + 1, yi), c = h2(xi, yi + 1), d = h2(xi + 1, yi + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+
+/**
+ * Match an image's continuation to its painting across the frame's
+ * edge (18s): per region and channel, a straight line fitted from the
+ * band just outside the painting's rectangle to the band just inside,
+ * applied to everything outside. A season's fill is the summer's base
+ * through a lookup, which turns a faint step between the two into a
+ * visible rectangle.
+ */
+function matchAcross(img, w, h) {
+  const [ox, oy] = ORIGIN;
+  const [FW, FH] = [w - 2 * ox, h - 2 * oy];
+  const BAND = 200;
+  const inRect = (x, y) => x >= ox && x < ox + FW && y >= oy && y < oy + FH;
+  const distOut = (x, y) => Math.max(ox - x, x - (ox + FW - 1), oy - y, y - (oy + FH - 1));
+  const stats = [];
+  for (let r = 0; r < 4; r++) stats.push({ inn: [[0, 0, 0], [0, 0, 0], 0], out: [[0, 0, 0], [0, 0, 0], 0] });
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const d = distOut(x, y);
+    if (d > BAND || d < -BAND) continue;
+    const r = regionAtWide(x, y);
+    const o = (y * w + x) * 4;
+    const side = d <= 0 ? stats[r].inn : stats[r].out;
+    for (let c = 0; c < 3; c++) { side[0][c] += img[o + c]; side[1][c] += img[o + c] * img[o + c]; }
+    side[2]++;
+  }
+  const fits = stats.map(({ inn, out }) => [0, 1, 2].map((c) => {
+    if (inn[2] < 200 || out[2] < 200) return [1, 0];
+    const mi = inn[0][c] / inn[2], mo = out[0][c] / out[2];
+    const si = Math.sqrt(Math.max(1, inn[1][c] / inn[2] - mi * mi)), so = Math.sqrt(Math.max(1, out[1][c] / out[2] - mo * mo));
+    const a = Math.min(1.5, Math.max(0.66, si / so));
+    return [a, mi - a * mo];
+  }));
+  const out = Buffer.from(img);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (inRect(x, y)) continue;
+    const fit = fits[regionAtWide(x, y)];
+    const o = (y * w + x) * 4;
+    for (let c = 0; c < 3; c++) out[o + c] = Math.max(0, Math.min(255, Math.round(img[o + c] * fit[c][0] + fit[c][1])));
+  }
+  return out;
 }
 
 /** A box blur of an RGBA buffer's colour, radius r, for the lookups. */
@@ -400,6 +473,7 @@ function morph(src, w, h, r, sign) {
  *  behind, and the two boundary polylines — computed once per pair. */
 const LINES = 'assets/raw/scene-04/ref/lines.json';
 const MATTE = 'assets/raw/scene-04/ref/summer-matte.png';
+const QUIET = 'assets/raw/scene-04/ref/summer-quiet.png';
 /** The summer's lines, for widen()'s per-region fit; set by prepare(). */
 let regionLines = null;
 const BASE = 'assets/raw/scene-04/ref/summer-base.png';
@@ -408,6 +482,8 @@ async function prepare(files, opts = {}) {
   const key = files.join('|');
   if (cache.has(key)) return cache.get(key);
   let seasonSky = null;
+  let treesRGB = null;
+  let seasonMatte = null;
   const [painting, emptyPainting, outpaintIn] = await Promise.all(files.map(load));
   // A season's continuation (18j): the summer's, with the season's
   // colours mapped onto it — a lookup learned from the painting pair,
@@ -511,8 +587,13 @@ async function prepare(files, opts = {}) {
     const raw = new Float32Array(w).fill(-1);
     for (let x = 0; x < w; x++) {
       // Walk down: the treeline is a not-sky run that holds to the water.
+      // A column the canopy fills from the scan's first row has no
+      // answer of its own (18s): it took the scan's start as its line,
+      // and a rectangle of the wrong rule sat under the right elm.
+      let seenSky = false;
       for (let y = 120 + oy; y < 300 + oy; y++) {
-        if (f[y * w + x] <= 0.5) continue;
+        if (f[y * w + x] <= 0.5) { seenSky = true; continue; }
+        if (!seenSky) continue;
         let holds = true;
         for (let yy = y; yy < Math.min(300 + oy, y + 60); yy += 6) if (f[yy * w + x] <= 0.5) { holds = false; break; }
         if (holds) { raw[x] = y; break; }
@@ -561,6 +642,25 @@ async function prepare(files, opts = {}) {
     // tracing the mask's rectangles (18r).
     const nearKey = morph(m, w, h, 8, 1);
     for (let i = 0; i < w * h; i++) m2[i] = m2[i] > 0.4 && nearKey[i] > 0.5 ? 1 : 0;
+    // The mask the empty view was painted through ends in straight
+    // edges, and the canopy's lower fringe runs on past them (18s): the
+    // difference can find no leaf outside the mask, where the empty view
+    // kept the picture, so the base kept the leaves there and the sky
+    // filled inside — a straight step from fill to fringe along every
+    // box edge, read as a white outline. Within forty pixels outside the
+    // mask, above the treeline's line, the colour key's own leaves —
+    // green, or dark — join the matte.
+    if (empty.mask) {
+      const around = morph(empty.mask, w, h, 40, 1);
+      let joined = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (!around[i] || empty.mask[i] || !m[i] || m2[i] || y >= skyTop[x] - 4) continue;
+        const o = i * 4;
+        if (greenLike(o) || lumAt(o) < 0.55) { m2[i] = 1; joined++; }
+      }
+      console.log(`  ${joined} px of leaves past the mask's edge joined the matte`);
+    }
     m2 = morph(morph(m2, w, h, 2, -1), w, h, 2, 1);
     m2 = morph(morph(m2, w, h, 4, 1), w, h, 4, -1);
     m2 = morph(m2, w, h, 3, 1);
@@ -569,6 +669,65 @@ async function prepare(files, opts = {}) {
     m2 = blur(m2, w, h, 3);
     for (let i = 0; i < w * h; i++) m2[i] = m2[i] > 0.5 ? 1 : 0;
     m = m2;
+    // Islands (18s): a patch of the matte off on its own in the sky that
+    // is sky by colour — a cloud the empty view painted differently — is
+    // not a tree. Its fill showed as a blob with a pale ring. Such
+    // components under 6000 px that do not reach the frame's top edge
+    // go; the picture keeps its own pixels there.
+    {
+      const label = new Int32Array(w * h).fill(-1);
+      const stack = new Int32Array(w * h);
+      let next = 0;
+      for (let s0 = 0; s0 < w * h; s0++) {
+        if (!m[s0] || label[s0] >= 0) continue;
+        let top = 0, area = 0, minY = h;
+        stack[top++] = s0; label[s0] = next;
+        const members = [];
+        while (top) {
+          const i = stack[--top];
+          area++; members.push(i);
+          const yy = (i / w) | 0, xx = i - yy * w;
+          if (yy < minY) minY = yy;
+          const nb = [i - 1, i + 1, i - w, i + w];
+          if (xx === 0) nb[0] = -1; if (xx === w - 1) nb[1] = -1;
+          for (const j of nb) if (j >= 0 && j < w * h && m[j] && label[j] < 0) { label[j] = next; stack[top++] = j; }
+        }
+        // …and only islands that are sky by colour: a tuft of leaves clear
+        // of the canopy stays a tree, else the treeline's line sat on it.
+        if (minY > oy + 4) {
+          let sky = 0, cy = 0, cx = 0;
+          for (const i of members) { if (skyLike(i * 4)) sky++; cy += (i / w) | 0; cx += i % w; }
+          cy /= area; cx /= area;
+          // …and a piece of the far treeline the empty view repainted
+          // differently — off the canopy, lying mostly below the treeline's
+          // line — is the far shore, not an elm.
+          const shore = cy > skyTop[Math.round(cx)] - 4;
+          if ((area < 6000 && sky > area * 0.5) || shore) for (const i of members) m[i] = 0;
+        }
+        next++;
+      }
+    }
+    // The cut (18s): the matte is confined to the mask the empty view
+    // was painted through, whose edge is straight, and along that cut it
+    // kept a band of the pale sky between the leaves' last fringe — a
+    // pale strip with a rectangular edge over the bluer sky behind, read
+    // as a white outline. Within ten pixels of the matte's own boundary
+    // a pixel that is sky by colour is not a leaf and goes, so the edge
+    // ends on leaves.
+    {
+      const core = morph(m, w, h, 16, -1);
+      // pale: light and nearly grey, whatever its cast — the haze is a
+      // greenish white the sky's own key does not admit
+      const pale = (o) => {
+        const r = q[o], g = q[o + 1], b = q[o + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        return lumAt(o) > 0.72 && (mx - mn) / Math.max(1, mx) < 0.3;
+      };
+      let dropped = 0;
+      for (let i = 0; i < w * h; i++) if (m[i] && !core[i] && pale(i * 4)) { m[i] = 0; dropped++; }
+      m = morph(morph(m, w, h, 1, -1), w, h, 1, 1);
+      console.log(`  ${dropped} px of pale sky dropped from the matte's edge`);
+    }
     // The model's repaint drifts a shade even where it kept the picture:
     // read that drift where both images should agree — just outside the
     // mask — and take it out of the fill.
@@ -582,6 +741,39 @@ async function prepare(files, opts = {}) {
     empty.gain = ratios.map((r) => { r.sort((a, b) => a - b); return r.length ? Math.min(1.2, Math.max(0.85, r[r.length >> 1])) : 1; });
     console.log(`  empty view drift gain ${empty.gain.map((g) => g.toFixed(3)).join(' ')}`);
   }
+  // The treeline's top under the canopy (18s): where the line found
+  // touches the matte it is the canopy's lower edge, or a tuft's, not
+  // the treeline, which is hidden there; those columns take the line
+  // interpolated between the nearest columns where the treeline is seen.
+  // Applied to the line found before the fill and to the one found on
+  // the base after it, which else sat on the fill under the tufts and
+  // stepped the far shore's top edge into rectangles.
+  const holdUnderCanopy = (line) => {
+    const valid = new Uint8Array(w);
+    for (let x = 0; x < w; x++) {
+      let ok = 1;
+      const t = Math.round(line[x]);
+      for (let y = t - 20; y <= t + 2; y++) if (y >= 0 && y < h && m[y * w + x]) { ok = 0; break; }
+      valid[x] = ok;
+    }
+    let x = 0, changed = 0;
+    while (x < w) {
+      if (valid[x]) { x++; continue; }
+      let e = x;
+      while (e < w && !valid[e]) e++;
+      // A span that runs out of the frame holds the frame's own value:
+      // the continuation's treeline is a taller one.
+      let a = x > 0 ? line[x - 1] : e < w ? line[e] : line[x];
+      let b = e < w ? line[e] : a;
+      if (e >= ox + 1536 && x > ox) b = a;
+      if (x <= ox && e < ox + 1536) a = b;
+      for (let k = x; k < e; k++) { line[k] = a + ((b - a) * (k - x + 1)) / (e - x + 1); changed++; }
+      x = e;
+    }
+    median(line, 41);
+    return changed;
+  };
+  console.log(`  treeline under the canopy: ${holdUnderCanopy(skyTop)} columns interpolated`);
   // Hard, not feathered: the base under the trees is filled from the
   // empty view by this same mask, and a soft edge shared by both let a
   // quarter of the empty view through along every trunk as a hairline.
@@ -598,7 +790,12 @@ async function prepare(files, opts = {}) {
   const mBase = morph(m, w, h, 2, -1);
   // Where the fill may come from behind the trees: the matte grown three
   // pixels, eased over two more.
-  const fillNear = blur(morph(m, w, h, 3, 1), w, h, 2);
+  // Twelve pixels past the matte, not three (18s): the painting's own
+  // pale glow around every leaf cluster stayed in the base just outside
+  // the matte, and under a sharp-edged plate it read as a white outline
+  // tracing the canopy. The fill runs out past the glow, so the leaves
+  // sit on plain sky.
+  const fillNear = blur(morph(m, w, h, 12, 1), w, h, 2);
   for (let i = 0; i < w * h; i++) fillNear[i] = Math.min(1, fillNear[i] * 1.2);
   const base = Buffer.alloc(w * h * 4);
   const mixRGB = [0, 0, 0];
@@ -609,6 +806,135 @@ async function prepare(files, opts = {}) {
   }
   const trunkAt = (x, y) => TRUNK_REGIONS.some((r) => inBox(x - ox, y - oy, r));
   const src = (x, y) => (y * w + x) * 4;
+  // Per row, the runs of fill and the length of clear picture beyond
+  // each end of them (to 400 px), for the mirror-tiled fill below.
+  const rowSegs = new Map();
+  // Where the picture is sky, softly: the colour key blurred, for the
+  // row rule to know a mirrored source's kind.
+  const skyF = new Float32Array(w * h);
+  if (empty.masked) {
+    const sk = new Float32Array(w * h);
+    for (let y = 0; y < Math.min(h, oy + 340); y++) for (let x = 0; x < w; x++) sk[y * w + x] = skyLike((y * w + x) * 4) ? 1 : 0;
+    skyF.set(blur(sk, w, h, 4));
+  }
+  // The sky behind the leaves (18s): the painting's own sky, thrown.
+  // A patch mirror-tiled made a lattice of its own symmetry and bands of
+  // its gradient; a row's own clear sky is forty pixels wide at the top
+  // of the frame. So the fill is laid in six-pixel cells, each a cell
+  // of real sky taken at random from the clear runs of a nearby row
+  // that has enough of them — the dots at their own scale, no two
+  // cells alike, no axis, no period — and each sample shifted to the
+  // mean colour of the destination row's own clear sky, so the fill is
+  // bluer at the top and paler at the treeline as the painting is.
+  const CELL = 6;
+  const rowMean = new Map();
+  let nearLeaf = null;
+  let isSkySrc = () => false;
+  const clearRuns = new Map();
+  const goodRows = [];
+  if (empty.masked) {
+    // A source cell is sky by colour too, and eight pixels clear of any
+    // leaf: cells of foliage and leaf haze otherwise speckled the fill.
+    const fillPos = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) fillPos[i] = fillNear[i] > 0 ? 1 : 0;
+    nearLeaf = morph(fillPos, w, h, 8, 1);
+    // and not a cloud: paler, blurred, than the row's sky by a twenty-fifth
+    const lumF = new Float32Array(w * h);
+    for (let y = 0; y < Math.min(h, oy + 340); y++) for (let x = 0; x < w; x++) { const o = (y * w + x) * 4; lumF[y * w + x] = (0.299 * quiet.data[o] + 0.587 * quiet.data[o + 1] + 0.114 * quiet.data[o + 2]) / 255; }
+    const lumB = blur(lumF, w, h, 4);
+    const rowLum = new Float32Array(h);
+    for (let y = 0; y < Math.min(h, oy + 340); y++) {
+      const v = [];
+      for (let x = ox; x < ox + 1536; x++) if (nearLeaf[y * w + x] === 0 && y < skyTop[x] - 4 && skyF[y * w + x] > 0.6) v.push(lumB[y * w + x]);
+      v.sort((p, q) => p - q);
+      rowLum[y] = v.length ? v[v.length >> 1] : 1;
+    }
+    const isSky = (x, y) => y >= 0 && y < h && nearLeaf[y * w + x] === 0 && y < skyTop[x] - 4 && skyF[y * w + x] > 0.6 && lumB[y * w + x] < rowLum[y] + 0.04;
+    isSkySrc = isSky;
+    const raw = [];
+    for (let y = oy - 60; y < oy + 330; y++) {
+      const acc = [0, 0, 0]; let n = 0;
+      const runs = [];
+      let a = -1;
+      for (let x = ox; x <= ox + 1536; x++) {
+        const on = x < ox + 1536 && isSky(x, y);
+        if (on) { const o = (y * w + x) * 4; acc[0] += quiet.data[o]; acc[1] += quiet.data[o + 1]; acc[2] += quiet.data[o + 2]; n++; }
+        if (on && a < 0) a = x;
+        if (!on && a >= 0) { if (x - a >= CELL + 2) runs.push({ a, len: x - a }); a = -1; }
+      }
+      raw.push(n >= 12 ? acc.map((v) => v / n) : null);
+      if (y >= oy) {
+        const total = runs.reduce((t, r) => t + r.len, 0);
+        if (total >= 80) { clearRuns.set(y, { runs, total }); goodRows.push(y); }
+      }
+    }
+    for (let i = 0; i < raw.length; i++) if (!raw[i]) { let j = 1; while (!raw[i - j] && !raw[i + j] && j < raw.length) j++; raw[i] = raw[i - j] ?? raw[i + j] ?? [140, 170, 210]; }
+    for (let i = 0; i < raw.length; i++) {
+      const acc = [0, 0, 0]; let n = 0;
+      for (let k = -6; k <= 6; k++) { const r = raw[Math.max(0, Math.min(raw.length - 1, i + k))]; acc[0] += r[0]; acc[1] += r[1]; acc[2] += r[2]; n++; }
+      rowMean.set(oy - 60 + i, acc.map((v) => v / n));
+    }
+    console.log(`  sky fill: ${goodRows.length} rows with clear sky to draw from, first ${goodRows[0] - oy}, last ${goodRows[goodRows.length - 1] - oy}`);
+  }
+  const cellHash = (cx, cy, k) => {
+    let n = (cx * 374761393 + cy * 668265263 + k * 2246822519) | 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  };
+  /** The nearest row with clear sky to draw from, at or near `y`. */
+  const nearestGood = (y) => {
+    if (!goodRows.length) return -1;
+    let lo = 0, hi = goodRows.length - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (goodRows[mid] < y) lo = mid + 1; else hi = mid; }
+    const a = goodRows[lo], b = goodRows[Math.max(0, lo - 1)];
+    return Math.abs(a - y) <= Math.abs(b - y) ? a : b;
+  };
+  /** Fill the sky at (x, y) into `out` from a thrown cell; false if there is nothing to draw from. */
+  const skyFill = (x, y, out) => {
+    if (!goodRows.length) return false;
+    const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+    const jitter = Math.round((cellHash(cx, cy, 1) - 0.5) * 16);
+    const sy0 = nearestGood(cy * CELL + jitter);
+    const { runs, total } = clearRuns.get(sy0);
+    let pick = cellHash(cx, cy, 2) * total;
+    let run = runs[0];
+    for (const r of runs) { if (pick < r.len) { run = r; break; } pick -= r.len; }
+    const sx0 = run.a + Math.floor(cellHash(cx, cy, 3) * Math.max(1, run.len - CELL));
+    const sx = Math.min(run.a + run.len - 1, sx0 + (x - cx * CELL));
+    let sy = sy0 + (y - cy * CELL);
+    if (sy < 0 || sy >= h || !isSkySrc(sx, sy)) sy = sy0;
+    const o = (sy * w + sx) * 4;
+    const dm = rowMean.get(Math.max(oy - 60, Math.min(oy + 329, y)));
+    const sm = rowMean.get(sy);
+    for (let c = 0; c < 3; c++) out[c] = Math.max(0, Math.min(255, quiet.data[o + c] + dm[c] - sm[c]));
+    return true;
+  };
+  if (empty.masked) {
+    for (let y = 0; y < h; y++) {
+      const segs = [];
+      let x = 0;
+      while (x < w) {
+        if (fillNear[y * w + x] > 0) {
+          const a = x;
+          while (x < w && fillNear[y * w + x] > 0) x++;
+          const b = x - 1;
+          let runL = 0, runR = 0;
+          // In the sky and treeline rows the sources are the painting's
+          // own columns: the continuation's treeline is another treeline,
+          // taller and flat-topped, and mirrored in it made a block.
+          // … unless the painting offers under sixty pixels of it (the
+          // left trunk stands twenty from the frame's edge).
+          const lo = y < oy + 330 ? ox : 0, hi = y < oy + 330 ? ox + 1536 : w;
+          for (let k = a - 1; k >= lo && runL < 400 && fillNear[y * w + k] === 0; k--) runL++;
+          for (let k = b + 1; k < hi && runR < 400 && fillNear[y * w + k] === 0; k++) runR++;
+          if (runL < 60 && lo > 0) { runL = 0; for (let k = a - 1; k >= 0 && runL < 400 && fillNear[y * w + k] === 0; k--) runL++; }
+          if (runR < 60 && hi < w) { runR = 0; for (let k = b + 1; k < w && runR < 400 && fillNear[y * w + k] === 0; k++) runR++; }
+          segs.push({ a, b, runL, runR });
+        } else x++;
+      }
+      rowSegs.set(y, segs);
+    }
+  }
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
@@ -616,40 +942,55 @@ async function prepare(files, opts = {}) {
       const k = mBase[i];
       let fo = -1;
       if (empty.masked) {
-        // Behind the leaves and trunks (18r): sky from the empty view,
-        // which paints sky well; but the far treeline, the water and the
-        // ground from the painting itself, mirrored in from the nearest
-        // clear pixels on the same row — the empty view's treeline is a
-        // different treeline, taller and hazier, and every patch of it
-        // showed as a step.
-        // …and the sky the same way (18r): the empty view's sky is a warm
-        // beige where the painting's is blue, and the fill band around
-        // every leaf showed as a pale halo. Wherever the fill reaches —
-        // the whole of fillNear, not only the matte's core.
-        // Sky rows first try the sky above the frame, mirrored down: the
-        // continuation there is open sky, and a wide canopy mirrored
-        // sideways streaked.
-        let fromAbove = false;
-        if (fillNear[i] > 0 && outpaint && oy > 0 && y < skyTop[x] - 6) {
-          const sy = 2 * (oy - 70) - 1 - y;
-          if (sy >= 0 && sy < h && fillNear[sy * w + x] === 0) { fo = src(x, sy); fromAbove = true; }
-        }
-        if (fillNear[i] > 0 && !fromAbove) {
-          let xa = x, xb = x;
-          while (xa > 0 && fillNear[y * w + xa - 1] > 0 && x - xa < 700) xa--;
-          while (xb < w - 1 && fillNear[y * w + xb + 1] > 0 && xb - x < 700) xb++;
-          const hasL = xa > 0 && fillNear[y * w + xa - 1] === 0;
-          const hasR = xb < w - 1 && fillNear[y * w + xb + 1] === 0;
-          const span = Math.max(1, xb - xa);
-          const sL = hasL ? Math.max(0, xa - 1 - (x - xa) % Math.max(1, Math.min(120, xa))) : -1;
-          const sR = hasR ? Math.min(w - 1, xb + 1 + (xb - x) % Math.max(1, Math.min(120, w - 1 - xb))) : -1;
-          if (hasL && hasR) {
-            const t = (x - xa) / span;
-            const a = src(sL, y), b = src(sR, y);
-            for (let c = 0; c < 3; c++) mixRGB[c] = quiet.data[a + c] * (1 - t) + quiet.data[b + c] * t;
-            fo = -2; // use mixRGB
-          } else if (hasL) fo = src(sL, y);
-          else if (hasR) fo = src(sR, y);
+        // Behind the leaves and trunks (18s): the painting's own row,
+        // mirror-tiled in from the nearest clear pixels on either side of
+        // the run the pixel is in — sky where the row is sky, treeline
+        // where it is treeline, water and lawn below — so the fill has the
+        // dots of the painting itself at full contrast, no rectangle
+        // where one rule met another, and none of the continuation's
+        // clouds, which mirrored down from above the frame as beige blobs
+        // and a pale halo around every leaf (18r).
+        if (fillNear[i] > 0 && y < skyTop[x] - 2 && skyFill(x, y, mixRGB)) {
+          fo = -2;
+        } else if (fillNear[i] > 0) {
+          const seg = rowSegs.get(y).find((sg) => x >= sg.a && x <= sg.b);
+          const tile = (edge, dir, run, d) => {
+            const k = d % (2 * run);
+            return edge + dir * (k < run ? k : 2 * run - 1 - k);
+          };
+          const span = seg.b - seg.a + 1;
+          const dL = x - seg.a, dR = seg.b - x;
+          let wL = seg.runL > 0 ? 1 : 0;
+          if (seg.runL > 0 && seg.runR > 0) {
+            // the nearer side, crossing over in the middle eighty pixels
+            const mid = seg.a + span / 2;
+            wL = 1 - smooth01(mid - 40, mid + 40, x);
+            // a short run on the nearer side gives way to a long one
+            if (seg.runL < 40 && seg.runR >= 120) wL = 0;
+            if (seg.runR < 40 && seg.runL >= 120) wL = 1;
+          }
+          // A mirrored source that is sky takes the sky patch instead,
+          // so the treeline's top under the canopy follows the mirrored
+          // silhouette rather than a straight line, and the sky above it
+          // is one field. A side that is sky does not blend with one
+          // that is not.
+          const sL = seg.runL > 0 ? tile(seg.a - 1, -1, seg.runL, dL) : -1;
+          const sR = seg.runR > 0 ? tile(seg.b + 1, 1, seg.runR, dR) : -1;
+          // (only in the treeline's rows: the water is blue too, and sky
+          // cells were thrown into it behind the left trunk)
+          const nearLine = y < skyTop[x] + 40;
+          const skyL = nearLine && sL >= 0 && skyF[y * w + sL] > 0.5;
+          const skyR = nearLine && sR >= 0 && skyF[y * w + sR] > 0.5;
+          if (skyL !== skyR && sL >= 0 && sR >= 0) wL = wL >= 0.5 ? 1 : 0;
+          const chosenSky = wL >= 0.5 ? skyL : skyR;
+          if (chosenSky && skyFill(x, y, mixRGB)) {
+            fo = -2;
+          } else if (wL > 0 && wL < 1) {
+            const a = src(tile(seg.a - 1, -1, seg.runL, dL), y), b = src(tile(seg.b + 1, 1, seg.runR, dR), y);
+            for (let c = 0; c < 3; c++) mixRGB[c] = quiet.data[a + c] * wL + quiet.data[b + c] * (1 - wL);
+            fo = -2;
+          } else if (wL >= 1) fo = src(tile(seg.a - 1, -1, seg.runL, dL), y);
+          else if (seg.runR > 0) fo = src(tile(seg.b + 1, 1, seg.runR, dR), y);
           else fo = o;
         } else {
           fo = o;
@@ -696,9 +1037,28 @@ async function prepare(files, opts = {}) {
     for (let i = 0; i < w * h; i++) m[i] = sm.data[i * 4] > 127 ? 1 : 0;
     // The fill covers the whole mask the model painted through, as the
     // summer's does, softened a little at its edge.
-    const region = blur(morph(m, w, h, 3, 1), w, h, 2);
+    const region = blur(morph(m, w, h, 12, 1), w, h, 2);
     for (let i = 0; i < w * h; i++) region[i] = Math.min(1, region[i] * 1.2);
-    const filled = lookup(sb.data, w, h, regionAtWide);
+    const filled = matchAcross(lookup(sb.data, w, h, regionAtWide), w, h);
+    // October and April (18s): the canopy takes the summer elms' leaf
+    // structure through the season's lookup — October's painting gave a
+    // flat golden haze — thinned toward bare, more so in April's first
+    // small leaves.
+    if ((opts.season === 'autumn' || opts.season === 'spring') && existsSync(QUIET)) {
+      // The season's own picture within the summer's silhouette (18s):
+      // the summer leaves through the lookup came out a slab of mud.
+      treesRGB = quiet.data;
+      const thin = opts.season === 'autumn' ? 0.38 : 0.55;
+      const mt = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (!m[i]) continue;
+        // coarse clumps thin, fine dots thin more: leaves go in patches
+        const n1 = vnoise(x / 26, y / 26, 7.1), n2 = vnoise(x / 7, y / 7, 3.3);
+        mt[i] = 0.6 * n1 + 0.4 * n2 > thin ? 1 : 0;
+      }
+      seasonMatte = mt;
+    }
     // The season's own leaves and branches (18r): within the summer's
     // silhouette, what differs from the sky we fill behind it — October's
     // warm haze between bare branches matches its fill and goes, the
@@ -716,6 +1076,7 @@ async function prepare(files, opts = {}) {
       for (let i = 0; i < w * h; i++) k2[i] = k2[i] > 0.4 ? 1 : 0;
       k2 = morph(morph(k2, w, h, 1, -1), w, h, 2, 1);
       for (let i = 0; i < w * h; i++) m[i] = m[i] && k2[i] ? 1 : 0;
+      if (seasonMatte) for (let i = 0; i < w * h; i++) m[i] = seasonMatte[i];
     }
     for (let i = 0; i < w * h; i++) {
       const o = i * 4;
@@ -732,6 +1093,7 @@ async function prepare(files, opts = {}) {
     for (let i = 0; i < w * h; i++) { const v = m[i] > 0.5 ? 255 : 0; mp[i * 4] = mp[i * 4 + 1] = mp[i * 4 + 2] = v; mp[i * 4 + 3] = 255; }
     await sharp(mp, { raw: { width: w, height: h, channels: 4 } }).png().toFile(MATTE);
     await sharp(base, { raw: { width: w, height: h, channels: 4 } }).png().toFile(BASE);
+    await sharp(quiet.data, { raw: { width: w, height: h, channels: 4 } }).png().toFile(QUIET);
   }
   // ---- the treeline again, on the base — with the leaves gone from in
   // front of it the far shore's top is where it is, not where a leaf
@@ -750,8 +1112,13 @@ async function prepare(files, opts = {}) {
     const f = blur(notSky, w, h, 4);
     const raw = new Float32Array(w).fill(-1);
     for (let x = 0; x < w; x++) {
+      // A column the canopy fills from the scan's first row has no
+      // answer of its own (18s): it took the scan's start as its line,
+      // and a rectangle of the wrong rule sat under the right elm.
+      let seenSky = false;
       for (let y = 120 + oy; y < 300 + oy; y++) {
-        if (f[y * w + x] <= 0.5) continue;
+        if (f[y * w + x] <= 0.5) { seenSky = true; continue; }
+        if (!seenSky) continue;
         let holds = true;
         for (let yy = y; yy < Math.min(300 + oy, y + 60); yy += 6) if (f[yy * w + x] <= 0.5) { holds = false; break; }
         if (holds) { raw[x] = y; break; }
@@ -763,6 +1130,7 @@ async function prepare(files, opts = {}) {
     for (let x = w - 1; x >= 0; x--) { if (raw[x] < 0) raw[x] = last; else last = raw[x]; }
     skyTop.set(raw);
     median(skyTop, 41);
+    holdUnderCanopy(skyTop);
   }
   const skyOnly = Buffer.from(seasonSky ?? base);
   skyBelow(skyOnly, seasonSky ?? base, skyTop, w, h);
@@ -788,6 +1156,17 @@ async function prepare(files, opts = {}) {
       waterFar[x] = far;
     }
     median(waterNear, 31);
+    // The near shore is one gentle line across the width (18s): a column
+    // whose blue was found down on the lawn — a shadow, a blanket — made a
+    // rectangular dip in it, and the ground and water bands, cut along
+    // it, met on hard vertical edges that the renderer's filtering left
+    // as a darker hairline (two half-alphas). Held to a broad median.
+    {
+      const broad = Float32Array.from(waterNear);
+      median(broad, 301);
+      for (let x = 0; x < w; x++) waterNear[x] = Math.min(broad[x] + 12, Math.max(broad[x] - 12, waterNear[x]));
+      median(waterNear, 31);
+    }
     // The far waterline is one straight line across the painting; where
     // a column's blue was found up in the treeline's shadow dots, the
     // line is held to within a few pixels of the width's median. (The
@@ -810,7 +1189,7 @@ async function prepare(files, opts = {}) {
     // the sky band's fill was built from this season's own line: rebuild
     skyBelow(skyOnly, base, skyTop, w, h);
   }
-  const prepared = { w, h, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar };
+  const prepared = { w, h, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar, treesRGB };
   cache.set(key, prepared);
   return prepared;
 }
@@ -923,7 +1302,7 @@ export async function refGround(files, opts) {
 
 export async function refTrees(files, opts) {
   const p = await prepare(files, opts);
-  return frame(p.quiet.data, p.w, p.h, (x, y, i) => p.matte[i]);
+  return frame(p.treesRGB ?? p.quiet.data, p.w, p.h, (x, y, i) => p.matte[i]);
 }
 
 /** For the eye: the boundaries and the matte drawn over the quiet park. */

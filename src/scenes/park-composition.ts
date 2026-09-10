@@ -140,7 +140,22 @@ export function buildComposition(
       const n = p.lay ? GRID_LAY : GRID_STAND;
       const pos: number[] = [];
       const uv: number[] = [];
+      const uvq: number[] = [];
       const idx: number[] = [];
+      // Projective texture coordinates (18s): the painting is a perspective
+      // view of the ground, so its pixel is a projective function of the
+      // world point, not an affine one, and plain uv interpolated across a
+      // triangle shears near the horizon. With u·w, v·w and w carried
+      // instead — w the seat eye's depth of the vertex, all three affine
+      // in the world — the fragment's division gives the exact pixel.
+      const seatView = eye.matrixWorldInverse;
+      const vp = new THREE.Vector3();
+      const pushUv = (u: number, v: number, x: number, y: number, zz: number) => {
+        uv.push(u, v);
+        vp.set(x, y, zz).applyMatrix4(seatView);
+        const wq = Math.max(1e-3, -vp.z);
+        uvq.push(u * wq, v * wq, wq);
+      };
       // A lying plate runs on past the frame (session 18l): a column's
       // width to either side, sampled through the same eye — the rays
       // beyond the frame's edges still meet the ground — and a skirt
@@ -178,7 +193,7 @@ export function buildComposition(
           if (!unproject(px, py, plane, hit)) hit.set(0, baseY, z);
           farZ = Math.min(farZ, hit.z);
           pos.push(hit.x, hit.y, hit.z);
-          uv.push((px - ix) / iw2, 1 - (py - iy) / ih2);
+          pushUv((px - ix) / iw2, 1 - (py - iy) / ih2, hit.x, hit.y, hit.z);
         }
       }
       if (p.lay) {
@@ -190,18 +205,21 @@ export function buildComposition(
         const vPerZ = (h2 / n / ih2) / Math.max(1e-3, nearZ - prevZ);
         const skirtTo = eye.position.z + 30;
         const SKIRT_ROWS = 6;
-        // The skirt holds the near row's own texels rather than mirroring
-        // the texture on, which repeated the path under the seat (18r):
-        // what is behind the seat is grass, and a stretched row of grass
-        // reads as grass.
+        // The skirt holds one row of the image from forty pixels inside
+        // the box's own foot — the frame's foot for the ground, the
+        // water's near edge for the water — rather than the image's last
+        // row, which for a whole-frame layer is the continuation below
+        // the frame (18s: its trunks smeared along the bottom), and
+        // rather than mirroring on, which repeated the path (18r).
         void vPerZ;
+        const vSkirt = 1 - (by + bh - 40 - iy) / ih2;
         for (let r = 1; r <= SKIRT_ROWS; r++) {
           const zz = nearZ + ((skirtTo - nearZ) * r) / SKIRT_ROWS;
           for (let c = 0; c <= cols; c++) {
             const o = (nearRow + c) * 3;
             pos.push(pos[o], pos[o + 1], zz);
             const uo = (nearRow + c) * 2;
-            uv.push(uv[uo], uv[uo + 1] - 0.002 * r);
+            pushUv(uv[uo], vSkirt, pos[o], pos[o + 1], zz);
           }
         }
         rows = n + SKIRT_ROWS;
@@ -218,6 +236,7 @@ export function buildComposition(
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.setAttribute('uvq', new THREE.Float32BufferAttribute(uvq, 3));
       geo.setIndex(idx);
       geo.computeBoundingSphere();
       tex.colorSpace = THREE.SRGBColorSpace;
