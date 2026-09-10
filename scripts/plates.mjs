@@ -165,23 +165,15 @@ const SCENES = {
       lines: 'keep',
       grade: 'assets/raw/park/reference.png',
     })),
-    // The elms' bark alone, for every month but August (18v).
-    {
-      id: 'trees',
-      variant: 'bare',
-      raw: ['quiet-park-v1.png', 'empty-view-v2.png', 'wide-park-v8.png'],
-      recipe: 'ref-trees',
-      trunksOnly: true,
-      budgetKb: 700,
-      lines: 'summer',
-      grade: 'assets/raw/park/reference.png',
-    },
     // The seasons (18j): the same bands from each season's edits, cut
     // along the summer's lines.
     ...['autumn', 'winter', 'spring'].flatMap((season) =>
-      ['sky', 'far-shore', 'water', 'ground'].map((id) => ({
+      ['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
         id,
         variant: season,
+        // The elms' leaves for this season come from the bough painted
+        // for it (18w); their shape stays the painting's own.
+        leafArt: id === 'trees' ? `assets/raw/scene-04/frame/boughs-${season}-v1.keyed.png` : undefined,
         // (the summer's empty view rides along only so the pair is a pair;
         // a season takes the summer's matte and base, see reference-bands)
         raw: [`quiet-${season}-v1.png`, 'empty-view-v2.png', 'wide-park-v8.png'],

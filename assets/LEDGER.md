@@ -1601,3 +1601,41 @@ twice painted a pale mass the white key could not separate from the
 paper. Asking in the prompt for the paper to show plainly between every
 twig, and for no haze and no pale cloud anywhere, gave the open
 lacework they should have been.
+
+### 18w · the elms painted, not derived
+
+Adam: rely on new artwork rather than effects, and fix any defects. The
+defect that mattered was the elms. Their October, January and April
+pictures had been the season's own painting inside the summer's
+silhouette — a slab of colour with holes punched in it — and no blend
+was ever going to make that look painted. They are painted now, from
+the boughs made for 18v: the shape is the painting's, which it must be
+or the tree would move as the year turned, and the paint is the new
+art's. A tile is taken from the densest square of the bough painted for
+that stage, its own large-scale shading flattened so that mirroring it
+shows no seam, and read at a little under half scale across the canopy.
+
+Four things had to be got right for it to read as a tree rather than a
+mass. **The alpha is leaf, not matte**: the matte is a solid region —
+the summer plate only looks like a tree because the painting's own sky
+shows between its leaves, in the colour — so a pixel is leaf so far as
+August's picture is greener, golder or darker there than the sky it
+stands against. **The thinning is the season's own**: the crown takes
+its density from the painted bough's own alpha, so January is the
+painting's crown seen through bare branches rather than a solid mass of
+them. **The trunks keep August's bark**, which is the bark of that tree
+in every month, and are not thinned with the leaves — January's picture
+had painted them over in snow and they came out as flat pale bars.
+**And the crown goes on past the frame**: the continuation painted sky
+above and beside the elms, so the matte simply stopped there and the
+canopy ended on a straight line at the top and both sides. Each edge
+column now keeps its leafiness outward, eased over two hundred pixels
+and thinned the same way, so the tree ends in leaves.
+
+Also: the year is held to a daylight floor when it runs on its own
+(18v) — Adam did not want the daylight to go dark — and the elms' bark
+is read as everything in the silhouette that is not green, yellow or
+blue, which lets the right-hand trunks run down to the lawn instead of
+stopping above a sitter's shoulder. The seat frame is unchanged: at the
+seat the elms sit on August's own picture with the mix at zero, and
+every plate beyond the frame is at nothing.

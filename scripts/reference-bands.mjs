@@ -41,7 +41,14 @@ const SEAM = 140;
  * owed a better matte before the year's rise is looked at.
  */
 const CANOPY_REGIONS = [
-  [0, -60, 1536, 60], // leaf tips the continuation left just above the frame
+  // The canopy above the frame (18w). This used to be a sixty-pixel
+  // strip, so the elms' leaves ended on a straight line sixty pixels
+  // above the painting — invisible while the plate carried the
+  // painting's own pale leaf tips there, plain as a band across the
+  // frame once the leaves were painted in. It now reaches well up into
+  // the continuation, where the elms go on; the colour key still decides
+  // what is leaf and what is sky, so the top ends where the tree does.
+  [0, -260, 1536, 260],
   [0, 0, 930, 300],
   [930, 0, 190, 185],
   [1120, 0, 416, 330],
@@ -49,9 +56,14 @@ const CANOPY_REGIONS = [
 const TRUNK_REGIONS = [
   [20, 150, 125, 460], // the left trunk
   [0, 560, 215, 185], // its flare and roots
-  [1380, 150, 62, 265], // the right trunks, their own columns only; this one
-  // ends above the shoulder of the man in the second chair (18g)
-  [1486, 150, 50, 245], // stops above the small sitter the model drew high
+  // The right trunks, their own columns only. They used to stop above
+  // the shoulder of the man in the second chair and above the small
+  // sitter (18g), because the colour key took the people for bark; with
+  // the bark now read as everything that is not green, yellow or blue
+  // (18w) the columns can run down to the lawn, which is where the
+  // trunks run, and the sitters keep their clothes.
+  [1378, 150, 66, 560],
+  [1484, 150, 52, 540],
 ];
 
 const cache = new Map();
@@ -1443,6 +1455,84 @@ function skyBelow(out, base, skyTop, w, h) {
   }
 }
 
+/**
+ * The densest square of a painted bough, as a tile to paint a canopy
+ * with (18w). The elms' seasons used to be the season's own picture
+ * inside the summer's silhouette, which came out as a slab of colour
+ * with holes punched in it. The shape is the painting's — it must be,
+ * or the elms would move as the year turned — but the paint is now the
+ * new artwork's: the leaves, their colour and their touch, sampled from
+ * the bough painted for that stage of the year and mirror-tiled, so an
+ * October elm is October leaves in the shape of the painting's elm.
+ */
+async function foliageTile(file) {
+  const img = await load(file);
+  const { w, h, data } = img;
+  const S = 384;
+  let best = null;
+  for (let y = 0; y + S <= h; y += 48) {
+    for (let x = 0; x + S <= w; x += 48) {
+      let n = 0;
+      for (let j = 0; j < S; j += 8) for (let i = 0; i < S; i += 8) if (data[((y + j) * w + x + i) * 4 + 3] > 200) n++;
+      if (!best || n > best.n) best = { x, y, n };
+    }
+  }
+  const tile = Buffer.alloc(S * S * 4);
+  // The tile's own alpha, kept before the holes are filled: it is how
+  // dense the leaves are at this stage of the year, and the canopy takes
+  // its thinning from it (18w) — a winter crown is the painting's crown
+  // seen through bare branches, not a solid mass of them.
+  const cover = new Float32Array(S * S);
+  for (let j = 0; j < S; j++)
+    for (let i = 0; i < S; i++) {
+      const o = ((best.y + j) * w + best.x + i) * 4;
+      const t = (j * S + i) * 4;
+      tile[t] = data[o]; tile[t + 1] = data[o + 1]; tile[t + 2] = data[o + 2]; tile[t + 3] = data[o + 3];
+      cover[j * S + i] = data[o + 3] / 255;
+    }
+  // the holes in the tile filled from their neighbours, so every sample
+  // lands on paint
+  for (let pass = 0; pass < 24; pass++) {
+    let filled = 0;
+    for (let j = 0; j < S; j++)
+      for (let i = 0; i < S; i++) {
+        const t = (j * S + i) * 4;
+        if (tile[t + 3] > 128) continue;
+        const acc = [0, 0, 0];
+        let n = 0;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const ii = i + di, jj = j + dj;
+          if (ii < 0 || jj < 0 || ii >= S || jj >= S) continue;
+          const u = (jj * S + ii) * 4;
+          if (tile[u + 3] <= 128) continue;
+          acc[0] += tile[u]; acc[1] += tile[u + 1]; acc[2] += tile[u + 2]; n++;
+        }
+        if (!n) continue;
+        tile[t] = acc[0] / n; tile[t + 1] = acc[1] / n; tile[t + 2] = acc[2] / n; tile[t + 3] = 255;
+        filled++;
+      }
+    if (!filled) break;
+  }
+  // Flatten the tile's own large-scale shading (18w): a tile that is
+  // darker at one edge than the other shows every mirror line when it is
+  // tiled. Divided by its own blur and put back at its mean, the leaves
+  // keep their touch and lose the gradient.
+  {
+    const lum = new Float32Array(S * S);
+    for (let i = 0; i < S * S; i++) lum[i] = 0.299 * tile[i * 4] + 0.587 * tile[i * 4 + 1] + 0.114 * tile[i * 4 + 2];
+    const low = blur(lum, S, S, 40);
+    let mean = 0;
+    for (let i = 0; i < S * S; i++) mean += low[i];
+    mean /= S * S;
+    for (let i = 0; i < S * S; i++) {
+      const g = Math.min(1.6, Math.max(0.6, mean / Math.max(1, low[i])));
+      for (let c = 0; c < 3; c++) tile[i * 4 + c] = Math.max(0, Math.min(255, Math.round(tile[i * 4 + c] * g)));
+    }
+  }
+  console.log(`  foliage tile from ${file.split('/').pop()} at ${best.x},${best.y}`);
+  return { tile, cover, S };
+}
+
 /** A whole-frame RGBA image: the base under a per-pixel alpha. */
 function frame(src, w, h, alphaAt) {
   const out = Buffer.alloc(w * h * 4);
@@ -1510,8 +1600,133 @@ export async function refTrees(files, opts) {
   // one haze of the season's colour, and noise for leaves.
   if (opts.trunksOnly) {
     const [ox, oy] = ORIGIN;
+    const { w, h } = p;
     const trunk = (x, y) => TRUNK_REGIONS.some(([bx, by, bw, bh]) => x - ox >= bx && x - ox < bx + bw && y - oy >= by && y - oy < by + bh);
-    return frame(p.quiet.data, p.w, p.h, (x, y, i) => (p.matte[i] && trunk(x, y) ? 1 : 0));
+    // Bark and nothing else. The elms are cut with a ring of their own
+    // ground around them — which is August's grass, and on the January
+    // snow it read as a collar of green and gold around every trunk
+    // (18w). So the matte is drawn in six pixels and then kept only
+    // where the picture is bark: redder than it is green or blue, and
+    // darker than the sunlit grass.
+    const q = p.quiet.data;
+    let keep = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      if (!p.matte[i]) continue;
+      const o = i * 4;
+      const r = q[o], g = q[o + 1], b = q[o + 2];
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      // Bark runs from dark brown through rust to a violet grey; what is
+      // not bark around these trunks is grass and leaves, which are
+      // greener or yellower than anything on the tree. So the test is
+      // put the other way round — everything in the silhouette is bark
+      // unless it is green or yellow — which keeps the trunk's sunlit
+      // side and its whole width (18w).
+      const greenish = g > r + 3;
+      const yellowish = r > b + 34 && g > b + 24 && lum > 0.55;
+      const bluish = b > r + 8;
+      if (!greenish && !yellowish && !bluish && lum < 0.86) keep[i] = 1;
+    }
+    // Close the small gaps, drop the specks, and round it: square
+    // kernels leave a stair-stepped trunk.
+    keep = morph(morph(keep, w, h, 3, 1), w, h, 3, -1);
+    keep = morph(morph(keep, w, h, 2, -1), w, h, 2, 1);
+    keep = blur(keep, w, h, 2);
+    for (let i = 0; i < w * h; i++) keep[i] = keep[i] > 0.45 ? 1 : 0;
+    return frame(q, w, h, (x, y, i) => (keep[i] && trunk(x, y) ? 1 : 0));
+  }
+  // A season's elms (18w): the painting's own silhouette — the summer's,
+  // so the tree never moves as the year turns — filled with the leaves
+  // painted for that stage of the year, read at a little under half
+  // scale and mirrored at every edge, which foliage takes without
+  // showing it. What was there before was the season's own picture
+  // inside that silhouette, which came out as a slab of colour with
+  // holes punched in it.
+  if (opts.leafArt && existsSync(opts.leafArt)) {
+    const { w, h } = p;
+    const { tile, cover, S } = await foliageTile(opts.leafArt);
+    const rgb = Buffer.alloc(w * h * 4);
+    const dens = new Float32Array(w * h);
+    const k = 0.42;
+    const tri = (v, n) => { const m = ((v % (2 * n)) + 2 * n) % (2 * n); return m < n ? m : 2 * n - 1 - m; };
+    const [ox, oy] = ORIGIN;
+    const bark = (x, y) => TRUNK_REGIONS.some(([bx, by, bw, bh]) => x - ox >= bx && x - ox < bx + bw && y - oy >= by && y - oy < by + bh);
+    // The trunks keep the summer's bark, which is the bark of the tree in
+    // every month: January's own picture painted them over in snow, and
+    // they came out as flat pale bars.
+    const sq = existsSync(QUIET) ? await load(QUIET) : p.quiet;
+    const q = sq.data;
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        if (bark(x, y)) { rgb[o] = q[o]; rgb[o + 1] = q[o + 1]; rgb[o + 2] = q[o + 2]; rgb[o + 3] = 255; continue; }
+        const si = tri(Math.round(y * k), S) * S + tri(Math.round(x * k), S);
+        const t = si * 4;
+        rgb[o] = tile[t]; rgb[o + 1] = tile[t + 1]; rgb[o + 2] = tile[t + 2]; rgb[o + 3] = 255;
+        dens[y * w + x] = cover[si];
+      }
+    // How leafy the painting's own canopy is, pixel by pixel (18w): how
+    // far August's picture stands from the sky filled in behind it. A
+    // binary matte filled with dense leaves turned every thin, hazy
+    // corner of the canopy into solid foliage, and the matte's own
+    // boundary — boxes, in places — showed as a band across the frame.
+    // Taken this way the new leaves are as thin where the painting's
+    // were thin, and the canopy keeps its air.
+    const sm = existsSync(MATTE) ? await load(MATTE) : null;
+    const sb = existsSync(BASE) ? await load(BASE) : null;
+    if (!sm || !sb) return frame(rgb, w, h, (x, y, i) => p.matte[i]);
+    // Leaf, not matte. The matte is a solid region — the summer plate
+    // only looks like a tree because the painting's own sky shows between
+    // its leaves, in the colour. Fill that region with painted foliage
+    // and it becomes a slab. So the alpha is read from August's own
+    // picture: a pixel is leaf so far as it is greener, golder or darker
+    // than the sky it stands against, and sky where it is pale and blue.
+    const leaf = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      if (sm.data[i * 4] <= 127) continue;
+      const o = i * 4;
+      const r = q[o], g = q[o + 1], b = q[o + 2];
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      const green = g - b;
+      const dark = Math.max(0, 0.8 - lum) * 255;
+      leaf[i] = smooth01(6, 34, green + dark * 0.9);
+    }
+    // a touch of closing, so single sky dots inside a leaf mass do not
+    // riddle it with holes
+    let lf = blur(leaf, w, h, 1);
+    for (let i = 0; i < w * h; i++) lf[i] = Math.min(1, lf[i] * 1.25);
+    // Carried on above the painting's own top edge (18w). The elms are
+    // cut off there — the continuation painted sky above them, so the
+    // matte simply stops — and at the widest of the pull-back that showed
+    // as a straight line across the top of the canopy. Now that the
+    // leaves are painted rather than derived, the crown can go on: each
+    // column keeps the leafiness it had at the frame's top row, eased out
+    // over two hundred pixels and thinned by the same density as the
+    // rest, so the tree ends in leaves rather than at an edge.
+    {
+      const top = oy + 12;
+      for (let y = 0; y < top; y++) {
+        const k = smooth01(oy - 200, oy - 4, y);
+        for (let x = 0; x < w; x++) lf[y * w + x] = Math.max(lf[y * w + x], lf[top * w + x] * k);
+      }
+      // and out past its sides, the same way: the painting ends there,
+      // and so did the crown
+      const L = ox + 12, R = ox + 1536 - 13;
+      for (let y = 0; y < h; y++) {
+        const l = lf[y * w + L], r = lf[y * w + R];
+        if (l > 0) for (let x = 0; x < ox; x++) lf[y * w + x] = Math.max(lf[y * w + x], l * smooth01(ox - 220, ox - 4, x));
+        if (r > 0) for (let x = ox + 1536; x < w; x++) lf[y * w + x] = Math.max(lf[y * w + x], r * smooth01(ox + 1536 + 220, ox + 1536 + 4, x));
+      }
+    }
+    // and thinned by how much leaf this stage of the year actually has
+    const thinned = blur(dens, w, h, 1);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        // the trunks are not leaves and are not thinned with them
+        if (bark(x, y)) continue;
+        lf[i] *= Math.min(1, 0.12 + thinned[i] * 1.2);
+      }
+    return frame(rgb, w, h, (x, y, i) => lf[i]);
   }
   return frame(p.treesRGB ?? p.quiet.data, p.w, p.h, (x, y, i) => p.matte[i]);
 }
