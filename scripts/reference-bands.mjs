@@ -20,6 +20,7 @@
  * lightness, the water's near edge by blueness, column by column.
  */
 import sharp from 'sharp';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const FEATHER = 5;
 /** The wide frame: twice the painting each way, the painting at ORIGIN. */
@@ -60,15 +61,62 @@ async function widen(painting, outpaint) {
   const [W, H] = WIDE;
   // The continuation may come at the wide frame's own size (the pieces
   // of scripts/outpaint.mjs) or at half of it (one edit), doubled here.
-  const big =
+  const big = Buffer.from(
     outpaint.w === W
       ? outpaint.data
       : await sharp(Buffer.from(outpaint.data), { raw: { width: outpaint.w, height: outpaint.h, channels: 4 } })
           .resize(W, H, { kernel: 'lanczos3' })
           .raw()
-          .toBuffer();
-  const data = Buffer.from(big);
+          .toBuffer(),
+  );
   const [ox, oy] = ORIGIN;
+  // A continuation made as its own edit, or recoloured to a season
+  // (18j), drifts in tone from the painting. Over the centre, where both
+  // hold the same picture, a straight-line fit per channel brings the
+  // continuation to the painting — one fit per region when the summer's
+  // lines are known (sky, far shore, water, ground), since one line for
+  // a whole picture is dominated by the lawn and misses the sky.
+  {
+    const lines = regionLines;
+    const regionOf = (x, y) => {
+      if (!lines) return 0;
+      const c = Math.max(0, Math.min(W - 1, x));
+      if (y < lines.skyTop[c]) return 0;
+      if (y < lines.waterFar[c]) return 1;
+      if (y < lines.waterNear[c]) return 2;
+      return 3;
+    };
+    const R = lines ? 4 : 1;
+    const fits = [];
+    for (let r = 0; r < R; r++) {
+      const fit = [];
+      for (let c = 0; c < 3; c++) {
+        let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+        for (let y = SEAM; y < painting.h - SEAM; y += 3) for (let x = SEAM; x < painting.w - SEAM; x += 3) {
+          if (regionOf(x + ox, y + oy) !== r) continue;
+          const v = big[((y + oy) * W + x + ox) * 4 + c];
+          const f = painting.data[(y * painting.w + x) * 4 + c];
+          n++; sx += v; sy += f; sxx += v * v; sxy += v * f;
+        }
+        if (n < 400) { fit.push([1, 0]); continue; }
+        const denom = n * sxx - sx * sx;
+        let a = denom ? (n * sxy - sx * sy) / denom : 1;
+        a = Math.min(1.6, Math.max(0.4, a));
+        fit.push([a, Math.min(140, Math.max(-140, (sy - a * sx) / n))]);
+      }
+      fits.push(fit);
+    }
+    const flat = fits.every((fit) => fit.every(([a, b]) => Math.abs(a - 1) < 0.02 && Math.abs(b) < 3));
+    if (!flat) {
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const fit = fits[regionOf(x, y)];
+        const o = (y * W + x) * 4;
+        for (let c = 0; c < 3; c++) big[o + c] = Math.max(0, Math.min(255, Math.round(big[o + c] * fit[c][0] + fit[c][1])));
+      }
+      console.log(`  continuation fitted to the painting, ${R} region(s): ${fits.map((fit) => fit.map(([a, b]) => `${a.toFixed(2)}x${b >= 0 ? '+' : ''}${b.toFixed(0)}`).join(' ')).join(' | ')}`);
+    }
+  }
+  const data = Buffer.from(big);
   for (let y = 0; y < painting.h; y++) {
     for (let x = 0; x < painting.w; x++) {
       const d = Math.min(x, y, painting.w - 1 - x, painting.h - 1 - y);
@@ -80,6 +128,101 @@ async function widen(painting, outpaint) {
     }
   }
   return { data, w: W, h: H };
+}
+
+/** A box blur of an RGBA buffer's colour, radius r, for the lookups. */
+function lowpass(data, w, h, r) {
+  const out = Buffer.from(data);
+  for (let c = 0; c < 3; c++) {
+    const f = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) f[i] = data[i * 4 + c];
+    const b = blur(f, w, h, r);
+    for (let i = 0; i < w * h; i++) out[i * 4 + c] = Math.round(b[i]);
+  }
+  return out;
+}
+
+/**
+ * A season's colour, learned from the aligned pair of paintings (summer
+ * → season) as a 24³ lookup over low-passed colour, each cell the mean
+ * season colour of the summer pixels that fell in it, empty cells taking
+ * the nearest filled. Applied to any summer image: the lookup gives the
+ * local colour, and the image's own dots — its difference from its
+ * low-pass — ride on top, so the texture is the painting's, not a wash.
+ */
+function seasonLookup(summer, season, regionOfPainting = () => 0, regions = 1) {
+  const N = 24;
+  const R = 3;
+  const lpS = lowpass(summer.data, summer.w, summer.h, R);
+  const lpT = lowpass(season.data, season.w, season.h, R);
+  const cell = (r, g, b) => ((r * N) >> 8) * N * N + ((g * N) >> 8) * N + ((b * N) >> 8);
+  const tables = [];
+  for (let reg = 0; reg < regions; reg++) tables.push({ sum: new Float64Array(N * N * N * 3), cnt: new Uint32Array(N * N * N), lut: new Float32Array(N * N * N * 3), filled: new Uint8Array(N * N * N) });
+  for (let y = 0; y < summer.h; y++) for (let x = 0; x < summer.w; x++) {
+    const i = y * summer.w + x;
+    const o = i * 4;
+    const t = tables[regionOfPainting(x, y)];
+    const c = cell(lpS[o], lpS[o + 1], lpS[o + 2]);
+    t.cnt[c]++;
+    for (let k = 0; k < 3; k++) t.sum[c * 3 + k] += lpT[o + k];
+  }
+  for (const t of tables) fillTable(t, N);
+  /** Apply to an RGBA buffer of the given size; regionAt gives a pixel's region. */
+  return (data, w, h, regionAt = () => 0) => {
+    const lp = lowpass(data, w, h, R);
+    const out = Buffer.from(data);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const o = (y * w + x) * 4;
+      const t = tables[regionAt(x, y)];
+      const c = cell(lp[o], lp[o + 1], lp[o + 2]);
+      if (!t.filled[c]) continue;
+      // the dots ride on at six tenths: snow does not carry grass's contrast
+      for (let k = 0; k < 3; k++) out[o + k] = Math.max(0, Math.min(255, Math.round(t.lut[c * 3 + k] + 0.6 * (data[o + k] - lp[o + k]))));
+    }
+    return out;
+  };
+}
+
+/** A table's means, and its empty cells taking the nearest filled. */
+function fillTable({ sum, cnt, lut, filled }, N) {
+  for (let c = 0; c < N * N * N; c++) if (cnt[c] >= 4) { filled[c] = 1; for (let k = 0; k < 3; k++) lut[c * 3 + k] = sum[c * 3 + k] / cnt[c]; }
+  for (let pass = 0; pass < N; pass++) {
+    const next = Uint8Array.from(filled);
+    let grew = 0;
+    for (let r = 0; r < N; r++) for (let g = 0; g < N; g++) for (let b = 0; b < N; b++) {
+      const c = r * N * N + g * N + b;
+      if (filled[c]) continue;
+      let n = 0; const acc = [0, 0, 0];
+      for (const [dr, dg, db] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+        const rr = r + dr, gg = g + dg, bb = b + db;
+        if (rr < 0 || gg < 0 || bb < 0 || rr >= N || gg >= N || bb >= N) continue;
+        const cc = rr * N * N + gg * N + bb;
+        if (!filled[cc]) continue;
+        n++;
+        for (let k = 0; k < 3; k++) acc[k] += lut[cc * 3 + k];
+      }
+      if (n) { next[c] = 1; for (let k = 0; k < 3; k++) lut[c * 3 + k] = acc[k] / n; grew++; }
+    }
+    filled.set(next);
+    if (!grew) break;
+  }
+}
+
+/** The summer continuation recoloured to a season. */
+async function seasoned(outpaint, summer, season, lookup) {
+  const map = lookup ?? seasonLookup(summer, season);
+  return { data: map(outpaint.data, outpaint.w, outpaint.h, regionAtWide), w: outpaint.w, h: outpaint.h, map };
+}
+
+/** A pixel's region in the wide frame, from the summer's lines. */
+function regionAtWide(x, y) {
+  const L = regionLines;
+  if (!L) return 0;
+  const c = Math.max(0, Math.min(WIDE[0] - 1, x));
+  if (y < L.skyTop[c]) return 0;
+  if (y < L.waterFar[c]) return 1;
+  if (y < L.waterNear[c]) return 2;
+  return 3;
 }
 
 /** A painting-sized image set into a frame the size of `like`, at ORIGIN,
@@ -149,10 +292,25 @@ function morph(src, w, h, r, sign) {
 
 /** The two frames, the tree matte, the base with the trees filled from
  *  behind, and the two boundary polylines — computed once per pair. */
-async function prepare(files) {
+const LINES = 'assets/raw/scene-04/ref/lines.json';
+const MATTE = 'assets/raw/scene-04/ref/summer-matte.png';
+/** The summer's lines, for widen()'s per-region fit; set by prepare(). */
+let regionLines = null;
+const BASE = 'assets/raw/scene-04/ref/summer-base.png';
+
+async function prepare(files, opts = {}) {
   const key = files.join('|');
   if (cache.has(key)) return cache.get(key);
-  const [painting, emptyPainting, outpaint] = await Promise.all(files.map(load));
+  const [painting, emptyPainting, outpaintIn] = await Promise.all(files.map(load));
+  // A season's continuation (18j): the summer's, with the season's
+  // colours mapped onto it — a lookup learned from the painting pair,
+  // summer beside season, pixel for pixel. Turning the wide frame to a
+  // season as a picture had the model recompose it: elms moved, new
+  // trees on the lawn. A mapping moves nothing.
+  regionLines = opts.lines === 'summer' && existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null;
+  const summerPainting = opts.seasonOf ? await load(opts.seasonOf) : null;
+  const lookup = summerPainting ? seasonLookup(summerPainting, painting, (x, y) => regionAtWide(x + ORIGIN[0], y + ORIGIN[1]), regionLines ? 4 : 1) : null;
+  const outpaint = outpaintIn && lookup ? await seasoned(outpaintIn, summerPainting, painting, lookup) : outpaintIn;
   // The empty view from v2 on was painted through a mask the shape of the
   // trees and is faithful everywhere else; v1 was not.
   emptyPainting.masked = !/empty-view-v1\.png$/.test(files[1]);
@@ -327,6 +485,29 @@ async function prepare(files) {
       base[o + 3] = 255;
     }
   }
+  // ---- a season (18j) takes the summer's geometry whole: its tree
+  // matte, and behind the trees its tree-free base turned to the season
+  // by the lookup — the season's own edits behind the elms proved
+  // unreliable (one came back golden in January), and the elms' shapes
+  // are the same trees whatever the month.
+  if (lookup && existsSync(MATTE) && existsSync(BASE)) {
+    const sm = await load(MATTE);
+    const sb = await load(BASE);
+    for (let i = 0; i < w * h; i++) m[i] = sm.data[i * 4] > 127 ? 1 : 0;
+    const mBase2 = morph(m, w, h, 2, -1);
+    const filled = lookup(sb.data, w, h, regionAtWide);
+    for (let i = 0; i < w * h; i++) {
+      const o = i * 4;
+      const k = mBase2[i];
+      for (let c = 0; c < 3; c++) base[o + c] = Math.round(quiet.data[o + c] * (1 - k) + filled[o + c] * k);
+    }
+  } else if (!lookup) {
+    // the summer keeps its matte and base for the seasons
+    const mp = Buffer.alloc(w * h * 4);
+    for (let i = 0; i < w * h; i++) { const v = m[i] > 0.5 ? 255 : 0; mp[i * 4] = mp[i * 4 + 1] = mp[i * 4 + 2] = v; mp[i * 4 + 3] = 255; }
+    await sharp(mp, { raw: { width: w, height: h, channels: 4 } }).png().toFile(MATTE);
+    await sharp(base, { raw: { width: w, height: h, channels: 4 } }).png().toFile(BASE);
+  }
   // ---- the treeline again, on the base — with the leaves gone from in
   // front of it the far shore's top is where it is, not where a leaf
   // ended. The sky band takes only sky: below this line its pixels are
@@ -359,14 +540,7 @@ async function prepare(files) {
     median(skyTop, 41);
   }
   const skyOnly = Buffer.from(base);
-  for (let x = 0; x < w; x++) {
-    const top = Math.round(skyTop[x]) - 2;
-    for (let y = top; y < h; y++) {
-      const sy = Math.max(0, 2 * top - 1 - y);
-      const o = (y * w + x) * 4, so = (sy * w + x) * 4;
-      skyOnly[o] = base[so]; skyOnly[o + 1] = base[so + 1]; skyOnly[o + 2] = base[so + 2];
-    }
-  }
+  skyBelow(skyOnly, base, skyTop, w, h);
   // ---- the water's far and near edges: per column, the rows where
   // blue stops dominating, scanning up from the lawn and down from the
   // shore.
@@ -399,6 +573,18 @@ async function prepare(files) {
     for (let x = 0; x < w; x++) waterFar[x] = Math.min(mid + 4, Math.max(mid - 4, waterFar[x]));
     median(waterFar, 61);
   }
+  // A season shares the summer's lines (18j): snow and ice have no blue
+  // to find the water by, and the shore does not move with the year.
+  if (opts.lines === 'keep') {
+    writeFileSync(LINES, JSON.stringify({ skyTop: Array.from(skyTop), waterNear: Array.from(waterNear), waterFar: Array.from(waterFar) }));
+  } else if (opts.lines === 'summer' && existsSync(LINES)) {
+    const L = JSON.parse(readFileSync(LINES, 'utf8'));
+    skyTop.set(L.skyTop);
+    waterNear.set(L.waterNear);
+    waterFar.set(L.waterFar);
+    // the sky band's fill was built from this season's own line: rebuild
+    skyBelow(skyOnly, base, skyTop, w, h);
+  }
   const prepared = { w, h, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar };
   cache.set(key, prepared);
   return prepared;
@@ -412,6 +598,43 @@ function median(arr, win) {
     for (let k = -half; k <= half; k++) s.push(src[Math.min(arr.length - 1, Math.max(0, i + k))]);
     s.sort((a, b) => a - b);
     arr[i] = s[half];
+  }
+}
+
+/**
+ * Below the treeline the sky band carries only the sky's own colour just
+ * above it — the mean of the twelve rows over the line, per column,
+ * smoothed across columns and held to the foot — not the sky mirrored,
+ * whose clouds read as a symmetric ledge once the far shore parts from
+ * the sky as the eye rises.
+ */
+function skyBelow(out, base, skyTop, w, h) {
+  const col = new Float32Array(w * 3);
+  for (let x = 0; x < w; x++) {
+    const top = Math.round(skyTop[x]) - 4;
+    let n = 0;
+    for (let y = Math.max(0, top - 12); y < top; y++) {
+      const o = (y * w + x) * 4;
+      col[x * 3] += base[o]; col[x * 3 + 1] += base[o + 1]; col[x * 3 + 2] += base[o + 2];
+      n++;
+    }
+    if (n) for (let c = 0; c < 3; c++) col[x * 3 + c] /= n;
+  }
+  const sm = new Float32Array(w * 3);
+  const R = 24;
+  for (let c = 0; c < 3; c++) for (let x = 0; x < w; x++) {
+    let acc = 0, n = 0;
+    for (let k = -R; k <= R; k++) { const xx = x + k; if (xx >= 0 && xx < w) { acc += col[xx * 3 + c]; n++; } }
+    sm[x * 3 + c] = acc / n;
+  }
+  for (let x = 0; x < w; x++) {
+    const top = Math.round(skyTop[x]) - 4;
+    for (let y = Math.max(0, top); y < h; y++) {
+      const o = (y * w + x) * 4;
+      // a few rows of ease from the real sky into the flat
+      const k = Math.min(1, (y - top) / 6);
+      for (let c = 0; c < 3; c++) out[o + c] = Math.round(base[o + c] * (1 - k) + sm[x * 3 + c] * k);
+    }
   }
 }
 
@@ -443,8 +666,8 @@ const under = (y, row, above) => (above ? (y < row + OVER ? 1 : 0) : y > row - O
 // (the composition orders lying plates by their far edge, standing ones
 // by their z). Each band is opaque past the edge the one in front of it
 // feathers over.
-export async function refSky(files) {
-  const p = await prepare(files);
+export async function refSky(files, opts) {
+  const p = await prepare(files, opts);
   // Opaque all the way down to the water's far edge: the far shore
   // stands in front of it, and when the eye rises and they part, what
   // shows between them is sky, not the void — sky, because below the
@@ -452,29 +675,29 @@ export async function refSky(files) {
   return frame(p.skyOnly, p.w, p.h, (x, y) => under(y, p.waterFar[x], true));
 }
 
-export async function refFarShore(files) {
-  const p = await prepare(files);
+export async function refFarShore(files, opts) {
+  const p = await prepare(files, opts);
   return frame(p.base, p.w, p.h, (x, y) => edge(y, p.skyTop[x], false) * edge(y, p.waterFar[x] + 3, true));
 }
 
-export async function refWater(files) {
-  const p = await prepare(files);
+export async function refWater(files, opts) {
+  const p = await prepare(files, opts);
   return frame(p.base, p.w, p.h, (x, y) => under(y, p.waterFar[x], false) * under(y, p.waterNear[x], true));
 }
 
-export async function refGround(files) {
-  const p = await prepare(files);
+export async function refGround(files, opts) {
+  const p = await prepare(files, opts);
   return frame(p.base, p.w, p.h, (x, y) => edge(y, p.waterNear[x], false));
 }
 
-export async function refTrees(files) {
-  const p = await prepare(files);
+export async function refTrees(files, opts) {
+  const p = await prepare(files, opts);
   return frame(p.quiet.data, p.w, p.h, (x, y, i) => p.matte[i]);
 }
 
 /** For the eye: the boundaries and the matte drawn over the quiet park. */
-export async function refCheck(files) {
-  const p = await prepare(files);
+export async function refCheck(files, opts) {
+  const p = await prepare(files, opts);
   const out = Buffer.from(p.quiet.data);
   for (let x = 0; x < p.w; x++) {
     for (const [row, col] of [

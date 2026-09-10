@@ -121,6 +121,38 @@ function outpaintLayers() {
   return pieces;
 }
 
+/** The seasons the year passes through, as the manifest names them. */
+export const SEASONS = {
+  autumn: {
+    key: 'AUTUMN',
+    text: `late October: the elms and the far shore's trees turned yellow, orange and rust, some already half bare with branches showing, fallen leaves scattered thinly on the lawn and along the path, the grass duller and cooler, the lake a deeper steel blue under a paler sky`,
+  },
+  winter: {
+    key: 'WINTER',
+    text: `mid-January in Minnesota: snow lying over the lawn and the path, the lake frozen and snow-covered to the far shore, a flat very pale blue-white surface (never pure white), the elms and the far shore's trees bare, their branches dark against a pale grey-white winter sky`,
+  },
+  spring: {
+    key: 'SPRING',
+    text: `late April: the elms and the far shore's trees in their first small fresh yellow-green leaves, some blossom, the lawn a bright new green, the lake open again and a clear light blue under a soft spring sky`,
+  },
+};
+
+function seasonLayers() {
+  const out = [];
+  for (const [id, season] of Object.entries(SEASONS)) {
+    const pre = 'The image is a pointillist painting of a park on a lake: small dots and dashes of pure colour, sunlit.';
+    const turn = `Paint the very same picture in ${season.text}. Keep every shape exactly where it is and exactly its size — the trees, the shore, the bandshell, the path, the lawn, the horizon — and the same pointillist dots and brushwork; change only what the season changes: the colours of leaves, grass, water and sky, snow where snow would lie, bare branches where leaves have fallen. No people, boats, animals or objects.`;
+    out.push({ id: `quiet-${id}`, dir, size: '1536x1024', src: 'assets/raw/scene-04/ref/quiet-park-v1.png', noRef: true, preamble: pre, prompt: turn });
+    out.push({ id: `wide-${id}`, dir, size: '1536x1024', src: 'assets/raw/scene-04/ref/wide-half.png', noRef: true, preamble: pre, prompt: turn });
+    out.push({
+      id: `empty-${id}`, dir, size: '1536x1024', src: `latest:${dir}/quiet-${id}`, maskFile: 'assets/raw/scene-04/ref/tree-mask.png', noRef: true,
+      preamble: pre,
+      prompt: `In the masked areas only, remove the two big elms in the foreground — their trunks, branches and leaves — and continue exactly what lies behind them in the same dots, colours and light: the sky where branches were, the far shore's treeline at the same height and the lake where the trunks crossed them, the path and the ground where the trunks met it. Change nothing outside the masked areas.`,
+    });
+  }
+  return out;
+}
+
 export const layers = [
   ...ELEMENTS.map((e) => ({ id: e.id, dir, size: sizeFor(e.box), crop: { src: REF, box: pad(e.box, Math.round(Math.max(e.box[2], e.box[3]) * (e.pad ?? 0.1))) }, noRef: true, preamble: ELEMENT_STYLE, prompt: e.prompt })),
   {
@@ -145,6 +177,10 @@ export const layers = [
   // assembles the wide frame. The masks are the blank quarter or half of
   // each canvas plus an eight-pixel margin into the painted part.
   ...outpaintLayers(),
+  // ---- the seasons (18j): the quiet park, the wide frame at half size,
+  // and the view behind the elms, each turned to a season as an edit.
+  // Every shape stays where it is; only the season changes.
+  ...seasonLayers(),
   {
     // What stands behind the elms (18i): the quiet park with a mask the
     // shape of the trees themselves (scripts/tree-mask.mjs, from the

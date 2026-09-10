@@ -1142,3 +1142,28 @@ elms. Season editions of the wide frame are step 3. Last, the far treeline had b
 leaves still in front of it, and rode in the sky band as well as the
 far shore's, doubling as the eye rose; it is found on the filled image
 now, and the sky band carries only sky below it, mirrored down.
+
+### 18j · the seasons of the wide frame
+
+Step 3. Three seasons of the quiet park as whole-picture edits —
+late October, mid-January, late April — came back with every shape in
+place and the season in the colours. Two other routes failed and were
+dropped: the wide frame at half size turned to a season as a picture
+was recomposed (elms moved, new trees on the lawn below the seat), and
+the seasons' own edits behind the elms drifted or, in January, came
+back golden. So a season borrows the summer's geometry whole — its
+tree matte, its tree-free base, its lines for the bands — and takes
+its colour from a lookup learned from the aligned pair of paintings,
+summer beside season: a 24³ table per region (sky, far shore, water,
+ground) over low-passed colour, the image's own dots riding on at six
+tenths so snow is not grass in white. The lookup recolours the summer
+continuation and the base behind the trees; the season's painting sits
+in the middle at full resolution; a straight-line fit per region and
+channel over the shared centre brings the continuation to the
+painting. `plates.mjs` cuts the same five bands per season; the
+manifest keys them by season name and the composition cross-fades
+them by the year's weights. Nine edits spent, three of them unused.
+Winter and spring sit in their continuations without an edge; autumn's
+sky is the least settled. Below the treeline the sky band now carries a smear of the sky's
+own colour just above it rather than the sky mirrored, whose clouds
+had read as a symmetric ledge once the far shore parted from the sky.

@@ -1047,15 +1047,15 @@ export const scenes: Scene[] = [
       // shore is the canopy, the water the far bank, the ground the near
       // bank, so the thermal reads the grass as the grass it is. A plate
       // with a ref derives its size and place; the zeros are ignored.
-      { id: 'sky', z: -170, ref: [0, 0, 1536, 320], width: 0, height: 0, baseY: 0, images: { '*': 'plates/scene-04/ref/sky.webp' } },
+      { id: 'sky', z: -170, ref: [0, 0, 1536, 320], width: 0, height: 0, baseY: 0, images: { 'LATE SUMMER': 'plates/scene-04/ref/sky.webp', AUTUMN: 'plates/scene-04/ref/sky-autumn.webp', WINTER: 'plates/scene-04/ref/sky-winter.webp', SPRING: 'plates/scene-04/ref/sky-spring.webp' } },
       // The far shore stands where the painting's water ends: through the
       // seat's lens the far waterline lies about fifty units out.
-      { id: 'canopy', z: -52, ref: [0, 120, 1536, 200], width: 0, height: 0, baseY: 0, shade: 0.12, images: { '*': 'plates/scene-04/ref/far-shore.webp' } },
-      { id: 'far-bank', z: -52, lay: true, ref: [0, 260, 1536, 360], width: 0, height: 0, baseY: 0, shade: 0.08, images: { '*': 'plates/scene-04/ref/water.webp' } },
-      { id: 'near-bank', z: 4, lay: true, ref: [0, 280, 1536, 744], width: 0, height: 0, baseY: 0, shade: 0.1, images: { '*': 'plates/scene-04/ref/ground.webp' } },
+      { id: 'canopy', z: -52, ref: [0, 120, 1536, 200], width: 0, height: 0, baseY: 0, shade: 0.12, images: { 'LATE SUMMER': 'plates/scene-04/ref/far-shore.webp', AUTUMN: 'plates/scene-04/ref/far-shore-autumn.webp', WINTER: 'plates/scene-04/ref/far-shore-winter.webp', SPRING: 'plates/scene-04/ref/far-shore-spring.webp' } },
+      { id: 'far-bank', z: -52, lay: true, ref: [0, 260, 1536, 360], width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/ref/water.webp', AUTUMN: 'plates/scene-04/ref/water-autumn.webp', WINTER: 'plates/scene-04/ref/water-winter.webp', SPRING: 'plates/scene-04/ref/water-spring.webp' } },
+      { id: 'near-bank', z: 4, lay: true, ref: [0, 280, 1536, 744], width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/ref/ground.webp', AUTUMN: 'plates/scene-04/ref/ground-autumn.webp', WINTER: 'plates/scene-04/ref/ground-winter.webp', SPRING: 'plates/scene-04/ref/ground-spring.webp' } },
       // Just behind the bicycle that leans on the trunk (its feet put it
       // at about 11.5) and the three nearest people, ahead of everyone else.
-      { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { '*': 'plates/scene-04/ref/trees.webp' } },
+      { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/ref/trees.webp', AUTUMN: 'plates/scene-04/ref/trees-autumn.webp', WINTER: 'plates/scene-04/ref/trees-winter.webp', SPRING: 'plates/scene-04/ref/trees-spring.webp' } },
       // The nearest people, each one its own plate at its own distance, redrawn from the painting and fitted into its box there. All August: there for the second and gone once the year turns.
       {
         // Nearer the bicycle than the painting had her, by a little (18g):

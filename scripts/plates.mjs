@@ -161,7 +161,23 @@ const SCENES = {
       raw: ['quiet-park-v1.png', 'empty-view-v2.png', 'wide-park-v8.png'],
       recipe: `ref-${id}`,
       budgetKb: id === 'ground' ? 1500 : 1000,
+      lines: 'keep',
     })),
+    // The seasons (18j): the same bands from each season's edits, cut
+    // along the summer's lines.
+    ...['autumn', 'winter', 'spring'].flatMap((season) =>
+      ['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
+        id,
+        variant: season,
+        // (the summer's empty view rides along only so the pair is a pair;
+        // a season takes the summer's matte and base, see reference-bands)
+        raw: [`quiet-${season}-v1.png`, 'empty-view-v2.png', 'wide-park-v8.png'],
+        recipe: `ref-${id}`,
+        budgetKb: id === 'ground' ? 1500 : 1000,
+        lines: 'summer',
+        seasonOf: 'assets/raw/scene-04/ref/quiet-park-v1.png',
+      })),
+    ),
     ...[
       'reader', 'couple', 'man-dog', 'bicycle', 'sitters-lawn', 'straw-hat', 'lying-man', 'family', 'chairs',
       'jogger', 'edge-family', 'wall-group', 'standing-group', 'dog-walkers', 'backpack-walker', 'far-right',
