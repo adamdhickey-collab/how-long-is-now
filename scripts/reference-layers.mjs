@@ -193,3 +193,60 @@ export const layers = [
     prompt: `In the masked areas only, remove the two big elms in the foreground — their trunks, branches and leaves — and continue exactly what lies behind them in the same dots, colours and light: the sky with its light clouds where leaves were, the far shore's treeline at the same height and the water where the trunks crossed them, the path and the lawn with its dappled shadow where the trunks met the ground. Change nothing outside the masked areas.`,
   },
 ];
+
+/**
+ * New people for every season (18r): figures the painting does not have,
+ * drawn in its hand — the reference travels with each prompt as the
+ * style — isolated on white like the elements, one image each. `kind`
+ * is the ground they keep to; `size` the image shape; `box` a footprint
+ * in the painting's pixels borrowed from an element of the same stance
+ * and distance, which the time lapse uses only for scale and a first
+ * spot.
+ */
+export const PEOPLE_STYLE = `Paint, in exactly the pointillist style of the attached painting — the same small dots and dashes of pure colour, the same sunlit palette and soft edges, no outlines — the people described below, seen from behind or from the side as the painting's people are, isolated on flat pure white with nothing else at all: no ground, grass, snow, water, path, shadow or horizon. Draw them complete and whole, with hands and feet, filling the frame with a small margin, and nothing under their feet.`;
+
+const person = (id, season, kind, size, box, prompt) => ({ id, season, kind, size, box, prompt });
+export const PEOPLE = [
+  // ---- more of August
+  person('frisbee-pair', 'summer', 'lawn', '1536x1024', [560, 450, 240, 150], 'two young men in t-shirts and shorts standing a few paces apart, one about to throw a frisbee, the other with his hands up to catch'),
+  person('sunbather', 'summer', 'lawn', '1536x1024', [800, 430, 280, 120], 'a woman lying on her front on a striped towel reading a paperback, sunglasses pushed up, bare feet crossed in the air'),
+  person('ice-cream-kids', 'summer', 'path', '1024x1024', [430, 398, 130, 165], 'two children standing side by side eating ice-cream cones, one in a yellow sundress, one in a striped t-shirt and cap'),
+  person('guitar', 'summer', 'lawn', '1024x1024', [1080, 510, 190, 120], 'a young man sitting cross-legged on the grass playing an acoustic guitar, seen from behind and a little to the side'),
+  person('grandparents', 'summer', 'lawn', '1536x1024', [1225, 505, 305, 180], 'an elderly couple sitting on a folded blanket, he in a white shirt and straw hat, she in a pale blue dress, sharing a thermos'),
+  person('kayak', 'summer', 'water', '1536x1024', [225, 300, 140, 60], 'a red kayak on the water with one paddler in a life vest, seen from the side, its reflection beneath it'),
+  // ---- late October
+  person('raker', 'autumn', 'lawn', '1024x1536', [1080, 470, 150, 160], 'a man in a red plaid jacket and jeans raking fallen leaves into a pile, seen from behind'),
+  person('leaf-pile-kids', 'autumn', 'lawn', '1536x1024', [800, 460, 300, 180], 'two children in puffer jackets and wool hats jumping into a pile of yellow and orange leaves'),
+  person('coffee-walkers', 'autumn', 'path', '1024x1536', [762, 345, 145, 155], 'a couple walking away along a path in long coats and scarves, each holding a paper coffee cup'),
+  person('photographer', 'autumn', 'path', '1024x1536', [1075, 355, 120, 150], 'a woman in a green parka and knitted hat standing to photograph the lake with a camera raised to her eye, seen from behind'),
+  person('pumpkin-family', 'autumn', 'lawn', '1536x1024', [1225, 505, 305, 200], 'a family sitting on a plaid blanket in sweaters with three small pumpkins beside them, a toddler in a hat'),
+  person('autumn-dog', 'autumn', 'path', '1536x1024', [1075, 355, 220, 140], 'a man in a corduroy jacket walking a golden retriever on a lead, both seen from behind, leaves at their feet'),
+  person('bench-reader', 'autumn', 'lawn', '1536x1024', [585, 462, 225, 138], 'a woman in a mustard sweater and scarf sitting on the grass with her knees up, reading a book, seen from behind'),
+  person('autumn-jogger', 'autumn', 'path', '1024x1536', [160, 400, 100, 205], 'a jogger in black leggings, a grey hoodie and a headband running along the path, mid-stride, seen from the side'),
+  // ---- mid January
+  person('skaters', 'winter', 'water', '1536x1024', [535, 300, 180, 90], 'three people skating on the ice in winter coats and hats, one gliding with arms out, seen from a distance'),
+  person('sledders', 'winter', 'lawn', '1536x1024', [800, 460, 300, 180], 'a father in a navy parka pulling two small children on a red wooden sled, seen from behind'),
+  person('snowman-builders', 'winter', 'lawn', '1536x1024', [1225, 505, 305, 220], 'two children in snowsuits and mittens finishing a snowman with a carrot nose and a red scarf'),
+  person('winter-walkers', 'winter', 'path', '1024x1536', [762, 345, 145, 155], 'an elderly couple in long wool coats and fur hats walking arm in arm along the path, seen from behind'),
+  person('hockey-kids', 'winter', 'water', '1536x1024', [700, 300, 200, 90], 'four teenagers playing pond hockey on the ice with sticks and a small net, seen from a distance'),
+  person('winter-dog', 'winter', 'lawn', '1536x1024', [585, 462, 225, 138], 'a woman in a white parka throwing a snowball for a black dog leaping in the snow, seen from behind'),
+  person('thermos-pair', 'winter', 'lawn', '1536x1024', [1080, 500, 200, 130], 'two friends in puffer coats sitting side by side on a folded blanket with a thermos and two steaming cups'),
+  person('ice-fisher', 'winter', 'water', '1024x1024', [225, 300, 120, 100], 'a man in insulated overalls and a fur hat sitting on an upturned bucket over a hole in the ice, fishing rod in hand'),
+  // ---- late April
+  person('kite-flyer', 'spring', 'lawn', '1024x1536', [560, 450, 200, 200], 'a girl in a yellow raincoat running with a red kite on a string flying above her, seen from behind'),
+  person('geese-kids', 'spring', 'path', '1536x1024', [430, 398, 180, 150], 'two small children in light jackets crouching to look at a Canada goose and three goslings on the path'),
+  person('spring-picnic', 'spring', 'lawn', '1536x1024', [800, 430, 300, 170], 'a young couple in light jackets sitting on a blanket with a basket, she pointing at something across the lake'),
+  person('bike-walker', 'spring', 'path', '1536x1024', [1075, 355, 220, 150], 'a man in a denim jacket walking a bicycle along the path, seen from behind'),
+  person('blossom-photo', 'spring', 'path', '1024x1536', [762, 345, 120, 155], 'a woman in a trench coat photographing a branch of pink blossom held in her other hand, seen from the side'),
+  person('stroller-pair', 'spring', 'path', '1536x1024', [1290, 325, 180, 140], 'two mothers walking side by side pushing strollers, in spring jackets, seen from behind'),
+  person('spring-dog', 'spring', 'lawn', '1536x1024', [1225, 505, 280, 160], 'a boy in a green hoodie throwing a ball for a brown spaniel running ahead of him on the grass'),
+  person('painter', 'spring', 'lawn', '1024x1536', [1080, 500, 160, 190], 'an older man in a flat cap sitting on a folding stool painting the lake at a small easel, seen from behind'),
+];
+
+export const peopleLayers = PEOPLE.map((p) => ({
+  id: p.id,
+  dir: 'scene-04/people',
+  size: p.size,
+  preamble: PEOPLE_STYLE,
+  prompt: p.prompt,
+}));

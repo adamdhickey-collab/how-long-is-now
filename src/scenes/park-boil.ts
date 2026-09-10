@@ -46,6 +46,18 @@ export const boilClock = {
   uFrame: { value: 0 },
   uFilmNoise: { value: 0 },
   uFilmGain: { value: 1 },
+  /**
+   * The light of the day (18r): a tint mixed into every plate by
+   * `uLightMix`, `uLightGround` for what lies and stands on the ground,
+   * and for the sky plate a gradient from `uLightZenith` at the top to
+   * `uLightHorizon` at the treeline; the water takes the horizon's colour
+   * at `uLightWater`. Set each frame from the real sun's altitude.
+   */
+  uLightMix: { value: 0 },
+  uLightWater: { value: 0 },
+  uLightGround: { value: new THREE.Vector3(1, 1, 1) },
+  uLightZenith: { value: new THREE.Vector3(1, 1, 1) },
+  uLightHorizon: { value: new THREE.Vector3(1, 1, 1) },
 };
 
 export interface BoilSetting {
@@ -140,6 +152,7 @@ export function installBoil(
   texel: [number, number],
   height: number,
   phase: number,
+  surface: 'sky' | 'water' | 'ground' = 'ground',
 ): void {
   const prev = mat.onBeforeCompile;
   const uniforms = {
@@ -150,6 +163,7 @@ export function installBoil(
     uBoilTexel: { value: new THREE.Vector2(texel[0], texel[1]) },
     uBoilPhase: { value: phase },
     uBoilCanopy: { value: setting.canopy ? 1 : 0 },
+    uSurface: { value: surface === 'sky' ? 0 : surface === 'water' ? 1 : 2 },
   };
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.(shader, renderer);
@@ -179,6 +193,8 @@ export function installBoil(
         'void main() {',
         `uniform float uBoilT, uBoilOn, uBoilWander, uBoilFlicker, uBoilPhase;
         uniform float uGrainPx, uGrainAmp, uGrainTint, uFrame, uFilmNoise, uFilmGain;
+        uniform float uLightMix, uLightWater, uSurface;
+        uniform vec3 uLightGround, uLightZenith, uLightHorizon;
         uniform vec2 uBoilTexel;
         varying vec2 vBoilUv;
         ${NOISE_GLSL}
@@ -210,6 +226,26 @@ export function installBoil(
           float lumMod = 1.0 + uGrainAmp * (g.x * 0.9 - 0.5);
           vec3 dotCast = (g.yzw - 0.5) * uGrainTint * g.x;
           diffuseColor.rgb = clamp(diffuseColor.rgb * lumMod + dotCast, 0.0, 1.0);
+          // The day's light. The sky takes its gradient — zenith above,
+          // horizon at the treeline, which the sky plate has near v 0.66 —
+          // the water the horizon's colour, the ground its own tint.
+          if (uLightMix > 0.0) {
+            vec3 lightCol = uLightGround;
+            float mixAmt = uLightMix;
+            if (uSurface < 0.5) {
+              float toward = smoothstep(1.0, 0.62, vBoilUv.y);
+              lightCol = mix(uLightZenith, uLightHorizon, toward);
+              mixAmt = uLightMix * 0.95;
+            } else if (uSurface < 1.5) {
+              lightCol = mix(uLightGround, uLightHorizon, 0.6);
+              mixAmt = max(uLightMix, uLightWater);
+            }
+            // a tint keeps the plate's own light and dark: multiply toward
+            // the colour, then lean the mean toward it
+            float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+            vec3 tinted = mix(diffuseColor.rgb * (lightCol / max(0.05, dot(lightCol, vec3(0.299, 0.587, 0.114)))), lightCol, 0.35);
+            diffuseColor.rgb = mix(diffuseColor.rgb, tinted, mixAmt);
+          }
           // Emulsion: a fine grain per pixel, and the frame's own exposure.
           float film = boilHash(gl_FragCoord.xy * 0.731 + uFrame * 1.13 * uBoilOn) - 0.5;
           diffuseColor.rgb = clamp(diffuseColor.rgb * (uFilmGain + film * uFilmNoise * uBoilOn), 0.0, 1.0);

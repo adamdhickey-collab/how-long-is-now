@@ -1915,7 +1915,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // The living painting (18n): each plate boils in its kind's measure.
     if (def.boil) {
       const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : p.id === 'trees' ? BOIL.trees : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : BOIL.still;
-      installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283);
+      installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283, p.id === 'sky' ? 'sky' : p.id === 'far-bank' ? 'water' : 'ground');
     }
   });
   // Contact shadows (18q): a soft cool ellipse under each standing
@@ -1951,46 +1951,124 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     return m;
   };
 
-  // The time lapse's spots (18k): where each kind's elements stand in the
-  // painting, so a visitor arriving takes a place the painting had.
+  // The time lapse's spots (18k, 18r): the manifest's foot points per
+  // kind of ground, projected to the world, with each kind's elements'
+  // own feet added so the painting's places are among them.
   const spots: Record<string, { x: number; z: number }[]> = {};
+  for (const [kind, pts] of Object.entries(def.composition?.spots ?? {})) {
+    for (const [px, py] of pts) {
+      const g = composition?.groundAt(px, py);
+      if (g) (spots[kind] ??= []).push(g);
+    }
+  }
   for (const cp of composition?.plates ?? []) {
-    if (cp.def.kind && cp.foot) (spots[cp.def.kind] ??= []).push(cp.foot);
+    if (!cp.def.kind || !cp.foot) continue;
+    const list = (spots[cp.def.kind] ??= []);
+    if (!list.some((sp) => Math.hypot(sp.x - cp.foot!.x, sp.z - cp.foot!.z) < 0.3)) list.push(cp.foot);
   }
   /** A cheap, stable hash in [0, 1). */
   const hash01 = (a: number, b: number) => {
     const v = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
+  /** The elements of a kind, in a fixed order, for the schedule. */
+  const kindMembers: Record<string, number[]> = {};
+  {
+    let li = 0;
+    for (const cp of composition?.plates ?? []) {
+      if (cp.def.kind && cp.foot) { li++; (kindMembers[cp.def.kind] ??= []).push(li); }
+    }
+  }
   /**
-   * Where an element is in its time lapse at world time T: visible 0–1
-   * and the spot it has taken. Its time runs in slots of dwell + gap,
-   * offset by its own phase; the first slot is its own place in the
-   * painting, so the lapse begins as the painting and departs from it.
+   * Where an element is in its time lapse at world time T (18r): the
+   * kind's time runs in slots of dwell + gap; in each slot a seeded draw
+   * seats up to the cap of the kind's members on distinct spots, each
+   * arriving within the slot's first quarter and leaving within its
+   * last, so the crowd turns over in waves rather than all at once. The
+   * first slot is the painting's own: everyone on their own feet, each
+   * leaving in their own time.
    */
-  const lapseAt = (lapse: Lapse, i: number, T: number, own: { x: number; z: number }, kind: string) => {
+  /** The members of each kind in their season now: set each frame. */
+  let activeMembers: Record<string, number[]> = kindMembers;
+  /** Which member index is painted (in the picture at time zero). */
+  const painted = new Set<number>();
+  {
+    let li = 0;
+    for (const cp of composition?.plates ?? []) {
+      if (cp.def.kind && cp.foot) { li++; if (!cp.def.later) painted.add(li); }
+    }
+  }
+  /**
+   * The time lapse's seating for this frame (18r). Each spot keeps its
+   * own clock — slots of dwell + gap, offset by the spot's phase — so
+   * the crowd turns over spot by spot, never all at once. In a spot's
+   * slot, by the density's chance, one of the kind's members in season
+   * is drawn for it — a different one for each spot, and never one
+   * already seated elsewhere this frame — arriving and leaving within
+   * the slot over the edge. The painting's own people hold their own
+   * feet from time zero until each leaves, in their own time; their
+   * spots are theirs until then. Up to the cap per kind.
+   */
+  const seatLapse = (lapse: Lapse, T: number): Map<number, { vis: number; at: { x: number; z: number } }> => {
+    const seats = new Map<number, { vis: number; at: { x: number; z: number } }>();
     const L = lapse.dwell + lapse.gap;
-    const density = lapse.density ?? 0.65;
     const edge = Math.max(1e-3, (lapse.edge ?? 0.12) * lapse.dwell);
     const ease = (v: number) => v * v * (3 - 2 * v);
-    // The first stay is the painting's own: everyone is where they were
-    // painted at time zero and leaves in their own time, between half a
-    // dwell and one and a half, so the painting comes apart one visitor
-    // at a time rather than all at once.
-    const first = lapse.dwell * (0.5 + hash01(i, 1));
-    if (T < first) return { vis: ease(Math.min(1, (first - T) / edge)), at: own };
-    // After that, slots of dwell + gap, each taken by chance at a spot of
-    // the kind chosen for it.
-    const T2 = T - first;
-    const k = Math.floor(T2 / L) + 1;
-    const f = T2 - (k - 1) * L;
-    if (hash01(i + 3, k) > density) return { vis: 0, at: own };
-    let vis = 0;
-    if (f < lapse.dwell) vis = ease(Math.min(1, f / edge, (lapse.dwell - f) / edge));
-    const pool = spots[kind] ?? [own];
-    const at = pool[Math.floor(hash01(i + 7, k) * pool.length) % pool.length];
-    return { vis, at };
+    const density = lapse.density ?? 0.65;
+    for (const [kind, pool] of Object.entries(spots)) {
+      const members = activeMembers[kind] ?? [];
+      if (!members.length) continue;
+      const cap = lapse.cap?.[kind as 'lawn' | 'path' | 'water'] ?? members.length;
+      const claimedSpot = new Set<number>();
+      const claimedMember = new Set<number>();
+      let seated = 0;
+      // the painting's own, still in their first stay
+      for (const m of members) {
+        if (!painted.has(m)) continue;
+        const first = lapse.dwell * (0.6 + 0.9 * hash01(m, 1));
+        if (T >= first) continue;
+        const own = ownFoot.get(m)!;
+        let nearest = -1, best = 0.3;
+        pool.forEach((sp, si) => { const d = Math.hypot(sp.x - own.x, sp.z - own.z); if (d < best) { best = d; nearest = si; } });
+        if (nearest >= 0) claimedSpot.add(nearest);
+        claimedMember.add(m);
+        seats.set(m, { vis: ease(Math.min(1, (first - T) / edge)), at: own });
+        seated++;
+      }
+      // every other spot on its own clock
+      for (let si = 0; si < pool.length && seated < cap; si++) {
+        if (claimedSpot.has(si)) continue;
+        const phase = hash01(si + 3, kind.length) * L;
+        const u = (T + phase) / L;
+        const k = Math.floor(u);
+        const f = (u - k) * L;
+        if (hash01(si + 7, k) > density) continue;
+        // a distinct visitor for this spot and slot: 2s + k walks the
+        // members so neighbouring spots and neighbouring slots differ
+        let m = -1;
+        for (let tries = 0; tries < members.length; tries++) {
+          const cand = members[(2 * si + k + tries) % members.length];
+          if (!claimedMember.has(cand) && !(painted.has(cand) && T < lapse.dwell * (0.6 + 0.9 * hash01(cand, 1)))) { m = cand; break; }
+        }
+        if (m < 0) continue;
+        const arrive = hash01(si + 11, k) * 0.2 * L;
+        const leave = lapse.dwell - hash01(si + 13, k) * 0.2 * lapse.dwell;
+        if (f <= arrive || f >= leave) continue;
+        claimedMember.add(m);
+        seats.set(m, { vis: ease(Math.min(1, (f - arrive) / edge, (leave - f) / edge)), at: pool[si] });
+        seated++;
+      }
+    }
+    return seats;
   };
+  /** Each member's own feet, by member index. */
+  const ownFoot = new Map<number, { x: number; z: number }>();
+  {
+    let li = 0;
+    for (const cp of composition?.plates ?? []) {
+      if (cp.def.kind && cp.foot) { li++; ownFoot.set(li, cp.foot); }
+    }
+  }
   if (composition) {
     for (const cp of composition.plates) {
       if (cp.def === skyDef) sky.visible = false;
@@ -2319,7 +2397,8 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // so it goes as the eye rises and is back by the time the fall lands.
     // All of it from the seat (y 2.5), none by the time the eye is a
     // metre and a half above it.
-    const seated = clamp01((4.6 - camera.position.y) / 1.4);
+    const fade = def.composition?.seatFade;
+    const seated = fade ? clamp01((fade.until + fade.over - camera.position.y) / fade.over) : clamp01((4.6 - camera.position.y) / 1.4);
     lawnSeated.value = seated;
     swayU.uTime.value = reducedMotion ? 0 : elapsed;
     if (foregroundImg) setImage(foregroundImg, nightShade(foregroundDef!.shade ?? 0), presence(foregroundDef) * seated);
@@ -2332,6 +2411,24 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       boilClock.uBoilTc.value = elapsed;
       boilClock.uBoilT.value = Math.floor(elapsed * def.boil.fps) / def.boil.fps;
       boilClock.uBoilOn.value = reducedMotion ? 0 : def.boil.amount;
+    }
+    // The light of the day (18r): from the real sun's altitude, dusk's
+    // colours as it nears the horizon, night's below it.
+    const lightDef = def.composition?.light;
+    if (lightDef) {
+      const setC = (v: THREE.Vector3, hex: number) => v.set(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
+      // Dusk peaks with the sun on the horizon and is gone eight degrees
+      // either side; night comes on from two degrees below to ten, later
+      // and faster than the drawn world's curve, so the evening stays warm.
+      const warm = clamp01(1 - Math.abs(realAlt - 0.5) / 8);
+      const dark = clamp01((-2 - realAlt) / 8);
+      const tmp = new THREE.Vector3();
+      const lerpC = (v: THREE.Vector3, a: number, b: number, t: number) => { setC(v, a); setC(tmp, b); v.lerp(tmp, t); };
+      lerpC(boilClock.uLightZenith.value, lightDef.dusk.zenith, lightDef.night.zenith, dark);
+      lerpC(boilClock.uLightHorizon.value, lightDef.dusk.horizon, lightDef.night.horizon, dark);
+      lerpC(boilClock.uLightGround.value, lightDef.dusk.ground, lightDef.night.ground, dark);
+      boilClock.uLightMix.value = Math.max(warm * 0.85, dark * 0.6);
+      boilClock.uLightWater.value = Math.max(warm * 0.9, dark * 0.65);
     }
     // The grain: its dots sized in device pixels from the manifest's CSS
     // pixels, so the screen's own density does not change the paint's.
@@ -2351,18 +2448,40 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const lapse = holder ? (holder.seconds ? holder.lapse : undefined) : def.lapse;
     const worldT = holder ? (holder.seconds ?? 0) * holder.local : local * def.timeRate;
     let li = 0;
+    // The painting's own night (18r): the plates darken from two degrees
+    // below the horizon and only by half, so the night keeps its picture
+    // — the drawn world's curve began at noon-high sun and went to black.
+    const nightC = clamp01((-2 - realAlt) / 8);
+    const nightShadeC = (shade: number) => 1 - (1 - shade) * (1 - nightC * 0.5);
+    // Who is in season: the lapse draws each slot's visitors from these.
+    {
+      const active: Record<string, number[]> = {};
+      let mi = 0;
+      for (const cp of composition?.plates ?? []) {
+        if (!cp.def.kind || !cp.foot) continue;
+        mi++;
+        if (presence(cp.def) > 0.5) (active[cp.def.kind] ??= []).push(mi);
+      }
+      activeMembers = active;
+    }
+    const seats = lapse ? seatLapse(lapse, worldT) : null;
+    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__lapse = { seats, activeMembers, worldT, local };
     for (const cp of composition?.plates ?? []) {
       if (!cp.ready) continue;
       const p = cp.def;
       let there = presence(p) * (p.seat ? seated : 1);
       if (p.kind && cp.foot) {
         li++;
-        if (lapse) {
-          const { vis, at } = lapseAt(lapse, li, worldT, cp.foot, p.kind);
+        if (seats) {
+          const seat = seats.get(li);
+          const vis = seat?.vis ?? 0;
+          const at = seat?.at ?? cp.foot;
           // The lawn empties with the light: no one arrives in the dark.
           there *= reducedMotion ? (vis > 0.5 ? 1 : 0) : vis * (p.kind === 'water' ? daylight : 0.15 + 0.85 * daylight);
           for (const l of cp.layers) l.mesh.position.set(at.x - cp.foot.x, 0, at.z - cp.foot.z);
         } else {
+          // no lapse: the painting as painted, and no one who is not in it
+          if (p.later) there = 0;
           for (const l of cp.layers) l.mesh.position.set(0, 0, 0);
         }
       }
@@ -2372,8 +2491,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       });
       cp.layers.forEach((l, i) => {
         const w = weightOf(l.key);
-        setTint(l.mat, 0xffffff, nightShade(p.shade ?? 0));
-        l.mat.opacity = alpha * there * (w <= 0 ? 0 : i === front ? w : 1);
+        setTint(l.mat, 0xffffff, nightShadeC(p.shade ?? 0));
+        // Opaque bands stack, the front one carrying the blend; the elms,
+        // whose seasons differ in shape, cross-fade by weight alone, else
+        // October's leaves show through January's bare branches.
+        l.mat.opacity = alpha * there * (p.seat ? w : w <= 0 ? 0 : i === front ? w : 1);
       });
       // Its shadow: on the lawn or the path only, under the feet and a
       // little to the right, as dark as the sun is high.
@@ -2449,10 +2571,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         // sail somewhere else along its span each time, leaving a trace.
         const ap = holder?.appearances;
         let vis = 1;
-        if (lapse && !ap) {
-          const at = lapseAt(lapse, 200 + i + set.def.id.length * 13, worldT, { x: p.def.x, z: p.def.z }, '');
-          vis = reducedMotion ? (at.vis > 0.5 ? 1 : 0) : at.vis * (0.15 + 0.85 * daylight);
-        }
+        if (lapse && !ap) vis = 0.15 + 0.85 * daylight;
         if (ap) {
           if (reducedMotion) {
             vis = 0.35;

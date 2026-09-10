@@ -1289,3 +1289,52 @@ palette's lake blue at 0.42 in full sun and fading with the light.
 Made once a plate has its width, drawn just under it in the order,
 and moved with it through the time lapse. The boats keep their
 painted reflections. Declared under `composition.shadows`.
+
+### 18r · the seat is the subject
+
+Adam's redirection: a small pull back instead of the big rise, so the
+edges stay inside what the painting knows and the work goes into the
+foreground — the time of day in the light, the seasons carried by
+their people, a composed time lapse, and new art so the same six are
+not reused. Done in this order. The year's camera now moves from the
+seat to y 3.4, z 19.5, looking at −1.3, and the elms frame the whole
+year (`composition.seatFade`, from y 4.6); the lifetime carries on to
+y 6.5, z 26. The light of the day: from the real sun's altitude, dusk
+peaking with the sun on the horizon (apricot at the treeline, violet
+overhead, the ground warmed) and night from two degrees below (deep
+blue, the ground blue-black), as tints in the plates' shader
+(`composition.light`), the painting's own night darkening only by
+half so the picture stays. Thirty new figures across the four seasons
+— frisbee, sunbather, kayak; raker, leaf pile, pumpkins; skaters,
+sledders, snowman, pond hockey, ice fisher; kite, geese, blossom,
+painter — drawn one by one in the painting's hand with the reference
+as the style (`scripts/reference-layers.mjs` PEOPLE, `--people`), cut
+like the elements, the figures in white without pockets; each an
+element with a kind, a borrowed footprint and its season's window. The
+lapse is composed: declared spots per kind (`composition.spots`), a
+global slot schedule per kind that seats up to a cap on distinct spots
+with staggered arrivals and departures, and the draw made from the
+figures in season — the first cut drew from all twenty-three lawn
+figures and left every season nearly empty. The old seasonal sheets
+are gone. Each season's elm plate keeps only the season's own leaves
+within the summer's silhouette, and a season's sky is the summer's
+through its lookup, painting and continuation alike. The ground skirt
+behind the seat holds the near row's grass rather than mirroring the
+path. The lapse's first cut kept one slot clock per kind, so for two days
+in five the whole lawn stood empty; each spot keeps its own clock now,
+draws a distinct visitor for its slot and claims them for the frame,
+and the painting's own hold their feet until each leaves. Newcomers
+are marked `later` and never stand in the painting itself. The elms
+cross-fade by weight alone, else October's leaves showed through
+January's branches, and a season's matte keeps its warm leaves and its
+trunks. Behind the leaves and trunks the fill is now the painting itself,
+mirrored in along the row from the nearest clear pixels — sky, far
+treeline, water and ground alike. The empty view turned out to be no
+use there: its treeline is a different, taller, hazier treeline
+everywhere, and its sky a warm beige where the painting's is blue, so
+every patch of it showed, as steps along the treeline's top and as a
+pale halo around each leaf. It remains only as the matte's other half. Sky rows behind the canopy mirror down from the open sky the
+continuation has above the frame; a season's elm plate keeps, within
+the summer's silhouette, what differs from the sky filled behind it —
+October's warm haze between bare branches matches its fill and goes,
+the branches stay.

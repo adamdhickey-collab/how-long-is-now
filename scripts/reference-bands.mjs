@@ -407,6 +407,7 @@ const BASE = 'assets/raw/scene-04/ref/summer-base.png';
 async function prepare(files, opts = {}) {
   const key = files.join('|');
   if (cache.has(key)) return cache.get(key);
+  let seasonSky = null;
   const [painting, emptyPainting, outpaintIn] = await Promise.all(files.map(load));
   // A season's continuation (18j): the summer's, with the season's
   // colours mapped onto it — a lookup learned from the painting pair,
@@ -554,7 +555,12 @@ async function prepare(files, opts = {}) {
       d[i] = smooth01(60, 130, diff);
     }
     let m2 = blur(d, w, h, 2);
-    for (let i = 0; i < w * h; i++) m2[i] = m2[i] > 0.4 ? 1 : 0;
+    // Only where the colour key, grown a little, also says tree: the
+    // model's blend along the mask's edge differs from the painting just
+    // enough to read as difference, and rode on the plate as a hairline
+    // tracing the mask's rectangles (18r).
+    const nearKey = morph(m, w, h, 8, 1);
+    for (let i = 0; i < w * h; i++) m2[i] = m2[i] > 0.4 && nearKey[i] > 0.5 ? 1 : 0;
     m2 = morph(morph(m2, w, h, 2, -1), w, h, 2, 1);
     m2 = morph(morph(m2, w, h, 4, 1), w, h, 4, -1);
     m2 = morph(m2, w, h, 3, 1);
@@ -590,7 +596,17 @@ async function prepare(files, opts = {}) {
   // it. The empty view — repainted, a different far shore, a different
   // sky — fills only where neither neighbour is there.
   const mBase = morph(m, w, h, 2, -1);
+  // Where the fill may come from behind the trees: the matte grown three
+  // pixels, eased over two more.
+  const fillNear = blur(morph(m, w, h, 3, 1), w, h, 2);
+  for (let i = 0; i < w * h; i++) fillNear[i] = Math.min(1, fillNear[i] * 1.2);
   const base = Buffer.alloc(w * h * 4);
+  const mixRGB = [0, 0, 0];
+  if (process.env.BANDS_DEBUG && !opts.seasonOf) {
+    const dbg = Buffer.alloc(w * h * 4);
+    for (let i = 0; i < w * h; i++) { dbg[i * 4] = Math.round(255 * Math.min(1, fillNear[i])); dbg[i * 4 + 1] = m[i] > 0.5 ? 255 : 0; dbg[i * 4 + 2] = empty.mask && empty.mask[i] ? 255 : 0; dbg[i * 4 + 3] = 255; }
+    await sharp(dbg, { raw: { width: w, height: h, channels: 4 } }).png().toFile('assets/raw/scene-04/ref/debug-fill.png');
+  }
   const trunkAt = (x, y) => TRUNK_REGIONS.some((r) => inBox(x - ox, y - oy, r));
   const src = (x, y) => (y * w + x) * 4;
   for (let y = 0; y < h; y++) {
@@ -600,11 +616,44 @@ async function prepare(files, opts = {}) {
       const k = mBase[i];
       let fo = -1;
       if (empty.masked) {
-        // The empty view is the painting to the pixel outside the mask and
-        // one continuous answer inside it (18l): taking it whole leaves no
-        // step where the matte's edge crossed the model's blend, which had
-        // put a ragged row of blocks along the far treeline's top.
-        fo = o;
+        // Behind the leaves and trunks (18r): sky from the empty view,
+        // which paints sky well; but the far treeline, the water and the
+        // ground from the painting itself, mirrored in from the nearest
+        // clear pixels on the same row — the empty view's treeline is a
+        // different treeline, taller and hazier, and every patch of it
+        // showed as a step.
+        // …and the sky the same way (18r): the empty view's sky is a warm
+        // beige where the painting's is blue, and the fill band around
+        // every leaf showed as a pale halo. Wherever the fill reaches —
+        // the whole of fillNear, not only the matte's core.
+        // Sky rows first try the sky above the frame, mirrored down: the
+        // continuation there is open sky, and a wide canopy mirrored
+        // sideways streaked.
+        let fromAbove = false;
+        if (fillNear[i] > 0 && outpaint && oy > 0 && y < skyTop[x] - 6) {
+          const sy = 2 * (oy - 70) - 1 - y;
+          if (sy >= 0 && sy < h && fillNear[sy * w + x] === 0) { fo = src(x, sy); fromAbove = true; }
+        }
+        if (fillNear[i] > 0 && !fromAbove) {
+          let xa = x, xb = x;
+          while (xa > 0 && fillNear[y * w + xa - 1] > 0 && x - xa < 700) xa--;
+          while (xb < w - 1 && fillNear[y * w + xb + 1] > 0 && xb - x < 700) xb++;
+          const hasL = xa > 0 && fillNear[y * w + xa - 1] === 0;
+          const hasR = xb < w - 1 && fillNear[y * w + xb + 1] === 0;
+          const span = Math.max(1, xb - xa);
+          const sL = hasL ? Math.max(0, xa - 1 - (x - xa) % Math.max(1, Math.min(120, xa))) : -1;
+          const sR = hasR ? Math.min(w - 1, xb + 1 + (xb - x) % Math.max(1, Math.min(120, w - 1 - xb))) : -1;
+          if (hasL && hasR) {
+            const t = (x - xa) / span;
+            const a = src(sL, y), b = src(sR, y);
+            for (let c = 0; c < 3; c++) mixRGB[c] = quiet.data[a + c] * (1 - t) + quiet.data[b + c] * t;
+            fo = -2; // use mixRGB
+          } else if (hasL) fo = src(sL, y);
+          else if (hasR) fo = src(sR, y);
+          else fo = o;
+        } else {
+          fo = o;
+        }
       } else if (k > 0) {
         if (trunkAt(x, y)) {
           // the run of matte this row is in, and the side we are nearer
@@ -623,9 +672,14 @@ async function prepare(files, opts = {}) {
         if (fo < 0) fo = o; // the empty view, below
       }
       for (let c = 0; c < 3; c++) {
-        const fill = fo >= 0 && fo !== o ? quiet.data[fo + c] : Math.min(255, empty.data[o + c] * (empty.gain?.[c] ?? 1));
+        const fill = fo === -2 ? mixRGB[c] : fo >= 0 && fo !== o ? quiet.data[fo + c] : Math.min(255, empty.data[o + c] * (empty.gain?.[c] ?? 1));
         // (fo === o means the empty view at this very pixel)
-        const kk = empty.masked ? 1 : k;
+        // The empty view only close to the leaves and trunks themselves
+        // (18r): the mask it was painted through was clipped to boxes and
+        // grown wide, and the model painted sky over the strip of far
+        // treeline inside it — rectangular notches in the treeline's top
+        // wherever the base took the empty view whole.
+        const kk = empty.masked ? fillNear[i] : k;
         base[o + c] = Math.round(quiet.data[o + c] * (1 - kk) + fill * kk);
       }
       base[o + 3] = 255;
@@ -642,13 +696,36 @@ async function prepare(files, opts = {}) {
     for (let i = 0; i < w * h; i++) m[i] = sm.data[i * 4] > 127 ? 1 : 0;
     // The fill covers the whole mask the model painted through, as the
     // summer's does, softened a little at its edge.
-    const region = empty.mask ? blur(morph(empty.mask, w, h, 2, 1), w, h, 3) : morph(m, w, h, 2, -1);
+    const region = blur(morph(m, w, h, 3, 1), w, h, 2);
+    for (let i = 0; i < w * h; i++) region[i] = Math.min(1, region[i] * 1.2);
     const filled = lookup(sb.data, w, h, regionAtWide);
+    // The season's own leaves and branches (18r): within the summer's
+    // silhouette, what differs from the sky we fill behind it — October's
+    // warm haze between bare branches matches its fill and goes, the
+    // branches stay; January's grey sky likewise.
+    {
+      const q = quiet.data;
+      const keep = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) {
+        if (!m[i]) continue;
+        const o = i * 4;
+        const d = Math.abs(q[o] - filled[o]) + Math.abs(q[o + 1] - filled[o + 1]) + Math.abs(q[o + 2] - filled[o + 2]);
+        keep[i] = d > 54 ? 1 : 0;
+      }
+      let k2 = blur(keep, w, h, 1);
+      for (let i = 0; i < w * h; i++) k2[i] = k2[i] > 0.4 ? 1 : 0;
+      k2 = morph(morph(k2, w, h, 1, -1), w, h, 2, 1);
+      for (let i = 0; i < w * h; i++) m[i] = m[i] && k2[i] ? 1 : 0;
+    }
     for (let i = 0; i < w * h; i++) {
       const o = i * 4;
       const k = Math.min(1, region[i]);
       for (let c = 0; c < 3; c++) base[o + c] = Math.round(quiet.data[o + c] * (1 - k) + filled[o + c] * k);
     }
+    // The sky of a season is the summer's sky through the lookup, in the
+    // painting as in its continuation, so no rectangle of a different
+    // sky sits in the middle of the frame.
+    seasonSky = filled;
   } else if (!lookup) {
     // the summer keeps its matte and base for the seasons
     const mp = Buffer.alloc(w * h * 4);
@@ -687,8 +764,8 @@ async function prepare(files, opts = {}) {
     skyTop.set(raw);
     median(skyTop, 41);
   }
-  const skyOnly = Buffer.from(base);
-  skyBelow(skyOnly, base, skyTop, w, h);
+  const skyOnly = Buffer.from(seasonSky ?? base);
+  skyBelow(skyOnly, seasonSky ?? base, skyTop, w, h);
   // ---- the water's far and near edges: per column, the rows where
   // blue stops dominating, scanning up from the lawn and down from the
   // shore.

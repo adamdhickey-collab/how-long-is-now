@@ -115,6 +115,9 @@ export interface Plate {
    * in the painting. One without a kind stays where it was painted.
    */
   kind?: 'lawn' | 'path' | 'water';
+  /** Not in the painting: arrives only once the time lapse is running,
+   *  never in the first frame (session 18r). */
+  later?: boolean;
 }
 
 /**
@@ -135,6 +138,8 @@ export interface Lapse {
   edge?: number;
   /** The chance a slot is taken, 0–1. */
   density?: number;
+  /** At most this many visitors of a kind at once (session 18r). */
+  cap?: Partial<Record<'lawn' | 'path' | 'water', number>>;
 }
 
 /**
@@ -704,6 +709,27 @@ export interface Scene {
      * fading with the light. The boats keep their painted reflections.
      */
     shadows?: { strength: number; lean: number; depth: number; color: number };
+    /** Plates marked `seat` are whole until the camera's y reaches
+     *  `until`, and gone `over` higher. */
+    seatFade?: { until: number; over: number };
+    /**
+     * Where a visitor may stand (session 18r): foot points in the
+     * painting's pixels, per kind of ground. The time lapse seats each
+     * slot's visitors on distinct spots from these; the painting's own
+     * people stand on their own feet in the first slot.
+     */
+    spots?: Record<'lawn' | 'path' | 'water', [number, number][]>;
+    /**
+     * The light of the day on the painting (session 18r): as the sun
+     * sets, the sky goes from `dusk.zenith` overhead to `dusk.horizon`
+     * at the treeline and the ground and water take `dusk.ground`; by
+     * night the same three of `night`. The strength follows the real
+     * sun's altitude. Colours packed 0xRRGGBB.
+     */
+    light?: {
+      dusk: { zenith: number; horizon: number; ground: number };
+      night: { zenith: number; horizon: number; ground: number };
+    };
   };
   /**
    * The lake. It stops at the far shore rather than running to a true
@@ -1033,7 +1059,7 @@ export const scenes: Scene[] = [
     // minutes, the spot is empty for a minute or two, and the crowd is
     // two thirds full — so the painting's people leave one by one and
     // others take their places as the scroll runs.
-    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5, lapse: { dwell: 150, gap: 100, edge: 0.15, density: 0.65 } },
+    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5, lapse: { dwell: 150, gap: 100, edge: 0.15, density: 0.65, cap: { lawn: 7, path: 4, water: 4 } } },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
@@ -1065,7 +1091,7 @@ export const scenes: Scene[] = [
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
       // A day as a time lapse: an hour and a half's stay, an hour's gap;
       // the lawn empties with the light.
-      lapse: { dwell: 5400, gap: 4200, edge: 0.1, density: 0.6 },
+      lapse: { dwell: 5400, gap: 4200, edge: 0.1, density: 0.6, cap: { lawn: 6, path: 4, water: 3 } },
     },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
@@ -1092,9 +1118,10 @@ export const scenes: Scene[] = [
     // for the whole year.
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
-      // Ends a little higher and looking a little down (18l): the lake
-      // carries the end of the year, not the empty sky above it.
-      to: { y: 10.5, z: 28, lookY: 7 },
+      // A small pull back rather than a rise (18r): the seat is the
+      // subject, the elms stay in frame, and the edges stay inside what
+      // the painting knows.
+      to: { y: 3.4, z: 19.5, lookY: -1.3 },
     },
     // The park is laid out from the reference painting (session 18,
     // LEDGER 18): every plate names its box in the painting's 1536 × 1024
@@ -1113,6 +1140,23 @@ export const scenes: Scene[] = [
       wide: { frame: [3072, 2048], origin: [768, 512] },
       // The shadow's blue is the palette's own: the summer lake's deep.
       shadows: { strength: 0.42, lean: 0.24, depth: 0.34, color: 0x24425f },
+      // What is only real from the seat fades once the eye is this high,
+      // over this much more: above the year's small pull back, so the elms
+      // frame the whole year and go only as the lifetime climbs.
+      seatFade: { until: 4.6, over: 1.6 },
+      // Sunset: the sky pale violet overhead and apricot at the treeline,
+      // the ground warmed; night: deep blue, the ground blue-black.
+      light: {
+        dusk: { zenith: 0x8d7fb0, horizon: 0xf2a86a, ground: 0xe8b07a },
+        night: { zenith: 0x0a1230, horizon: 0x263a63, ground: 0x2b3555 },
+      },
+      // The painting's own feet first, then more of the lawn, the path
+      // and the lake, spaced so a full slot is company, not a crowd.
+      spots: {
+        lawn: [[210, 933], [640, 935], [1205, 1000], [697, 600], [950, 715], [1377, 725], [1418, 530], [1175, 610], [380, 800], [1000, 880], [760, 525], [1250, 480], [460, 660], [1450, 640], [560, 500]],
+        path: [[210, 605], [495, 563], [668, 510], [835, 500], [1185, 495], [1355, 445], [1480, 400], [320, 575], [1000, 475], [1110, 462]],
+        water: [[275, 363], [572, 312], [727, 337], [1165, 337], [420, 335], [900, 325], [1050, 345], [150, 345]],
+      },
     },
     // The painting lives: strokes shifting at a hand-drawn nine frames a
     // second, the people breathing, the elms swaying, the water shimmering.
@@ -1125,7 +1169,7 @@ export const scenes: Scene[] = [
     grain: { size: 3.2, amount: 0.22, tint: 0.06, film: { noise: 0.07, flicker: 0.012 } },
     // The year as a time lapse: three days' stay, two days' gap, so the
     // August crowd flickers through its window of the year.
-    lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.6 },
+    lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.6, cap: { lawn: 6, path: 4, water: 3 } },
     plates: [
       // The whole-frame layers cut from the painting with its people
       // painted out: the sky and the far shore stand at the back, the
@@ -1428,67 +1472,450 @@ export const scenes: Scene[] = [
         ],
         images: { '*': 'plates/scene-04/ref/sails-far.webp' },
       },
+      // ---- new people for every season (18r): each its own plate in the
+      // painting's hand, on the ground its kind keeps to, in its season's
+      // window; the box is a footprint borrowed from an element of the same
+      // stance and distance, for scale and a first spot.
+      {
+        id: 'frisbee-pair',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [560, 450, 240, 150],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/frisbee-pair.webp' },
+      },
+      {
+        id: 'sunbather',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [800, 430, 280, 120],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/sunbather.webp' },
+      },
+      {
+        id: 'ice-cream-kids',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [430, 398, 130, 165],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/ice-cream-kids.webp' },
+      },
+      {
+        id: 'guitar',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1080, 510, 190, 120],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/guitar.webp' },
+      },
+      {
+        id: 'grandparents',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1225, 505, 305, 180],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/grandparents.webp' },
+      },
+      {
+        id: 'kayak',
+        later: true,
+        kind: 'water',
+        z: -60,
+        ref: [225, 300, 140, 60],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: [
+          { from: 0, to: 0.12, edge: 0.04 },
+          { from: 0.93, to: 1.06, edge: 0.04 },
+        ],
+        images: { '*': 'plates/scene-04/people/kayak.webp' },
+      },
+      {
+        id: 'raker',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1080, 470, 150, 160],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/raker.webp' },
+      },
+      {
+        id: 'leaf-pile-kids',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [800, 460, 300, 180],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/leaf-pile-kids.webp' },
+      },
+      {
+        id: 'coffee-walkers',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [762, 345, 145, 155],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/coffee-walkers.webp' },
+      },
+      {
+        id: 'photographer',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [1075, 355, 120, 150],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/photographer.webp' },
+      },
+      {
+        id: 'pumpkin-family',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1225, 505, 305, 200],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/pumpkin-family.webp' },
+      },
+      {
+        id: 'autumn-dog',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [1075, 355, 220, 140],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/autumn-dog.webp' },
+      },
+      {
+        id: 'bench-reader',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [585, 462, 225, 138],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/bench-reader.webp' },
+      },
+      {
+        id: 'autumn-jogger',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [160, 400, 100, 205],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.2, to: 0.42, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/autumn-jogger.webp' },
+      },
+      {
+        id: 'skaters',
+        later: true,
+        kind: 'water',
+        z: -60,
+        ref: [535, 300, 180, 90],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/skaters.webp' },
+      },
+      {
+        id: 'sledders',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [800, 460, 300, 180],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/sledders.webp' },
+      },
+      {
+        id: 'snowman-builders',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1225, 505, 305, 220],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/snowman-builders.webp' },
+      },
+      {
+        id: 'winter-walkers',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [762, 345, 145, 155],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/winter-walkers.webp' },
+      },
+      {
+        id: 'hockey-kids',
+        later: true,
+        kind: 'water',
+        z: -60,
+        ref: [700, 300, 200, 90],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/hockey-kids.webp' },
+      },
+      {
+        id: 'winter-dog',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [585, 462, 225, 138],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/winter-dog.webp' },
+      },
+      {
+        id: 'thermos-pair',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1080, 500, 200, 130],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/thermos-pair.webp' },
+      },
+      {
+        id: 'ice-fisher',
+        later: true,
+        kind: 'water',
+        z: -60,
+        ref: [225, 300, 120, 100],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.42, to: 0.66, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/ice-fisher.webp' },
+      },
+      {
+        id: 'kite-flyer',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [560, 450, 200, 200],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/kite-flyer.webp' },
+      },
+      {
+        id: 'geese-kids',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [430, 398, 180, 150],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/geese-kids.webp' },
+      },
+      {
+        id: 'spring-picnic',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [800, 430, 300, 170],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/spring-picnic.webp' },
+      },
+      {
+        id: 'bike-walker',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [1075, 355, 220, 150],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/bike-walker.webp' },
+      },
+      {
+        id: 'blossom-photo',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [762, 345, 120, 155],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/blossom-photo.webp' },
+      },
+      {
+        id: 'stroller-pair',
+        later: true,
+        kind: 'path',
+        z: 12,
+        ref: [1290, 325, 180, 140],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/stroller-pair.webp' },
+      },
+      {
+        id: 'spring-dog',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1225, 505, 280, 160],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/spring-dog.webp' },
+      },
+      {
+        id: 'painter',
+        later: true,
+        kind: 'lawn',
+        z: 12,
+        ref: [1080, 500, 160, 190],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.66, to: 0.9, edge: 0.04 },
+        images: { '*': 'plates/scene-04/people/painter.webp' },
+      },
     ],
     figures: [
-      // ---- the crowd through the year (LEDGER 10d). Late October: the
-      // few who stay on the lawn in the cold, and the path's traffic in
-      // jackets; a man raking at the path's edge does not move.
-      {
-        id: 'sitters-autumn',
-        atlas: { image: 'plates/scene-04/park/sitters-autumn.webp', cols: 3, rows: 3, count: 9 },
-        size: 2.5,
-        baseY: 0,
-        life: { breath: 0.012, sway: 0.5 },
-        present: { from: 0.2, to: 0.42, edge: 0.04 },
-        places: [
-          { id: 'sweater-couple', cell: 0, x: -5, z: 9 },
-          { id: 'leaf-pile', cell: 1, x: 6, z: 7.5 },
-          { id: 'photographer', cell: 3, x: -2, z: 5.8 },
-          { id: 'chair-blanket', cell: 4, x: -10, z: 6.2 },
-          { id: 'pumpkin-family', cell: 5, x: 4, z: 11 },
-          { id: 'hat-dog', cell: 7, x: 10, z: 9.5 },
-        ],
-      },
-      // Mid January: the lake is the park. What stays put on the ice —
-      // a fishing house, a man on a bucket, a bonfire, a rink's net — and
-      // a snowman and a sled on the lawn; skaters and a skier and a man
-      // with an auger crossing the ice, a few on the path in parkas.
-      {
-        id: 'ice-winter',
-        atlas: { image: 'plates/scene-04/park/ice-winter.webp', cols: 3, rows: 3, count: 9 },
-        size: 3.0,
-        baseY: 0,
-        life: { breath: 0.008 },
-        present: { from: 0.46, to: 0.64, edge: 0.04 },
-        places: [
-          { id: 'ice-house', cell: 0, x: -34, z: -44 },
-          { id: 'fisherman', cell: 1, x: -12, z: -30 },
-          { id: 'snowman', cell: 2, x: 9, z: 6.6 },
-          { id: 'bonfire', cell: 4, x: 24, z: -36 },
-          { id: 'sled', cell: 5, x: -7, z: 7.4 },
-          { id: 'hockey-net', cell: 6, x: 36, z: -26 },
-          { id: 'standing-pair', cell: 7, x: 4, z: -18 },
-          { id: 'kneeling-child', cell: 8, x: -22, z: -20 },
-        ],
-      },
-      // Late April: the first blankets back, in jackets, and the geese.
-      {
-        id: 'sitters-spring',
-        atlas: { image: 'plates/scene-04/park/sitters-spring.webp', cols: 3, rows: 3, count: 9 },
-        size: 2.5,
-        baseY: 0,
-        life: { breath: 0.012, sway: 0.5 },
-        present: { from: 0.68, to: 0.88, edge: 0.04 },
-        places: [
-          { id: 'takeout-couple', cell: 0, x: -4, z: 8.8 },
-          { id: 'hoodie-man', cell: 1, x: 6, z: 6.2 },
-          { id: 'mother-baby', cell: 2, x: 2, z: 10.8 },
-          { id: 'chair-reader', cell: 4, x: 11, z: 8 },
-          { id: 'goslings', cell: 5, x: -9, z: 5.6 },
-          { id: 'sketchbook', cell: 6, x: 8, z: 11.4 },
-          { id: 'kite-boy', cell: 8, x: -12, z: 9 },
-        ],
-      },
     ],
     // From the far shore to the wall: the lawn, not the lake, is under the seat.
     water: { width: 420, depth: 96, z: -44 },
@@ -1791,8 +2218,8 @@ export const scenes: Scene[] = [
       appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
     },
     camera: {
-      from: { y: 10.5, z: 28, lookY: 7 },
-      to: { y: 20, z: 44, lookY: 14 },
+      from: { y: 3.4, z: 19.5, lookY: -1.3 },
+      to: { y: 6.5, z: 26, lookY: 1.5 },
     },
     // Two instruments, both about the years: the band and the rings.
     // The roots — the far shore cut open, the stand's network under it —

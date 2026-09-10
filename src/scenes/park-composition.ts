@@ -42,6 +42,9 @@ export interface Composition {
   eye: THREE.PerspectiveCamera;
   /** The vertical field of view that covers the frame at this aspect. */
   fovFor(aspect: number): number;
+  /** The ground point the painting's pixel (px, py) looks at, or null
+   *  if that pixel is above the horizon. */
+  groundAt(px: number, py: number): { x: number; z: number } | null;
 }
 
 const GRID_STAND = 10;
@@ -187,13 +190,18 @@ export function buildComposition(
         const vPerZ = (h2 / n / ih2) / Math.max(1e-3, nearZ - prevZ);
         const skirtTo = eye.position.z + 30;
         const SKIRT_ROWS = 6;
+        // The skirt holds the near row's own texels rather than mirroring
+        // the texture on, which repeated the path under the seat (18r):
+        // what is behind the seat is grass, and a stretched row of grass
+        // reads as grass.
+        void vPerZ;
         for (let r = 1; r <= SKIRT_ROWS; r++) {
           const zz = nearZ + ((skirtTo - nearZ) * r) / SKIRT_ROWS;
           for (let c = 0; c <= cols; c++) {
             const o = (nearRow + c) * 3;
             pos.push(pos[o], pos[o + 1], zz);
             const uo = (nearRow + c) * 2;
-            uv.push(uv[uo], uv[uo + 1] - (zz - nearZ) * vPerZ);
+            uv.push(uv[uo], uv[uo + 1] - 0.002 * r);
           }
         }
         rows = n + SKIRT_ROWS;
@@ -256,5 +264,9 @@ export function buildComposition(
         console.warn(`[composition] ${p.id}: imagery failed to load`, err);
       });
   }
-  return { plates, eye, fovFor };
+  const groundAt = (px: number, py: number) => {
+    floor.constant = 0;
+    return unproject(px, py, floor, hit) && hit.z < eye.position.z ? { x: hit.x, z: hit.z } : null;
+  };
+  return { plates, eye, fovFor, groundAt };
 }

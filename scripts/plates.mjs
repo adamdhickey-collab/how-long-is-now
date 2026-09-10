@@ -205,6 +205,24 @@ const SCENES = {
       fade: /sail/.test(id) ? [0.62, 0.25] : undefined,
     })),
   ],
+  // New people for every season (18r): one cutout each, keyed like the
+  // painting's elements.
+  'scene-04/people': [
+    ...['frisbee-pair', 'sunbather', 'ice-cream-kids', 'guitar', 'grandparents', 'kayak', 'raker', 'leaf-pile-kids', 'coffee-walkers', 'photographer', 'pumpkin-family', 'autumn-dog', 'bench-reader', 'autumn-jogger', 'skaters', 'sledders', 'snowman-builders', 'winter-walkers', 'hockey-kids', 'winter-dog', 'thermos-pair', 'ice-fisher', 'kite-flyer', 'geese-kids', 'spring-picnic', 'bike-walker', 'blossom-photo', 'stroller-pair', 'spring-dog', 'painter'].map((id) => ({
+      id,
+      raw: `${id}-v1.png`,
+      recipe: 'cutout',
+      key: true,
+      alphaQuality: 100,
+      // White garments and a snowman read as enclosed paper: no pockets
+      // for the figures that wear white.
+      pockets: !/snowman|winter-dog|grandparents|sledders/.test(id),
+      strict: /kayak|skaters|hockey|ice-fisher|snowman|winter-dog|grandparents|sledders/.test(id),
+      pocketMin: /kayak|skaters|hockey|ice-fisher/.test(id) ? 6000 : undefined,
+      ground: !/kayak|skaters|hockey|ice-fisher/.test(id),
+      fade: /kayak/.test(id) ? [0.62, 0.25] : undefined,
+    })),
+  ],
   'scene-04/park': [
     { id: 'far-shore', variant: 'late-summer', raw: 'far-shore-thin-v1.png', recipe: 'strip', key: true },
     { id: 'far-shore', variant: 'autumn', raw: 'far-shore-autumn-v2.png', recipe: 'strip', key: true },
