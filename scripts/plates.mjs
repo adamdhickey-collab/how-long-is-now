@@ -16,6 +16,7 @@
  */
 
 import { access, mkdir, stat } from 'node:fs/promises';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 import { refSky, refFarShore, refWater, refGround, refTrees, refCheck } from './reference-bands.mjs';
@@ -164,10 +165,21 @@ const SCENES = {
       lines: 'keep',
       grade: 'assets/raw/park/reference.png',
     })),
+    // The elms' bark alone, for every month but August (18v).
+    {
+      id: 'trees',
+      variant: 'bare',
+      raw: ['quiet-park-v1.png', 'empty-view-v2.png', 'wide-park-v8.png'],
+      recipe: 'ref-trees',
+      trunksOnly: true,
+      budgetKb: 700,
+      lines: 'summer',
+      grade: 'assets/raw/park/reference.png',
+    },
     // The seasons (18j): the same bands from each season's edits, cut
     // along the summer's lines.
     ...['autumn', 'winter', 'spring'].flatMap((season) =>
-      ['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
+      ['sky', 'far-shore', 'water', 'ground'].map((id) => ({
         id,
         variant: season,
         // (the summer's empty view rides along only so the pair is a pair;
@@ -212,9 +224,9 @@ const SCENES = {
   // side, the grass at our feet — the pull-back's own foreground, so the
   // elms never end in a straight cut and the lawn never runs out.
   'scene-04/frame': [
-    ...['boughs-summer', 'boughs-autumn', 'boughs-winter', 'boughs-spring', 'boughs-summer-b', 'boughs-autumn-b', 'boughs-winter-b', 'boughs-spring-b', 'trunk-left', 'trunk-right'].map((id) => ({
+    ...['boughs-summer', 'boughs-autumn', 'boughs-winter', 'boughs-spring', 'boughs-summer-b', 'boughs-autumn-b', 'boughs-winter-b', 'boughs-spring-b', 'boughs-turning', 'boughs-turning-b', 'boughs-late-autumn', 'boughs-late-autumn-b', 'boughs-budding', 'boughs-budding-b', 'boughs-fresh', 'boughs-fresh-b', 'trunk-left', 'trunk-right'].map((id) => ({
       id,
-      raw: `${id}-v1.png`,
+      raw: newest('scene-04/frame', id),
       recipe: 'cutout',
       key: true,
       alphaQuality: 100,
@@ -222,6 +234,9 @@ const SCENES = {
       // January's boughs carry snow along their tops: white on white, so
       // the paper is judged against the border's own colour and no
       // enclosed patch is taken for a hole.
+      // Only January's boughs carry snow along their tops — white on
+      // white — and need the paper judged against the border's own
+      // colour. The bare stages key like any other leaf (18v).
       pockets: !/winter/.test(id),
       strict: /winter/.test(id),
       ground: false,
@@ -241,7 +256,7 @@ const SCENES = {
     })),
   ],
   'scene-04/people': [
-    ...['frisbee-pair', 'sunbather', 'ice-cream-kids', 'guitar', 'grandparents', 'kayak', 'raker', 'leaf-pile-kids', 'coffee-walkers', 'photographer', 'pumpkin-family', 'autumn-dog', 'bench-reader', 'autumn-jogger', 'skaters', 'sledders', 'snowman-builders', 'winter-walkers', 'hockey-kids', 'winter-dog', 'thermos-pair', 'ice-fisher', 'kite-flyer', 'geese-kids', 'spring-picnic', 'bike-walker', 'blossom-photo', 'stroller-pair', 'spring-dog', 'painter'].map((id) => ({
+    ...['frisbee-pair', 'sunbather', 'ice-cream-kids', 'guitar', 'grandparents', 'kayak', 'raker', 'leaf-pile-kids', 'coffee-walkers', 'photographer', 'pumpkin-family', 'autumn-dog', 'bench-reader', 'autumn-jogger', 'skaters', 'sledders', 'snowman-builders', 'winter-walkers', 'hockey-kids', 'winter-dog', 'thermos-pair', 'ice-fisher', 'kite-flyer', 'geese-kids', 'spring-picnic', 'bike-walker', 'blossom-photo', 'stroller-pair', 'spring-dog', 'painter', 'book-club', 'toddler-run', 'yoga-mat', 'runners-pair', 'rollerblader', 'paddleboard', 'chess-pair', 'leaf-collector', 'cyclist-autumn', 'sketcher', 'rowers', 'stroller-autumn', 'snow-angel', 'shoveller', 'skate-child', 'bird-feeder', 'cross-country', 'snowball-kids', 'tulip-photo', 'joggers-spring', 'reading-blanket', 'ducklings', 'skateboarder', 'family-walk'].map((id) => ({
       id,
       raw: `${id}-v1.png`,
       recipe: 'cutout',
@@ -249,11 +264,11 @@ const SCENES = {
       alphaQuality: 100,
       // White garments and a snowman read as enclosed paper: no pockets
       // for the figures that wear white.
-      pockets: !/snowman|winter-dog|grandparents|sledders/.test(id),
-      strict: /kayak|skaters|hockey|ice-fisher|snowman|winter-dog|grandparents|sledders/.test(id),
-      pocketMin: /kayak|skaters|hockey|ice-fisher/.test(id) ? 6000 : undefined,
-      ground: !/kayak|skaters|hockey|ice-fisher/.test(id),
-      fade: /kayak/.test(id) ? [0.62, 0.25] : undefined,
+      pockets: !/snowman|winter-dog|grandparents|sledders|snow-angel|snowball|shoveller|bird-feeder|ducklings/.test(id),
+      strict: /kayak|skaters|hockey|ice-fisher|snowman|winter-dog|grandparents|sledders|snow-angel|snowball|shoveller|bird-feeder|paddleboard|rowers|ducklings|skate-child/.test(id),
+      pocketMin: /kayak|skaters|hockey|ice-fisher|paddleboard|rowers|ducklings|skate-child/.test(id) ? 6000 : undefined,
+      ground: !/kayak|skaters|hockey|ice-fisher|paddleboard|rowers|ducklings|skate-child/.test(id),
+      fade: /kayak|rowers|paddleboard|ducklings/.test(id) ? [0.62, 0.25] : undefined,
     })),
   ],
   'scene-04/park': [
@@ -1202,6 +1217,19 @@ const RECIPES = {
   corridor: corridorBay,
   fragments: fragmentAtlas,
 };
+
+/** The highest -vN.png of an id in a raw folder, so a repainted asset is
+ *  picked up without editing this file (18v). */
+function newest(dir, id) {
+  let best = 1;
+  try {
+    for (const f of readdirSync(path.join(RAW, dir))) {
+      const m = /-v(\d+)\.png$/.exec(f);
+      if (m && f.slice(0, m.index) === id) best = Math.max(best, Number(m[1]));
+    }
+  } catch { /* no folder yet */ }
+  return `${id}-v${best}.png`;
+}
 
 const exists = (f) =>
   access(f).then(

@@ -478,6 +478,156 @@ const QUIET = 'assets/raw/scene-04/ref/summer-quiet.png';
 let regionLines = null;
 const BASE = 'assets/raw/scene-04/ref/summer-base.png';
 
+/**
+ * The continuation matched to the painting along each edge (18u). A
+ * global fit per region leaves the local steps that show as rectangles
+ * in the sky and blocks in the far treeline, because the pieces the
+ * continuation was painted in differ from one another. This reads the
+ * painting's own last sixty columns (or rows) against the sixty just
+ * outside them, line by line, smooths that correction along the edge and
+ * eases it out over five hundred pixels — so whatever is just beyond the
+ * frame begins as the frame's own tone and drifts from there, and no
+ * edge of the painting can be found by looking. Then the grain: the
+ * continuation is smooth where the painting is a mat of small strokes,
+ * and a smooth field beside a dotted one reads as a pane of haze laid
+ * over the picture. The difference is measured per region and the
+ * shortfall made up with noise at the painting's own dot scale — nothing
+ * is copied, so nothing structured comes across; only the roughness.
+ */
+function matchEdges(data, w, h, ox, oy) {
+  // The continuation matched to the painting along each edge (18u). A
+  // global fit per region leaves the local steps that show as rectangles
+  // in the sky and blocks in the far treeline, because the pieces the
+  // continuation was painted in differ from one another. This reads the
+  // painting's own last sixty columns (or rows) against the sixty just
+  // outside them, line by line, smooths that correction along the edge
+  // and eases it out over five hundred pixels — so whatever is just
+  // beyond the frame begins as the frame's own tone and drifts from
+  // there, and no edge of the painting can be found by looking.
+    const src = Buffer.from(data);
+    const N = 60, EASE = 500, SM = 24;
+    const meanOf = (fn, n) => {
+      const acc = [0, 0, 0];
+      let m = 0;
+      for (let k = 0; k < n; k++) { const o = fn(k); if (o < 0) continue; acc[0] += src[o]; acc[1] += src[o + 1]; acc[2] += src[o + 2]; m++; }
+      return m ? acc.map((v) => v / m) : null;
+    };
+    const smoothRuns = (arr) => {
+      const out = arr.map(() => [1, 1, 1]);
+      for (let i = 0; i < arr.length; i++) {
+        const acc = [0, 0, 0];
+        let n = 0;
+        for (let k = -SM; k <= SM; k++) { const r = arr[i + k]; if (!r) continue; acc[0] += r[0]; acc[1] += r[1]; acc[2] += r[2]; n++; }
+        if (n) out[i] = acc.map((v) => v / n);
+      }
+      return out;
+    };
+    const pw = 1536, ph = 1024;
+    // left and right: a gain per row
+    const rowGain = (inner, outer) => {
+      const g = [];
+      for (let y = 0; y < h; y++) {
+        if (y < oy || y >= oy + ph) { g.push(null); continue; }
+        const mi = meanOf((k) => inner(y, k), N);
+        const mo = meanOf((k) => outer(y, k), N);
+        g.push(mi && mo ? [0, 1, 2].map((c) => Math.min(1.6, Math.max(0.6, (mi[c] + 4) / (mo[c] + 4)))) : null);
+      }
+      return smoothRuns(g);
+    };
+    const gl = rowGain((y, k) => (y * w + ox + k) * 4, (y, k) => (y * w + Math.max(0, ox - 1 - k)) * 4);
+    const gr = rowGain((y, k) => (y * w + ox + pw - 1 - k) * 4, (y, k) => (y * w + Math.min(w - 1, ox + pw + k)) * 4);
+    // top: a gain per column
+    const colGain = [];
+    for (let x = 0; x < w; x++) {
+      if (x < ox || x >= ox + pw) { colGain.push(null); continue; }
+      const mi = meanOf((k) => ((oy + k) * w + x) * 4, N);
+      const mo = meanOf((k) => (Math.max(0, oy - 1 - k) * w + x) * 4, N);
+      colGain.push(mi && mo ? [0, 1, 2].map((c) => Math.min(1.6, Math.max(0.6, (mi[c] + 4) / (mo[c] + 4)))) : null);
+    }
+    const gt = smoothRuns(colGain);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const dx = x < ox ? ox - x : x >= ox + pw ? x - (ox + pw - 1) : 0;
+        const dy = y < oy ? oy - y : y >= oy + ph ? y - (oy + ph - 1) : 0;
+        if (!dx && !dy) continue;
+        const o = (y * w + x) * 4;
+        // the nearer edge decides; a corner takes both, the nearer weighing more
+        const parts = [];
+        if (dx) parts.push([x < ox ? gl[Math.max(oy, Math.min(oy + ph - 1, y))] : gr[Math.max(oy, Math.min(oy + ph - 1, y))], dx]);
+        if (dy && y < oy) parts.push([gt[Math.max(ox, Math.min(ox + pw - 1, x))], dy]);
+        if (!parts.length) continue;
+        let wsum = 0;
+        const g = [0, 0, 0];
+        for (const [gain, d] of parts) {
+          if (!gain) continue;
+          const k = Math.max(0, 1 - d / EASE) / Math.max(1, d);
+          for (let c = 0; c < 3; c++) g[c] += gain[c] * k;
+          wsum += k;
+        }
+        if (wsum <= 0) continue;
+        const d0 = Math.max(dx, dy);
+        const ease = Math.max(0, 1 - d0 / EASE);
+        for (let c = 0; c < 3; c++) {
+          const gain = 1 + (g[c] / wsum - 1) * ease;
+          data[o + c] = Math.max(0, Math.min(255, Math.round(src[o + c] * gain)));
+        }
+      }
+    }
+    console.log('  continuation matched to the painting along its edges');
+    // …and given dots of its own (18u). Tone is not the whole of it: the
+    // continuation is smooth where the painting is a mat of small
+    // strokes, and a smooth field beside a dotted one reads as a pane of
+    // haze laid over the picture, which is what the frame's edge looked
+    // like. So the difference in grain is measured per region — how much
+    // the painting departs from its own blur, how much the continuation
+    // does — and the shortfall is made up with noise at the painting's
+    // own dot scale. Nothing is copied, so nothing structured comes
+    // across; only the roughness matches.
+    {
+      const R = 4;
+      const lowOf = (buf) => [0, 1, 2].map((c) => {
+        const f = new Float32Array(w * h);
+        for (let i = 0; i < w * h; i++) f[i] = buf[i * 4 + c];
+        return blur(f, w, h, R);
+      });
+      const low = lowOf(data);
+      const amp = [];
+      for (let r = 0; r < 4; r++) amp.push([[0, 0], [0, 0], [0, 0]].map(() => ({ inn: 0, ni: 0, out: 0, no: 0 })));
+      for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+        const inside = x >= ox && x < ox + 1536 && y >= oy && y < oy + 1024;
+        const d = inside ? 0 : Math.max(ox - x, x - (ox + 1535), oy - y, y - (oy + 1023));
+        if (!inside && d > 700) continue;
+        const r = regionAtWide(x, y);
+        const i = y * w + x, o = i * 4;
+        for (let c = 0; c < 3; c++) {
+          const e = data[o + c] - low[c][i];
+          const a = amp[r][c];
+          if (inside) { a.inn += e * e; a.ni++; } else { a.out += e * e; a.no++; }
+        }
+      }
+      const need = amp.map((cs) => cs.map((a) => {
+        if (a.ni < 500 || a.no < 500) return 0;
+        const si = Math.sqrt(a.inn / a.ni), so = Math.sqrt(a.out / a.no);
+        return Math.sqrt(Math.max(0, si * si - so * so));
+      }));
+      console.log(`  grain to make up, per region: ${need.map((c) => c.map((v) => v.toFixed(1)).join('/')).join('  ')}`);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const inside = x >= ox && x < ox + 1536 && y >= oy && y < oy + 1024;
+        if (inside) continue;
+        const d = Math.max(ox - x, x - (ox + 1535), oy - y, y - (oy + 1023));
+        const ease = Math.max(0, Math.min(1, 1 - (d - 600) / 400));
+        if (ease <= 0) continue;
+        const r = regionAtWide(x, y);
+        const o = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const n = vnoise(x / 2.3, y / 2.3, 11.7 + c * 5.3) - 0.5;
+          const n2 = vnoise(x / 5.1, y / 5.1, 31.3 + c * 7.1) - 0.5;
+          data[o + c] = Math.max(0, Math.min(255, Math.round(data[o + c] + (n * 2.1 + n2 * 1.2) * need[r][c] * ease)));
+        }
+      }
+    }
+  }
+
 async function prepare(files, opts = {}) {
   const key = files.join('|');
   if (cache.has(key)) return cache.get(key);
@@ -540,6 +690,7 @@ async function prepare(files, opts = {}) {
     quiet.data = grade(quiet.data, w, h, regionW);
     empty.data = grade(empty.data, w, h, regionW);
   }
+  if (outpaint) matchEdges(quiet.data, w, h, ox, oy);
   // The lawn beyond the frame's sides (18t): the painting's own grass
   // mirrored outward about each edge, not the continuation's, whose
   // green is a different green in every season and which showed as two
@@ -555,11 +706,20 @@ async function prepare(files, opts = {}) {
         if (x >= ox && x < ox + pw) continue;
         const mx = x < ox ? 2 * ox - 1 - x : 2 * (ox + pw) - 1 - x;
         if (mx < ox || mx >= ox + pw) continue;
+        // the sky above the treeline and the lawn below the water: the
+        // painting's own, mirrored. The treeline and the lake between
+        // them keep the continuation, since a second bandshell would show.
         const lawn = L ? L.waterNear[mx] + 6 : oy + 566;
-        if (y < lawn) continue;
+        const sky = L ? L.skyTop[mx] - 6 : oy + 150;
+        // eased at both boundaries, else the switch from the painting's
+        // own sky to the continuation traced the treeline as a step
+        const F = 70;
+        const k = y < sky ? Math.min(1, (sky - y) / F) : y >= lawn ? Math.min(1, (y - lawn) / F) : 0;
+        if (k <= 0) continue;
+        const t = k * k * (3 - 2 * k);
         const o = (y * w + x) * 4;
         const so = (y * w + mx) * 4;
-        quiet.data[o] = quiet.data[so]; quiet.data[o + 1] = quiet.data[so + 1]; quiet.data[o + 2] = quiet.data[so + 2];
+        for (let c = 0; c < 3; c++) quiet.data[o + c] = Math.round(quiet.data[o + c] * (1 - t) + quiet.data[so + c] * t);
       }
     }
   }
@@ -1063,6 +1223,11 @@ async function prepare(files, opts = {}) {
     const region = blur(morph(m, w, h, 12, 1), w, h, 2);
     for (let i = 0; i < w * h; i++) region[i] = Math.min(1, region[i] * 1.2);
     const filled = matchAcross(lookup(sb.data, w, h, regionAtWide), w, h);
+    // …and along each edge line by line, as the summer's frame is: a
+    // single fit per region left the winter sky stepping at the
+    // painting's boundary, where the lookup crushes everything toward
+    // white and the smallest difference shows (18u).
+    if (outpaint) matchEdges(filled, w, h, ox, oy);
     // October and April (18s): the canopy takes the summer elms' leaf
     // structure through the season's lookup — October's painting gave a
     // flat golden haze — thinned toward bare, more so in April's first
@@ -1317,7 +1482,12 @@ export async function refSky(files, opts) {
 
 export async function refFarShore(files, opts) {
   const p = await prepare(files, opts);
-  return frame(p.base, p.w, p.h, (x, y) => edge(y, p.skyTop[x], false) * edge(y, p.waterFar[x] + 3, true));
+  // The far shore runs a long way past the waterline (18u), where its
+  // own picture is water anyway: it stands at z −52 while the lake lies
+  // flat, so the two part as the eye rises, and a hard edge three rows
+  // below the waterline let the sky band behind them show through as a
+  // bright line across the frame at the widest of the pull-back.
+  return frame(p.base, p.w, p.h, (x, y) => edge(y, p.skyTop[x], false) * under(y, p.waterFar[x] + 90, true));
 }
 
 export async function refWater(files, opts) {
@@ -1332,6 +1502,17 @@ export async function refGround(files, opts) {
 
 export async function refTrees(files, opts) {
   const p = await prepare(files, opts);
+  // Bark only (18v): the elms' trunks, which are the same trunks in
+  // every month, cut from the summer's own picture. The canopy through
+  // the rest of the year is painted — the seasons derived from the
+  // October, January and April pictures came out as flat slabs of colour
+  // with holes punched in them, which is what they were: one silhouette,
+  // one haze of the season's colour, and noise for leaves.
+  if (opts.trunksOnly) {
+    const [ox, oy] = ORIGIN;
+    const trunk = (x, y) => TRUNK_REGIONS.some(([bx, by, bw, bh]) => x - ox >= bx && x - ox < bx + bw && y - oy >= by && y - oy < by + bh);
+    return frame(p.quiet.data, p.w, p.h, (x, y, i) => (p.matte[i] && trunk(x, y) ? 1 : 0));
+  }
   return frame(p.treesRGB ?? p.quiet.data, p.w, p.h, (x, y, i) => p.matte[i]);
 }
 

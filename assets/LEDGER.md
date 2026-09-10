@@ -1465,3 +1465,139 @@ green is a different green in every season — done on the graded frame,
 so the tone matches by construction, which the first attempt inside
 `widen()` did not. Grass takes a mirror without showing it. The lake and the far shore keep the continuation,
 since a second bandshell would not.
+
+### 18u · the audit
+
+Adam, stepping away for a couple of hours: a close audit of the run
+from the seat out through the seasons, and everything that needs
+rebuilding, repainting or polishing. What the audit found, in the order
+it mattered.
+
+**The seasons were composited wrongly, twice over.** Each season's layer
+was painted at its own weight alone, so through every turn of the year
+the whole frame went about a quarter transparent and the drawn world
+showed through it — the wash that made October and April look hazy. And
+the layers were ordered by whichever texture happened to load first
+rather than by the order they draw in, so the layer carrying the blend
+was often the wrong one: at one point the lawn was fully in January
+while its elms were still in October. Both are gone. The seasons now
+composite back to front, each layer at its share of what is already
+laid down — `w / (laid + w)` — which is the weighted mix exactly, with
+whole coverage at every moment and the right picture at both ends.
+
+**The figures were sized by a borrowed box.** Each new person was fitted
+into a footprint borrowed from a painted element of the same stance,
+which made their height depend on the shape of their image rather than
+on the person: the autumn jogger stood a head shorter than the
+painting's jogger, the spring picnickers a head taller than its
+picnickers, the raker shorter than the man he rakes beside. Plates now
+declare `tall`, a real height in world units, and are built as a plain
+quad of that height standing at the foot their box found — so a
+standing adult is 1.5 wherever the lapse puts them. The painting's own
+elements never take it; they are the painting, to the pixel.
+
+**The lawn emptied.** Between the summer people leaving at 0.12 and the
+autumn people arriving at 0.2 there was nobody at all, and the season
+windows were out of step with the season weights besides — the picture
+was still two thirds summer when the last summer person left. The
+windows now overlap and follow the weights. And with eight figures to
+a season the lapse had nothing to choose from: the whole roster stood
+on the lawn at once, every time. Twenty-four more, six a season, in
+other stances and on other ground — lying, crouching, kneeling, on a
+board, on skates, on a bicycle — so that people come and go.
+
+**The park dipped through black twice.** The day holds this world before
+the year and the lifetime holds it after, but the year faded itself in
+and out at its own edges, so one continuous view of one park went dark
+in the middle of it, twice. Both fades are off.
+
+**The continuation showed its edges.** The tone stepped at the frame's
+boundary — rectangles in the sky, blocks in the far treeline. It is now
+matched to the painting line by line along each edge, the correction
+smoothed along the edge and eased out over five hundred pixels. Above
+the treeline the sky is the painting's own mirrored outward, as the
+lawn below the water already was; only the treeline and the lake keep
+the continuation, since a second bandshell would show. (Carrying the
+painting's dots outward as well was tried and thrown out: borrowing
+detail by cells laid a visible chequer over the sky.)
+
+**A bright line across the frame at the widest of the pull-back** was
+the far shore parting from the lake as the eye rose — it stands at
+z −52 while the water lies flat — and the sky band showing between
+them. The far shore now runs ninety rows past the waterline, where its
+own picture is water anyway.
+
+Then the rest of it, in the same pass.
+
+**The elms could not cross-fade.** Two cut-out seasons faded by opacity
+cannot cover: where both are opaque the frame goes transparent, and
+where one is drawn under the other at full strength its leaves show
+through the other's bare branches — which is why the January canopy was
+coming up gold. Neither is a mixing problem; it is that alpha cannot
+express a dissolve between two silhouettes. So the elms, the boughs and
+the trunks now take their share of the *dots* rather than of the
+opacity: a number is thrown once per three screen pixels and held, and
+each stroke belongs to one season or the other. The tree turns a stroke
+at a time, the frame is whole at every moment, and at either end the
+picture is exactly one season's. The bands, which are opaque, keep the
+back-to-front compositing.
+
+**People stood inside one another.** The lapse claimed a spot per
+visitor, but the spots were measured by eye in the painting's pixels
+and several sit closer together than a person is wide — and the check
+was per kind besides, so a walker on the path could stand in the middle
+of a picnic. Seating now refuses a spot unless the one who would take
+it can stand clear of everybody already seated, by their own widths,
+across all three kinds. One lawn spot stood four pixels from the water
+(the man raking leaves raked the lake); the nearest stood so close to
+the frame's foot that a visitor was cut off at the waist. Both moved,
+three more added, and every spot checked against the waterline the
+bands found.
+
+**The seasons' people ran ahead of the season.** Winter's arrived at
+0.40 while the lawn was still brown until 0.5 — snowmen on autumn
+grass. The windows now follow the weights: summer to 0.22, autumn
+0.20–0.50, winter 0.46–0.74, spring 0.70–0.96, summer again from 0.88.
+
+### 18v · painted, not dissolved
+
+Adam, on the last pass: the daylight should never go dark, and the
+dissolve on the tree transitions looks rough — make more image assets
+rather than lean on effects. Both taken.
+
+**The year is a year of afternoons.** Its light was read from the real
+sun's altitude at 4:17, which in January is nearly down, so the whole
+scene went to dusk and out. `light.floor` holds the reading at a solid
+afternoon whenever the year runs on its own; the scene that holds this
+world for a day is not floored, since the sun setting is the whole
+point of it.
+
+**The elms' seasons were never painted at all.** What looked like a
+rough dissolve was two rough pictures: the October, January and April
+elms were one silhouette filled with a haze of the season's colour and
+punched with noise for leaves — flat slabs with holes in them. They are
+gone. The elms' plate now carries the painting's own canopy in August
+and its bark alone through the rest of the year (`trunksOnly`), and the
+leaves come from painted art: eight stages of bough around the year —
+August, turning, October, late November, January, budding, April,
+June — each painted twice so no two swags are the same, hung in four
+places (two overhead, two low into the corners where the painting's own
+canopy is). Sixteen pictures of one tree through one year.
+
+**And the dissolve itself is gone.** A plate that changes through the
+year now declares `stages` — a picture and where in the year it stands
+— and mixes the two the year stands between *in one draw*, colour with
+colour and alpha with alpha, where the map is read. Two draws cannot do
+it: cross-faded by opacity, two cut-outs go transparent where both are
+opaque, and the per-dot lottery that covered for that read as noise.
+One draw of a true mix is a dissolve and nothing else. Painting the
+canopy at eight stages means each mix spans a few weeks of leaf rather
+than half a year of it, so there is little to see in the crossing.
+
+`newest()` in the plate cutter takes the highest version of a raw
+asset, so a repainted picture is picked up without editing the script —
+which the two bare stages needed twice: asked for bare twigs, the model
+twice painted a pale mass the white key could not separate from the
+paper. Asking in the prompt for the paper to show plainly between every
+twig, and for no haze and no pale cloud anywhere, gave the open
+lacework they should have been.

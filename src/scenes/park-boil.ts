@@ -164,7 +164,17 @@ export function installBoil(
     uBoilPhase: { value: phase },
     uBoilCanopy: { value: setting.canopy ? 1 : 0 },
     uSurface: { value: surface === 'sky' ? 0 : surface === 'water' ? 1 : 2 },
+    // The next painted stage of this plate, and how far into it we are
+    // (18v). A plate whose picture changes through the year — the elms,
+    // the boughs — carries both stages in one material and mixes them
+    // where the map is read, colour and alpha together. Two draws cannot
+    // do it: cross-faded by opacity, two cut-outs go transparent where
+    // both are opaque, and the dot lottery that covered for that read as
+    // noise. One draw of a true mix is a dissolve and nothing else.
+    uMapB: { value: null as THREE.Texture | null },
+    uMix: { value: 0 },
   };
+  mat.userData.mix = { map: uniforms.uMapB, k: uniforms.uMix };
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.(shader, renderer);
     Object.assign(shader.uniforms, uniforms, boilClock);
@@ -195,6 +205,8 @@ export function installBoil(
       .replace(
         'void main() {',
         `uniform float uBoilT, uBoilOn, uBoilWander, uBoilFlicker, uBoilPhase;
+        uniform sampler2D uMapB;
+        uniform float uMix;
         uniform float uGrainPx, uGrainAmp, uGrainTint, uFrame, uFilmNoise, uFilmGain;
         uniform float uLightMix, uLightWater, uSurface;
         uniform vec3 uLightGround, uLightZenith, uLightHorizon;
@@ -222,6 +234,15 @@ export function installBoil(
         #define vMapUv boiledUv
         #include <map_fragment>
         #undef vMapUv
+        #ifdef USE_MAP
+        // The stage we are going to, mixed in here: alpha with alpha and
+        // colour with colour, so the leaves thin as they turn and the
+        // frame is whole the whole way through (18v).
+        if (uMix > 0.0) {
+          vec4 stageB = sRGBTransferEOTF(texture2D(uMapB, boiledUv));
+          diffuseColor = mix(diffuseColor, vec4(diffuse, opacity) * stageB, uMix);
+        }
+        #endif
         diffuseColor.rgb *= 1.0 + boilDots * uBoilFlicker * 2.0 * uBoilOn;
         if (uGrainAmp > 0.0) {
           // The dot screen: a dot's heart a shade brighter, the ground

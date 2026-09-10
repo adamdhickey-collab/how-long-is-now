@@ -25,7 +25,9 @@ import { plateUrl } from './loading';
 export interface CompositionPlate {
   def: Plate;
   /** One layer per image key, the season's weight cross-fading them. */
-  layers: { key: string; mat: THREE.MeshBasicMaterial; mesh: THREE.Mesh }[];
+  layers: { key: string; mat: THREE.MeshBasicMaterial; mesh: THREE.Mesh; order: number }[];
+  /** A plate painted at stages around the year (18v): its pictures, in order. */
+  stages?: { at: number; tex: THREE.Texture | null }[];
   ready: boolean;
   opened: Promise<void>;
   /** Nearest z of the plate: for the render order and for `feet`. */
@@ -88,7 +90,7 @@ export function buildComposition(
 
   const plates: CompositionPlate[] = [];
   for (const [index, p] of (def.plates ?? []).entries()) {
-    if ((!p.ref && !p.world) || !p.images) continue;
+    if ((!p.ref && !p.world) || !(p.images || p.stages)) continue;
     const [bx, by, bw, bh] = p.ref ?? [0, 0, 0, 0];
     const baseY = p.baseY ?? 0;
     // The plane the plate lives on. Standing plates whose feet are on
@@ -150,7 +152,7 @@ export function buildComposition(
         mesh.frustumCulled = false;
         mesh.name = `${p.id}:${key}`;
         group.add(mesh);
-        cp.layers.push({ key, mat, mesh });
+        cp.layers.push({ key, mat, mesh, order: i });
         return;
       }
       const wide = comp.wide;
@@ -176,6 +178,41 @@ export function buildComposition(
         ih2 = ih * s;
         ix = bx + (bw - iw2) / 2;
         iy = by + bh - ih2;
+      }
+      // A plate with a declared height (18u) is a plain quad of that
+      // height standing at the foot its box found, its width from the
+      // image's own shape — so a figure the painting does not have is
+      // the size the person is, not the size the borrowed box was.
+      if (p.tall && !p.lay) {
+        const hh = p.tall;
+        const ww = (hh * iw) / ih;
+        const fx = foot?.x ?? 0;
+        const pos: number[] = [];
+        const uv: number[] = [];
+        const uvq: number[] = [];
+        for (const [cu, cv] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+          pos.push(fx + (cu - 0.5) * ww, baseY + cv * hh, z);
+          uv.push(cu, cv);
+          uvq.push(cu, cv, 1);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.setAttribute('uvq', new THREE.Float32BufferAttribute(uvq, 3));
+        geo.setIndex([0, 1, 2, 2, 1, 3]);
+        geo.computeBoundingSphere();
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 8;
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
+        cp.width = ww;
+        onMaterial?.(mat, p, { height: hh, texel: [1 / iw, 1 / ih] });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.renderOrder = z / 20 - 1.3 + index * 0.001 + i * 0.0001;
+        mesh.frustumCulled = false;
+        mesh.name = `${p.id}:${key}`;
+        group.add(mesh);
+        cp.layers.push({ key, mat, mesh, order: i });
+        return;
       }
       // Sample the image's box on a grid and unproject each sample onto
       // the plane: exact wherever the plane is seen at a slant.
@@ -306,10 +343,33 @@ export function buildComposition(
       mesh.frustumCulled = false;
       mesh.name = `${p.id}:${key}`;
       group.add(mesh);
-      cp.layers.push({ key, mat, mesh });
+      cp.layers.push({ key, mat, mesh, order: i });
     };
 
-    const keys = Object.keys(p.images);
+    if (p.stages) {
+      // One mesh, and every stage's picture behind it (18v).
+      const st = p.stages.map((sg) => ({ at: sg.at, tex: null as THREE.Texture | null }));
+      cp.stages = st;
+      const loadStage = (i: number) =>
+        loader.loadAsync(plateUrl(p.stages![i].image)).then((tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 8;
+          st[i].tex = tex;
+          if (i === 0) build('stage', tex, 0);
+        });
+      cp.opened = loadStage(0)
+        .then(() => {
+          cp.ready = true;
+          Promise.all(p.stages!.map((_, i) => (i ? loadStage(i) : null))).catch((err) => {
+            console.warn(`[composition] ${p.id}: a stage failed to load`, err);
+          });
+        })
+        .catch((err) => {
+          console.warn(`[composition] ${p.id}: imagery failed to load`, err);
+        });
+      continue;
+    }
+    const keys = Object.keys(p.images!);
     const load = (key: string, i: number) =>
       loader.loadAsync(plateUrl(p.images![key])).then((tex) => build(key, tex, i));
     // The season the piece opens on first; the rest of the year behind it.

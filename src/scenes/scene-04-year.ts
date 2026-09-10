@@ -2015,6 +2015,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     const edge = Math.max(1e-3, (lapse.edge ?? 0.12) * lapse.dwell);
     const ease = (v: number) => v * v * (3 - 2 * v);
     const density = lapse.density ?? 0.65;
+    // Where someone is already standing, and how wide they are (18u) —
+    // shared across the lawn, the path and the water, since a walker on
+    // the path stands as much in front of a picnic as another picnic
+    // does. The spots were laid out by eye in the painting's pixels and
+    // some are nearer to one another than a person is wide.
+    const taken: { x: number; z: number; w: number }[] = [];
+    const clear = (at: { x: number; z: number }, wid: number) =>
+      taken.every((t) => Math.hypot(t.x - at.x, t.z - at.z) > 0.55 * (t.w + wid) + 0.12);
     for (const [kind, pool] of Object.entries(spots)) {
       const members = activeMembers[kind] ?? [];
       if (!members.length) continue;
@@ -2033,6 +2041,7 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         if (nearest >= 0) claimedSpot.add(nearest);
         claimedMember.add(m);
         seats.set(m, { vis: ease(Math.min(1, (first - T) / edge)), at: own });
+        taken.push({ x: own.x, z: own.z, w: memberWidth.get(m) ?? 1.5 });
         seated++;
       }
       // every other spot on its own clock
@@ -2048,7 +2057,11 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         let m = -1;
         for (let tries = 0; tries < members.length; tries++) {
           const cand = members[(2 * si + k + tries) % members.length];
-          if (!claimedMember.has(cand) && !(painted.has(cand) && T < lapse.dwell * (0.6 + 0.9 * hash01(cand, 1)))) { m = cand; break; }
+          if (claimedMember.has(cand)) continue;
+          if (painted.has(cand) && T < lapse.dwell * (0.6 + 0.9 * hash01(cand, 1))) continue;
+          if (!clear(pool[si], memberWidth.get(cand) ?? 1.5)) continue;
+          m = cand;
+          break;
         }
         if (m < 0) continue;
         const arrive = hash01(si + 11, k) * 0.2 * L;
@@ -2056,17 +2069,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
         if (f <= arrive || f >= leave) continue;
         claimedMember.add(m);
         seats.set(m, { vis: ease(Math.min(1, (f - arrive) / edge, (leave - f) / edge)), at: pool[si] });
+        taken.push({ x: pool[si].x, z: pool[si].z, w: memberWidth.get(m) ?? 1.5 });
         seated++;
       }
     }
     return seats;
   };
-  /** Each member's own feet, by member index. */
+  /** Each member's own feet, by member index, and how wide they stand. */
   const ownFoot = new Map<number, { x: number; z: number }>();
+  const memberWidth = new Map<number, number>();
   {
     let li = 0;
     for (const cp of composition?.plates ?? []) {
-      if (cp.def.kind && cp.foot) { li++; ownFoot.set(li, cp.foot); }
+      if (cp.def.kind && cp.foot) { li++; ownFoot.set(li, cp.foot); memberWidth.set(li, cp.width || 1.5); }
     }
   }
   if (composition) {
@@ -2178,7 +2193,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       (arcGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
     }
     // Night, from the real sun's altitude: full dark below civil twilight,
-    // and a warm horizon either side of the setting and rising.
+    // and a warm horizon either side of the setting and rising. Held to
+    // the light's floor when the year runs on its own (18v) — it is a
+    // year of afternoons, not a year of nights; the day that holds this
+    // world keeps its dusk.
+    const lightFloor = def.composition?.light?.floor;
+    if (!holder && lightFloor !== undefined) realAlt = Math.max(realAlt, lightFloor);
     const night = 1 - smooth01(-8, 12, realAlt);
     const dusk = clamp01(1 - Math.abs(realAlt - 2) / 10);
     const daylight = smooth01(-6, 30, realAlt);
@@ -2358,22 +2378,20 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     if (!reducedMotion) thermalU.uThermalTime.value = elapsed;
 
     // Image plates carry their own colour; only their declared shade
-    // dims them. Every active layer is opaque except the frontmost, which
-    // carries the blend — so a cross-fade never lets the sky through the
-    // trunks.
+    // dims them. The seasons composite back to front, each layer at its
+    // share of what is already laid down, so the mix is right and the
+    // coverage whole (18u).
     const weights = seasonWeights(seasons!, local);
     const weightOf = (key: string) => (key === '*' ? 1 : weights[key] ?? 0);
     const setImage = (plate: ImagePlate | null, shade: number, presence = 1) => {
       if (!plate?.ready) return;
-      let front = -1;
-      plate.layers.forEach((l, i) => {
-        if (weightOf(l.key) > 0) front = i;
-      });
-      plate.layers.forEach((l, i) => {
+      let laid = 0;
+      for (const l of plate.layers) {
         const w = weightOf(l.key);
         setTint(l.mat, 0xffffff, shade);
-        l.mat.opacity = alpha * presence * (w <= 0 ? 0 : i === front ? w : 1);
-      });
+        l.mat.opacity = alpha * presence * (w <= 0 ? 0 : w / (laid + w));
+        laid += w;
+      }
     };
     setImage(canopyImg, nightShade(canopyDef!.shade ?? 0));
     setImage(farImg, nightShade(farBankDef!.shade ?? 0));
@@ -2496,18 +2514,43 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
           for (const l of cp.layers) l.mesh.position.set(0, 0, 0);
         }
       }
-      let front = -1;
-      cp.layers.forEach((l, i) => {
-        if (weightOf(l.key) > 0) front = i;
-      });
-      cp.layers.forEach((l, i) => {
-        const w = weightOf(l.key);
-        setTint(l.mat, 0xffffff, nightShadeC(p.shade ?? 0));
-        // Opaque bands stack, the front one carrying the blend; the elms,
-        // whose seasons differ in shape, cross-fade by weight alone, else
-        // October's leaves show through January's bare branches.
-        l.mat.opacity = alpha * there * (p.seat ? w : w <= 0 ? 0 : i === front ? w : 1);
-      });
+      // The seasons composite back to front (18u): each layer goes on at
+      // its own share of what has been laid down before it, so the sum is
+      // the weighted mix and the coverage is always whole. Painting each
+      // at its weight alone — which the elms did, so that October's
+      // leaves would not show through January's branches — left the
+      // frame a quarter transparent through every turn of the season;
+      // and the layers were ordered by whichever texture happened to
+      // load first, so the blend was carried by the wrong one and a lawn
+      // could be in January while its elms were still in October.
+      if (cp.stages) {
+        // A plate painted at stages around the year (18v): the two the
+        // year stands between, mixed in one draw.
+        const st = cp.stages;
+        const l = cp.layers[0];
+        if (l && st[0].tex) {
+          let i = 0;
+          for (let k = 0; k < st.length; k++) if (local >= st[k].at) i = k;
+          const a = st[i];
+          const b = st[(i + 1) % st.length];
+          const span = (b.at > a.at ? b.at : b.at + 1) - a.at;
+          const k = span > 0 ? clamp01((local - a.at) / span) : 0;
+          setTint(l.mat, 0xffffff, nightShadeC(p.shade ?? 0));
+          l.mat.map = a.tex ?? l.mat.map;
+          const mix = (l.mat.userData as { mix?: { map: { value: THREE.Texture | null }; k: { value: number } } }).mix;
+          if (mix) { mix.map.value = b.tex ?? a.tex; mix.k.value = b.tex ? k : 0; }
+          l.mat.opacity = alpha * there;
+        }
+      } else {
+        const ordered = [...cp.layers].sort((a, b) => a.order - b.order);
+        let laid = 0;
+        for (const l of ordered) {
+          const w = weightOf(l.key);
+          setTint(l.mat, 0xffffff, nightShadeC(p.shade ?? 0));
+          l.mat.opacity = alpha * there * (w <= 0 ? 0 : w / (laid + w));
+          laid += w;
+        }
+      }
       // Its shadow: on the lawn or the path only, under the feet and a
       // little to the right, as dark as the sun is high.
       if (shadowsDef && cp.foot && (p.kind === 'lawn' || p.kind === 'path' || p.id === 'bicycle')) {
