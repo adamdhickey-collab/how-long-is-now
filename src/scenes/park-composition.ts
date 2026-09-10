@@ -49,7 +49,7 @@ export function buildComposition(
   group: THREE.Group,
   def: Scene,
   loader: THREE.TextureLoader,
-  onMaterial?: (mat: THREE.MeshBasicMaterial, p: Plate) => void,
+  onMaterial?: (mat: THREE.MeshBasicMaterial, p: Plate, info: { height: number; texel: [number, number] }) => void,
 ): Composition | null {
   const comp = def.composition;
   const from = def.camera?.from;
@@ -215,7 +215,13 @@ export function buildComposition(
       tex.wrapT = p.lay ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
       tex.anisotropy = 8;
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
-      onMaterial?.(mat, p);
+      // The plate's world height, for whatever the material does with it.
+      let minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+      for (let i = 0; i < pos.length; i += 3) {
+        minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+        minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
+      }
+      onMaterial?.(mat, p, { height: p.lay ? maxZ - minZ : maxY - minY, texel: [1 / iw, 1 / ih] });
       const mesh = new THREE.Mesh(geo, mat);
       // Back to front by depth: the nearest plate draws last. Lying
       // plates order by their far edge, so whatever stands on them wins;

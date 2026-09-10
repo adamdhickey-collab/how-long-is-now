@@ -657,6 +657,13 @@ export interface Scene {
   /** The scene's own time lapse, when it runs the world's clock itself. */
   lapse?: Lapse;
   /**
+   * The living painting (session 18n): the plates' dots wander and
+   * flicker at this many frames a second, the figures breathe and sway,
+   * the elms sway at the top, the water and lawn shimmer — one pulse for
+   * the whole picture, scaled by `amount`. Off under reduced motion.
+   */
+  boil?: { fps: number; amount: number };
+  /**
    * The painting the world is laid out from (session 18): the frame's
    * size in pixels, and the vertical field of view the seat's camera
    * sees it through when the viewport has the frame's shape. Plates
@@ -1078,6 +1085,9 @@ export const scenes: Scene[] = [
     // waterline, so every row of water lies on the ground — a lying
     // plate cannot show a row that is above the horizon.
     composition: { frame: [1536, 1024], fov: 55, wide: { frame: [3072, 2048], origin: [768, 512] } },
+    // The painting lives: strokes shifting at a hand-drawn nine frames a
+    // second, the people breathing, the elms swaying, the water shimmering.
+    boil: { fps: 9, amount: 1 },
     // The year as a time lapse: three days' stay, two days' gap, so the
     // August crowd flickers through its window of the year.
     lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.6 },

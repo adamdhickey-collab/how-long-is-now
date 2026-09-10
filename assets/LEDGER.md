@@ -1230,3 +1230,22 @@ first cut made the run hang for ten minutes; the lines are read once. The season
 pair itself — snow carries little of the summer lawn's contrast, a
 spring lawn nearly all of it — where a fixed six tenths had left a
 season's continuation flatter than its painting.
+
+### 18n · the living painting
+
+Adam wanted the people alive without walking — "painterly animation",
+a picture that moves a little. `src/scenes/park-boil.ts`: a shader
+installed on every plate of the park, on the material's own program
+so the map, alpha, tint and thermal pass are untouched. The map lookup
+wanders under two octaves of value noise read in texels — a stroke's
+wander is a stroke's wander whatever the plate's size on screen — by a
+texel or two, stepped to the manifest's nine frames a second so it
+reads as paint rather than screen; the dots' brightness flickers with
+it; the figures breathe and lean from the feet, slow and smooth, each
+on its own phase; the elms sway at the top, gently, since their plate
+carries a ring of the sky behind the leaves; the water and the lawn
+shimmer faintly; the boats heel. One clock, declared in the manifest
+(`boil: { fps: 9, amount: 1 }`), drives all of it; under reduced
+motion the amount is zero. Verified by two frames half a second apart:
+a fifth of the pixels change, all of them on figures, leaves and water,
+none on the seams.

@@ -20,6 +20,7 @@ import { sunPosition, type SunPosition } from './solar';
 import { createFigure, type FigureOverlay } from './scene-04-figure';
 import { opened, plateUrl } from './loading';
 import { buildComposition } from './park-composition';
+import { BOIL, boilClock, installBoil } from './park-boil';
 import { createLeaf, type LeafFigure } from './scene-07-leaf';
 
 /** The sun's record is drawn this far in front of the sky plate; the sun
@@ -1908,8 +1909,14 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   // painting's own sky, shore, water and lawn stand in for the drawn
   // ones, the lake's shader goes under its image, and the procedural
   // cloud deck stays off — the painting has its own clouds.
-  const composition = buildComposition(group, def, new THREE.TextureLoader(), (mat, p) => {
+  let boiled = 0;
+  const composition = buildComposition(group, def, new THREE.TextureLoader(), (mat, p, info) => {
     if (p.lay || p.feet) thermalPlate(mat);
+    // The living painting (18n): each plate boils in its kind's measure.
+    if (def.boil) {
+      const setting = p.kind === 'water' ? BOIL.boat : p.kind ? BOIL.figure : p.id === 'trees' ? BOIL.trees : p.id === 'far-bank' ? BOIL.water : p.id === 'near-bank' ? BOIL.ground : p.id === 'canopy' ? BOIL.shore : p.id === 'sky' ? BOIL.sky : null;
+      if (setting) installBoil(mat, setting, info.texel, info.height, (boiled++ * 2.399) % 6.283);
+    }
   });
   // The time lapse's spots (18k): where each kind's elements stand in the
   // painting, so a visitor arriving takes a place the painting had.
@@ -2287,6 +2294,12 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // The painting's plates: each for its window of the year, dimmed
     // with the night, its seasons cross-faded as the drawn plates are,
     // and what is only real from the seat going as the eye rises.
+    // The painting's pulse: the boil's clock, stepped to its rate.
+    if (def.boil) {
+      boilClock.uBoilTc.value = elapsed;
+      boilClock.uBoilT.value = Math.floor(elapsed * def.boil.fps) / def.boil.fps;
+      boilClock.uBoilOn.value = reducedMotion ? 0 : def.boil.amount;
+    }
     // The world's clock for the time lapse: the holder's span run by its
     // scroll, or the year's own; a holder with no span has no lapse.
     const lapse = holder ? (holder.seconds ? holder.lapse : undefined) : def.lapse;
