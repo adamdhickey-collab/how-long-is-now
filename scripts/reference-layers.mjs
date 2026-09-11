@@ -333,3 +333,32 @@ export const frameLayers = [
   frameArt('turf-winter', '1536x1024', TURF_STYLE, 'the lawn under snow in mid January: an even cover of snow painted in dots of white, pale blue, violet and cream, dimpled and uneven, with a few dry grass blades and seed heads standing through it here and there'),
   frameArt('turf-spring', '1536x1024', TURF_STYLE, 'the lawn in late April: fresh new grass in bright yellow-green and green, thin in places with a little bare brown earth showing, and very small white and yellow flowers scattered thinly and wide apart'),
 ];
+
+
+/**
+ * The elm allée (18x): the two clocks restaged. The ten minutes used to
+ * be walked down a fluorescent office corridor, which read as a
+ * different project spliced into the park. The park has the same shape
+ * in it twice — the path along the shore, and the allée of elms, which
+ * is a corridor made of trunks — so the corridor is now that: a gravel
+ * path underfoot, trunks for walls, the canopy for a ceiling, the lake
+ * glimpsed between the trunks on one side. The argument is untouched;
+ * only the building is gone.
+ */
+const alleeArt = (id, size, preamble, prompt) => ({ id, dir: 'scene-08/allee', size, preamble, prompt });
+
+export const alleeLayers = [
+  alleeArt('allee-path', '1024x1024', TURF_STYLE, 'a straight gravel park path running from the bottom of the frame to the top, exactly down the middle and a quarter of the frame wide, its edges soft, with mown late-summer grass either side of it out to the frame\'s edges; the path and the grass must continue unchanged off the top and the bottom so the picture tiles end to end'),
+  alleeArt('allee-canopy', '1536x1024', FRAME_STYLE, 'the underside of a great elm\'s canopy seen from directly below on a bright afternoon in late August, filling the whole frame: heavy branches crossing it at angles, dense clusters of green and yellow-green leaves along them with the light coming through, and open gaps of nothing between the clusters left completely white; the branches and leaves running off every edge of the frame'),
+  alleeArt('allee-thicket', '1536x1024', FRAME_STYLE, 'a dense thicket of park shrubs and young trees closing off the way ahead, seen front-on from a few paces back, filling the frame from side to side and from the bottom to two thirds of the way up, leaves of every green with a little gold in them, its top edge ragged with leaf tips, and above it the frame left completely empty and white'),
+  alleeArt('allee-grass', '1024x1024', TURF_STYLE, 'mown park grass in late August seen from standing height, filling the whole frame evenly: a close even mat of small dots of yellow-green, deep green and violet-grey with a few paler seed heads, no blades drawn singly, no path, no shadow, no flowers; the grass continuing unchanged off all four edges so the picture tiles end to end and side to side'),
+  alleeArt('allee-sky', '1536x1024', FRAME_STYLE, 'nothing but the sky on a bright clear afternoon in late August, seen looking out across a park: deep warm blue along the top of the frame softening steadily to a pale luminous blue-white along the bottom, with three or four small flat-bottomed summer clouds low in it, well apart; no land, no trees, no birds, no horizon line, no sun'),
+  // v3: whole elms with nothing painted at the foot. v2's trees came
+  // standing in their own tuft of bright grass, which read as a pale
+  // saucer under every trunk once they were stood on the allée's lawn.
+  alleeArt('allee-tree-a', '1024x1536', FRAME_STYLE, 'one whole elm tree standing alone in a park on a bright afternoon in late August, seen from a few paces away: its straight trunk rises from a root flare that meets the very bottom edge of the frame, about a twelfth of the frame wide, its bark painted in dots of violet, rust, olive and grey with the light down its left side, and at two thirds of the way up it forks into boughs that spread wide and carry masses of green and yellow-green leaves out through the top corners of the frame, the leaves in loose clusters with the light through them and gaps between them; no ground, no grass, no plants, no shadow anywhere near its foot, and the rest of the frame completely empty and white'),
+  alleeArt('allee-tree-b', '1024x1536', FRAME_STYLE, 'one whole elm tree standing alone in a park on a bright afternoon in late August, seen from a few paces away: its trunk leans very slightly and rises from a root flare that meets the very bottom edge of the frame, about a fourteenth of the frame wide, its bark painted in dots of violet, rust, olive and grey with the light down its right side, one low bough leaving it halfway up and going out of the left edge of the frame, and near the top it opens into a spreading crown of green and gold-green leaves that goes out through the top of the frame, the leaves in loose clusters with gaps between them; no ground, no grass, no plants, no shadow anywhere near its foot, and the rest of the frame completely empty and white'),
+  alleeArt('allee-tree-c', '1024x1536', FRAME_STYLE, 'one whole elm tree standing alone in a park on a bright afternoon in late August, seen from a few paces away: a heavy old trunk rising from a broad root flare that meets the very bottom edge of the frame, about a tenth of the frame wide, its bark painted in dots of violet, rust, olive and grey and deeply furrowed, dividing at half its height into three boughs that carry a wide crown of green, yellow-green and a little gold leaf out through the top and both upper sides of the frame, the leaves in loose clusters with sky gaps between them; no ground, no grass, no plants, no shadow anywhere near its foot, and the rest of the frame completely empty and white'),
+];
+
+

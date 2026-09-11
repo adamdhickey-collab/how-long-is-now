@@ -495,29 +495,78 @@ export interface Figure {
 }
 
 /**
- * Scene 08's corridor. Both clocks run down the same one — a long
- * institutional corridor, doors receding, a light in the ceiling every
- * few bays — because the point is that the ten minutes are identical and
- * only the time is different. World units; the camera stands at eye
- * height, halfway across, and looks down it.
+ * Scene 08's walk. Both clocks go down the same one — the elm allée
+ * along the lake's shore, an elm every bay on either hand with its
+ * crown closed overhead, the water glimpsed between the trunks — because the
+ * point is that the ten minutes are identical and only the time is
+ * different. (Until 18x this was a fluorescent office corridor, which
+ * read as a different piece spliced into the park; the allée is the same
+ * shape, and it is the park's.) World units; the camera stands at eye
+ * height on the path and looks along it.
  */
 export interface Corridor {
+  /** How far apart the two ranks of trunks stand. */
   width: number;
+  /** How high the crowns close over the path: what is hung in the
+   *  allée — the motes, the fragments — is hung within it. */
   height: number;
-  /** How far it runs before the fog takes it: as good as endless. */
+  /** How far it runs before the haze takes it: as good as endless. */
   depth: number;
-  /** Distance between doors, and between ceiling lights. */
+  /** Distance between trunks, and between one crown's shade and the next. */
   bay: number;
   lamp: number;
+  /** The afternoon's own colours, for the sky above the allée and for
+   *  the ground until its drawing has loaded. */
+  sky: { zenith: number; horizon: number; grass: number; gravel: number; water: number };
+  /** How big each drawing stands in the world. `tile` is the width of
+   *  one square of path-and-verge, its path down the middle, laid over a
+   *  lawn of `grass` squares, which is lit through a `dapple` square of
+   *  the painting's own light; `tree` and
+   *  `thicket` are heights; `brush` scatters the
+   *  thicket drawing over the lawn between `from` and `to` out from the
+   *  path, one every `every`; `shore` is the far treeline, `at` across
+   *  the water and `height` tall, with `waterRows` of its foot — the far
+   *  water — cut away where it stands behind the lawn instead; `water`
+   *  begins `from` out from the path and tiles every `tile`. */
+  plates: {
+    tile: number;
+    grass: number;
+    dapple: number;
+    tree: number;
+    thicket: number;
+    brush: { height: number; from: number; to: number; every: number };
+    shore: { at: number; height: number; waterRows: number };
+    water: { from: number; tile: number };
+    /** How far the standing plates are set into the ground, so the rows
+     *  taken off their feet by the cutter are under the grass. */
+    sink: number;
+    /** How far above the horizon the painted sky reaches, in world
+     *  units at the card's distance; above and below it, its own top
+     *  and bottom rows hold. */
+    sky: number;
+  };
   /**
-   * Real imagery, when the corridor has it: one bay of each surface,
-   * seen flat, under public/plates/. The wall bay is `bay` wide by
-   * `height` tall with its door in the middle; the ceiling and floor
-   * bays are `lamp` long by `width` across. Each tiles along the
-   * corridor, mirrored at every join. Until all three have loaded the
-   * procedural stand-in holds the frame.
+   * The drawings, under public/plates/. `path` is the square tile of path
+   * and verge, laid over the square `grass` tile that is the lawn — which is the
+   * sunlit grading of one drawing, `grassShade` the shaded one, mixed
+   * between by `dapple`, the light the painting has on its own lawn; the
+   * `trees` are keyed cutouts standing on their feet, one drawing per
+   * rank, taken in turn; `thicket` closes the waiting clock's stub and is scattered
+   * as the brush; `shore` is the painting's own far treeline; `water`
+   * is a tile of the lake; `sky` is the afternoon over all of it. Each is shown the moment it has arrived, so
+   * the allée fills in rather than waiting on the slowest.
    */
-  images?: { wall: string; ceiling: string; floor: string };
+  images?: {
+    path: string;
+    grass: string;
+    grassShade: string;
+    dapple: string;
+    trees: string[];
+    thicket: string;
+    shore: string;
+    water: string;
+    sky: string;
+  };
 }
 
 /**
@@ -2492,11 +2541,11 @@ export const scenes: Scene[] = [
     label: '10 MINUTES',
     lengthVh: 240,
     describe:
-      'Two views of one fluorescent-lit corridor, side by side, or one above the other on a phone. Labelled WHILE IT WAS HAPPENING. The waiting clock\u2019s corridor barely advances while a seconds dial counts the ten minutes; the absorbed clock\u2019s corridor moves quickly, with motes in the air and three readings called out: a lamp, a hum, the air.',
+      'Two views of one walk down an avenue of elms beside the lake, side by side, or one above the other on a phone. Labelled WHILE IT WAS HAPPENING. The waiting clock\u2019s avenue barely advances while a seconds dial counts the ten minutes; the absorbed clock\u2019s races, with seeds adrift in the air and three readings called out: the light, the water, the breeze.',
     describeAt: [
       {
         from: 0.5,
-        text: 'Labelled LOOKING BACK, the relationship reverses. The waiting corridor is now a stub one bay long with a wall across it. The absorbed corridor runs on and on, hung with dozens of remembered fragments.',
+        text: 'Labelled LOOKING BACK, the relationship reverses. The waiting avenue is now a few paces long with a thicket across it. The absorbed avenue runs on and on, hung with dozens of remembered fragments.',
       },
     ],
     caption: 'Same ten minutes. Different time.',
@@ -2504,21 +2553,46 @@ export const scenes: Scene[] = [
     timeRate: 600,
     // The same ten minutes, walked twice. While it is happening the
     // waiting clock covers a bay and a half in the whole scene's first
-    // half, the absorbed one thirty. Looking back, the waiting corridor
-    // is a stub one bay long with a wall across it; the absorbed one runs
+    // half, the absorbed one thirty. Looking back, the waiting walk is a
+    // stub one bay long with a thicket across it; the absorbed one runs
     // twenty bays hung with three dozen fragments. The turn is the exact
     // middle.
     twoClocks: {
       corridor: {
-        width: 2.6,
-        height: 2.7,
+        width: 7.6,
+        height: 9,
         depth: 160,
-        bay: 4,
-        lamp: 4,
+        bay: 6.2,
+        lamp: 6.2,
+        // The 4:17 afternoon, read off the painting itself: its zenith,
+        // its haze at the horizon, its lawn, its path and its water.
+        sky: { zenith: 0x83a9cf, horizon: 0xc1d8e7, grass: 0x64785c, gravel: 0xd8cbb0, water: 0xa0bed5 },
+        plates: {
+          tile: 6.5,
+          grass: 5,
+          dapple: 26,
+          tree: 10.5,
+          thicket: 3.6,
+          brush: { height: 3.2, from: 9, to: 30, every: 8 },
+          shore: { at: 46, height: 7.5, waterRows: 0.08 },
+          water: { from: 8.5, tile: 6 },
+          sink: 0.22,
+          sky: 165,
+        },
         images: {
-          wall: 'plates/scene-08/corridor-wall.webp',
-          ceiling: 'plates/scene-08/corridor-ceiling.webp',
-          floor: 'plates/scene-08/corridor-floor.webp',
+          path: 'plates/scene-08/allee-path.webp',
+          grass: 'plates/scene-08/allee-grass.webp',
+          grassShade: 'plates/scene-08/allee-grass-shade.webp',
+          dapple: 'plates/scene-08/allee-dapple.webp',
+          trees: [
+            'plates/scene-08/allee-tree-a.webp',
+            'plates/scene-08/allee-tree-b.webp',
+            'plates/scene-08/allee-tree-c.webp',
+          ],
+          thicket: 'plates/scene-08/allee-thicket.webp',
+          shore: 'plates/scene-08/allee-shore.webp',
+          water: 'plates/scene-08/allee-water.webp',
+          sky: 'plates/scene-08/allee-sky.webp',
         },
       },
       turn: 0.5,
@@ -2532,13 +2606,13 @@ export const scenes: Scene[] = [
         waiting: 'WAITING FOR IT TO END',
         absorbed: 'ABSORBED',
       },
-      waiting: { livedBays: 1.5, rememberedBays: 1 },
+      waiting: { livedBays: 1.5, rememberedBays: 1.4 },
       // The absorbed clock's layers come on one after another through
       // the lived half and all go off as the turn begins to dip. Kept
       // deliberately few: the contrast with the waiting clock has to be
       // felt, not read, so the absorbed view is motion, depth and three
       // things noticed — one for the eye, one for the ear, one for the
-      // skin — over a corridor that keeps its own colour. (The thermal
+      // skin — over an afternoon that keeps its own colour. (The thermal
       // pass and the seven-reading survey were tried and withdrawn
       // 2026-09-09: they made the viewer read at the moment they should
       // be feeling.)
@@ -2553,9 +2627,9 @@ export const scenes: Scene[] = [
             from: 0.14,
             to: 0.46,
             callouts: [
-              { text: 'LAMP · 2 × 32 W · 4100 K', at: [0.5, 0.14], from: 0.14, to: 0.46 },
-              { text: 'HUM · 120 HZ · 38 DB', at: [0.74, 0.3], from: 0.22, to: 0.46 },
-              { text: 'AIR · 0.2 M/S · TOWARD YOU · 21 °C', at: [0.42, 0.56], from: 0.3, to: 0.46 },
+              { text: 'LIGHT · THROUGH THE LEAVES · 4700 K', at: [0.46, 0.16], from: 0.14, to: 0.46 },
+              { text: 'WATER · ON THE SHORE · EVERY 4 S', at: [0.78, 0.52], from: 0.22, to: 0.46 },
+              { text: 'BREEZE · 0.4 M/S · OFF THE LAKE · 21 °C', at: [0.3, 0.66], from: 0.3, to: 0.46 },
             ],
           },
         ],

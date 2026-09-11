@@ -1639,3 +1639,113 @@ blue, which lets the right-hand trunks run down to the lawn instead of
 stopping above a sitter's shoulder. The seat frame is unchanged: at the
 seat the elms sit on August's own picture with the mix at zero, and
 every plate beyond the frame is at nothing.
+
+### 18x · the two clocks walk the elm allée
+
+Adam, on the direction: the beginning is beautiful and then the piece
+puts you somewhere else — corridors, hallways — that has nothing to do
+with the park. He asked how to tie them together, and whether the ten
+minutes could be walked around the lake instead. They can, and the park
+already had the shape in it twice: the path along the shore, and the
+avenue of elms, which is a corridor made of trunks. So the corridor is
+gone and the argument is untouched. Two views of one walk, side by side;
+the waiting clock covering a bay and a half while a seconds dial counts
+the ten minutes, the absorbed one covering thirty; and at the turn, the
+waiting walk collapsed to a few paces with brush grown across it while
+the absorbed one runs on, hung with what it broke into.
+
+Everything in it is drawn art at a declared size, not a shader's idea of
+a place. **The elms**: three whole trees, keyed, standing on their feet
+and turning to face whichever camera is looking, one every 6.2 m on each
+hand, the two ranks stepping through the three drawings out of phase so
+no bay repeats. Painted twice before they were right — the first pair
+were bare trunks that stopped dead at the top of the frame, and there is
+no canopy plate that hides a row of cut-off tops; a tree has to leave
+the frame as leaves. **The ground**: a path tile down the middle over a
+lawn tile that goes both ways, both graded to the painting itself — the
+lawn to the year's own near lawn, the gravel to the path in it — so the
+allée is walked on the year's ground. **The lake**: the painting's own
+water, one band of it flattened row by row so that mirror-stacking it
+into a tile leaves no stripe, and the painting's own far shore standing
+across it with the bandshell in it. **The sky**: painted, and carried
+ahead of the walker on a card that reaches well past the frame.
+
+The defects worth recording, since each was the same kind of mistake —
+a shader standing in for a drawing:
+
+- A **canopy plane** overhead, tiled, was tried and dropped. Seen along
+  the walk it is nearly edge-on, and it compresses into a dark band with
+  its own hard edges at the horizon. The trees' own crowns close the top
+  of the frame; the strip of sky down the middle of an allée is what an
+  allée looks like.
+- **Grass carried out from the path tile** by mirroring a column of it
+  ran as stripes to the vanishing point. A lawn is its own tile.
+- **Grading a tile in two zones by column** left a band of neither
+  colour down each verge. Which grading a pixel takes is decided by the
+  drawing's own lightness — gravel is the pale part wherever its edge
+  wanders.
+- **The sky card's paper margin**, mirrored, put a white column in the
+  sky at every join. Cut to the paint, and judged on the deep blue at
+  the top of the frame: a sky is nearly paper-pale along its own horizon
+  and a whole-column test cannot tell those apart.
+- **Trees drawn standing in their own tuft of grass** read as a saucer
+  of light under every trunk. Repainted with nothing at the foot, and
+  the last rows taken off anyway, since the key leaves a fringe there.
+- A standing plate's vertex shader **ignored its mesh's own place**, so
+  the stand of brush that closes the waiting walk stood at the origin,
+  behind the camera, and the stub had nothing across it.
+- The **eighteen fragments** were a cup of coffee, a phone face down, a
+  ring of keys — the building's things. They are the afternoon's now: a
+  leaf held to the light, a straw hat, a duck, a kite, a piece of bark.
+
+Rebuilt at 1280 × 720 through a readback rather than the pane, which
+composites nothing while it is hidden and gives a black frame that looks
+like a bug in the scene.
+
+### 18x2 · the allée, looked at close
+
+Adam: keep refining the imagery. Judged from 1600 × 900 readbacks rather
+than the pane, which composites nothing while it is hidden.
+
+**The elms were stamped out, not painted out.** The white-paper key is a
+flood fill — a pixel is paper or it is not — and along a crown of leaves
+that steps in eight-pixel blocks and leaves a rim of paper on every leaf.
+They are cut by a matte now: a pixel's alpha is how far it stands from
+the paper, in tone or in colour, whichever is further, eased over a few
+points; where a pixel is part paper the paper is taken back out of its
+colour, so nothing carries a white halo into the world; and the frame is
+trimmed to where the subject is solid, since a box drawn round every
+faint speck of paper grain is the whole frame. The renderer keeps that
+softness: the plates hand their alpha to the multisampler as coverage
+instead of discarding on a threshold, so a leaf ends where it was
+painted and the elms still need no sorting against one another.
+
+**The lawn had no light on it.** The painting's own lawn is a blue-green
+ground with patches of strong yellow sun lying across it, and a single
+grading to the average of that gives neither. One drawing of grass is
+now graded twice — to the top tenth of the painting's lawn and to the
+bottom quarter — and mixed between by a map of where the sun falls,
+taken from the same painting: not its luminance but its yellow over its
+blue, read small so the dots average away and only the patches are left,
+laid at twenty-six metres so no bay repeats it. The same light crosses
+the path, which also wanders a little as it goes, because nothing in a
+park runs true for a hundred and sixty metres. The shore wanders too:
+the lake had been a kerb beside a road.
+
+Three things were a picket fence along the horizon, all of them the same
+mistake — a picture held past where it had anything to say:
+
+- The **sky card's bottom row**, clamped below the horizon and stretched,
+  turned its own grain into vertical stripes across the skyline. It
+  holds the haze there now, which is what the ground dissolves into.
+- The **far shore**, a wall running the whole length of the walk, folds
+  into a sliver at the vanishing point. It is given a distance to end
+  at, and dissolves into the haze before it gets there.
+- The **ground** stopped where the walk stops, drawing a line across the
+  frame. It runs a hundred and forty metres past it, into the haze.
+
+Also: the elms are set a little into the grass, so the rows the cutter
+takes off their feet are under it rather than a flat cut floating above
+it; every plate takes all the anisotropy the card will give; and the
+haze is a third deeper, so the far end of the walk goes before it can
+alias.

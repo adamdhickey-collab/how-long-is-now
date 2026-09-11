@@ -411,12 +411,17 @@ opening.then(() => {
 
 // A dev-only handle: park the piece at an exact point and render one frame,
 // so screenshot tooling can look at a scene without waiting on the
-// animation loop. Stripped from production builds.
+// animation loop. `renderer` comes with it because the browser pane
+// composites nothing while it is hidden and hands back a black frame
+// (18x): the only readback that returns real pixels is gl.readPixels on
+// the drawing buffer, in the same task as the step that filled it, at a
+// size this handle can set. Stripped from production builds.
 let stepping = false;
 if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__hlin = {
     scene,
     camera,
+    renderer,
     warmed: () => yearWarm,
     step(at: number, seconds = 0) {
       stepping = true;

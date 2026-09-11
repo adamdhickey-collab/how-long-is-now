@@ -16,6 +16,7 @@
  *   node scripts/generate.mjs --dry           print what would be sent
  *   node scripts/generate.mjs --ref <file>    another reference image
  *   node scripts/generate.mjs --quality medium
+ *   node scripts/generate.mjs --allee           the elm allée the two clocks walk
  *   node scripts/generate.mjs --frame           the boughs, trunks and turf beyond the
  *                                               painting's frame, for the pull-back
  *   node scripts/generate.mjs --people          new people for every season, in the
@@ -28,7 +29,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers, memoryLayers } from './park-layers.mjs';
-import { layers as takenApart, peopleLayers, frameLayers } from './reference-layers.mjs';
+import { layers as takenApart, peopleLayers, frameLayers, alleeLayers } from './reference-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -51,6 +52,7 @@ const memory = args.includes('--memory');
 const apart = args.includes('--taken-apart');
 const people = args.includes('--people');
 const frame = args.includes('--frame');
+const allee = args.includes('--allee');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -188,7 +190,7 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const pool = frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
+  const pool = allee ? alleeLayers : frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
   const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
     console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);

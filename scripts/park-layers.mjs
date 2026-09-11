@@ -165,47 +165,27 @@ export const crowdLayers = [
 ];
 
 /**
- * Scene 08's corridor in the same dots (LEDGER session 11): one bay of
- * each surface, flat and orthographic, filling its frame and continuing
- * into itself at the edges, since the corridor tiles them mirrored; and
- * the absorbed ten minutes' eighteen fragments on white, as before. Run
- * with `--corridor`; they land under assets/raw/scene-08.
+ * Scene 08's eighteen fragments on white: what the absorbed ten minutes
+ * break into, looking back. As of 18x these are pieces of the park's own
+ * afternoon — the walk moved out of the office corridor and onto the elm
+ * allée, and a remembered cup of coffee belongs to the building that is
+ * gone. (The corridor's three surface bays were declared here until
+ * then; they are no longer drawn by anything.) Run with `--corridor`;
+ * they land under assets/raw/scene-08.
  */
-const TILE_STYLE = `The attached image is the style reference: pointillist, small dots of pure colour. Keep exactly its dot size and its way of building every surface from dots, with its palette taken only as far as the corridor's own materials allow. The image you make is one flat, orthographic tile that fills the frame edge to edge with no white, no border, no vignette and no perspective, and whose left edge continues into its right edge.`;
 
 export const corridorLayers = [
-  {
-    id: 'corridor-wall',
-    dir: 'scene-08',
-    size: LANDSCAPE,
-    preamble: TILE_STYLE,
-    prompt: `ONE BAY of a long institutional corridor's wall seen exactly front-on: a single closed oak-veneer door centred, with a narrow wired-glass pane and a small brass number plate; the wall painted in two tones, cream above and sage green below a dado band, with a dark skirting along the foot, all running the full width; flat, even fluorescent light. Nothing but the wall, the door and the paint: no ceiling, no floor, no people, no text.`,
-  },
-  {
-    id: 'corridor-ceiling',
-    dir: 'scene-08',
-    size: LANDSCAPE,
-    preamble: TILE_STYLE,
-    prompt: `ONE BAY of the corridor's ceiling seen from directly below: a grid of acoustic tiles in pale off-white, near-white grey with a fine speckle, and thin pale-grey T-bar joins, and exactly one recessed rectangular fluorescent panel centred, glowing an even warm white. Nothing brown, nothing dark: an institutional ceiling. Flat and orthographic, filling the frame.`,
-  },
-  {
-    id: 'corridor-floor',
-    dir: 'scene-08',
-    size: LANDSCAPE,
-    preamble: TILE_STYLE,
-    prompt: `ONE BAY of the corridor's floor seen from directly above: large square speckled terrazzo tiles in greys and warm stone flecks, thin grout lines, matte, evenly lit with no reflections. Flat and orthographic, filling the frame.`,
-  },
   {
     id: 'fragments-a',
     dir: 'scene-08',
     size: LANDSCAPE,
-    prompt: `Nine separate small objects in a 3 by 3 grid on flat pure white, each one thing seen close and alone as a cutout, in muted warm colours, with no background of any kind in any cell — no tinted panel, no wall, no sky, nothing beneath or behind the object, only the flat pure white — and white between the cells, no grid lines: a hand on an open page; a cup of coffee with steam; a window with rain on it; a face turned away; a shoe on a step; a pencil mid-line on paper; a phone face down; a leaf on a desk; a clock face with no hands.`,
+    prompt: `Nine separate small objects in a 3 by 3 grid on flat pure white, each one thing seen close and alone as a cutout, in the bright colours of a summer afternoon in a park, with no background of any kind in any cell — no tinted panel, no grass, no sky, nothing beneath or behind the object, only the flat pure white — and white between the cells, no grid lines: one elm leaf held up against the light; a straw hat lying on its brim; a dog's head turned to look; the white sail of a small boat; a hand trailing in water; a bicycle's front wheel; a green apple with one bite gone; a paper cup of lemonade; a pair of sandals side by side.`,
   },
   {
     id: 'fragments-b',
     dir: 'scene-08',
     size: LANDSCAPE,
-    prompt: `Nine separate small pictures in a 3 by 3 grid on flat pure white, each one thing seen close and alone, in muted warm colours, with nothing beneath or behind it and white between the cells, no grid lines: two hands around a warm mug; an open doorway with light coming through; a ring of keys; a small bird on a windowsill; a wristwatch with its strap undone; a folded note; reading glasses on a closed book; a potted plant on a sill; a torn ticket stub.`,
+    prompt: `Nine separate small pictures in a 3 by 3 grid on flat pure white, each one thing seen close and alone, in the bright colours of a summer afternoon in a park, with nothing beneath or behind it and white between the cells, no grid lines: a duck on the water seen from the shore; a park bench's weathered slats; a handful of clover and one dandelion; a book left open face down; a small red kite high and far off; a dragonfly at rest; a folded picnic blanket's corner; a child's chalk mark on a path; a piece of elm bark.`,
   },
 ];
 

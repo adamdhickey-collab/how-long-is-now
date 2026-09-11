@@ -323,11 +323,67 @@ const SCENES = {
     },
   ],
   'scene-08': [
-    { id: 'corridor-wall', raw: 'corridor-wall-v2.png', recipe: 'corridor', surface: 'wall' },
-    { id: 'corridor-ceiling', raw: 'corridor-ceiling-v3.png', recipe: 'corridor', surface: 'ceiling' },
-    { id: 'corridor-floor', raw: 'corridor-floor-v2.png', recipe: 'corridor', surface: 'floor' },
+    // The corridor's three surface bays were cut here until 18x, when
+    // the two clocks moved onto the elm allée; nothing draws them now.
     // Drawn on white now, so keyed; a fragment is one thing alone.
-    { id: 'fragments', raw: ['fragments-a-v3.png', 'fragments-b-v2.png'], recipe: 'fragments', key: true },
+    { id: 'fragments', raw: ['fragments-a-v4.png', 'fragments-b-v3.png'], recipe: 'fragments', key: true },
+    // The elm allée the two clocks walk (18x): a tile of gravel path with
+    // grass either side, two whole elms,
+    // the thicket that closes the waiting clock's stub, the afternoon's
+    // sky — and, from the year's own painting, the lake and the far
+    // shore, so both scenes look at one park.
+    {
+      id: 'allee-path',
+      raw: 'allee/allee-path-v5.png',
+      recipe: 'graded',
+      match: { file: 'assets/raw/scene-04/ref/summer-quiet.png', box: { left: 1600, top: 1250, width: 800, height: 150 } },
+      matchMiddle: { file: 'assets/raw/scene-04/ref/summer-quiet.png', box: { left: 1430, top: 1000, width: 220, height: 35 } },
+    },
+    {
+      id: 'allee-grass',
+      raw: 'allee/allee-grass-v2.png',
+      recipe: 'graded',
+      match: { file: 'assets/raw/scene-04/ref/summer-quiet.png', box: { left: 900, top: 1150, width: 1400, height: 300 }, pick: 'light' },
+    },
+    {
+      id: 'allee-grass-shade',
+      raw: 'allee/allee-grass-v2.png',
+      recipe: 'graded',
+      match: { file: 'assets/raw/scene-04/ref/summer-quiet.png', box: { left: 900, top: 1150, width: 1400, height: 300 }, pick: 'dark' },
+    },
+    {
+      id: 'allee-dapple',
+      raw: '../scene-04/ref/summer-quiet.png',
+      recipe: 'dapple',
+      band: { left: 900, top: 1150, width: 1400, height: 300 },
+      tile: 512,
+    },
+    // The sky is left as it was painted: graded to the painting's own
+    // sky (tried 18x) it turned its clouds yellow — a quantile match
+    // wants two things of the same kind, and a lawn's range is not a
+    // sky's. Looking up between elms the blue is deeper anyway.
+    { id: 'allee-sky', raw: 'allee/allee-sky-v1.png', recipe: 'trimmed', bite: 60, columnsFrom: 0.35 },
+    // Trimmed to what is drawn, and keyed strictly — an elm is opaque
+    // paint on paper, so nothing in it reads as a pocket, and the scene
+    // sizes each plate from the drawing's own proportions.
+    { id: 'allee-thicket', raw: 'allee/allee-thicket-v5.png', recipe: 'foliage', cropBottom: 0.02 },
+    { id: 'allee-tree-a', raw: 'allee/allee-tree-a-v4.png', recipe: 'foliage', cropBottom: 0.012 },
+    { id: 'allee-tree-b', raw: 'allee/allee-tree-b-v4.png', recipe: 'foliage', cropBottom: 0.012 },
+    { id: 'allee-tree-c', raw: 'allee/allee-tree-c-v1.png', recipe: 'foliage', cropBottom: 0.012 },
+    {
+      id: 'allee-water',
+      raw: '../scene-04/ref/summer-quiet.png',
+      recipe: 'lake',
+      band: { left: 1100, top: 840, width: 600, height: 90 },
+      tile: 512,
+    },
+    {
+      id: 'allee-shore',
+      raw: '../scene-04/ref/summer-quiet.png',
+      recipe: 'shore',
+      band: { left: 950, top: 600, width: 1150, height: 200 },
+      matte: 'public/plates/scene-04/ref/far-shore.webp',
+    },
   ],
 };
 
@@ -1027,6 +1083,148 @@ async function plain(file) {
 }
 
 /**
+ * Where the paint stops (18x): a drawing whose subject fills the frame
+ * still comes back with a hand's width of paper around it, uneven side
+ * to side, and a card that stands for the sky cannot have paper at its
+ * edges. The box is what is not paper, bitten a little further in.
+ */
+async function paintedBox(file, bite = 6, colRows = 1) {
+  const { data, info } = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h, channels: c } = info;
+  const painted = (x, y) => {
+    const o = (y * w + x) * c;
+    return Math.min(data[o], data[o + 1], data[o + 2]) < 244;
+  };
+  // A row or column counts as paint once a twentieth of it is painted.
+  const rowPainted = (y) => {
+    let n = 0;
+    for (let x = 0; x < w; x++) if (painted(x, y)) n++;
+    return n > w / 20;
+  };
+  // Columns are judged on the top of the frame only where asked: a sky
+  // is nearly paper-pale along its own horizon, and a whole-column test
+  // cannot tell that from the paper beside it.
+  const rows = Math.max(1, Math.round(h * colRows));
+  const colPainted = (x) => {
+    let n = 0;
+    for (let y = 0; y < rows; y++) if (painted(x, y)) n++;
+    return n > rows / 20;
+  };
+  let top = 0;
+  while (top < h - 1 && !rowPainted(top)) top++;
+  let bottom = h - 1;
+  while (bottom > top && !rowPainted(bottom)) bottom--;
+  let left = 0;
+  while (left < w - 1 && !colPainted(left)) left++;
+  let right = w - 1;
+  while (right > left && !colPainted(right)) right--;
+  return {
+    left: Math.min(left + bite, w - 1),
+    top: Math.min(top + bite, h - 1),
+    width: Math.max(1, right - left + 1 - bite * 2),
+    height: Math.max(1, bottom - top + 1 - bite * 2),
+  };
+}
+
+/**
+ * The lake, as a tile (18x): a band of open water lifted straight out of
+ * the painting, its row-to-row tone flattened to the band's own mean so
+ * that mirror-stacking it into a square leaves no stripe, then stacked.
+ * Scene 08's allée reads its water off this, so the lake the two clocks
+ * walk beside is the lake the year was watched over.
+ */
+async function lakeTile(file, _ext, p) {
+  const { left, top, width: W, height: H } = p.band;
+  const { data, info } = await sharp(file).extract({ left, top, width: W, height: H }).raw().toBuffer({ resolveWithObject: true });
+  const c = info.channels;
+  const mean = [0, 0, 0];
+  for (let i = 0; i < W * H; i++) for (let k = 0; k < 3; k++) mean[k] += data[i * c + k] / (W * H);
+  const flat = Buffer.alloc(W * H * 3);
+  for (let y = 0; y < H; y++) {
+    const rm = [0, 0, 0];
+    for (let x = 0; x < W; x++) for (let k = 0; k < 3; k++) rm[k] += data[(y * W + x) * c + k] / W;
+    for (let x = 0; x < W; x++) {
+      for (let k = 0; k < 3; k++) {
+        const v = Math.round((data[(y * W + x) * c + k] * mean[k]) / rm[k]);
+        flat[(y * W + x) * 3 + k] = Math.max(0, Math.min(255, v));
+      }
+    }
+  }
+  const band = await sharp(flat, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer();
+  const flip = await sharp(band).flip().png().toBuffer();
+  const rows = Math.ceil(W / H) + 1;
+  const comps = [];
+  for (let i = 0; i < rows; i++) comps.push({ input: i % 2 ? flip : band, left: 0, top: i * H });
+  const stacked = await sharp({ create: { width: W, height: rows * H, channels: 3, background: '#000' } })
+    .composite(comps)
+    .png()
+    .toBuffer();
+  console.log(`  ${W} × ${H} of lake, mirrored into a square`);
+  return sharp(stacked).extract({ left: 0, top: 0, width: W, height: W }).resize(p.tile, p.tile);
+}
+
+/**
+ * The far shore, as a strip to stand across the water (18x): the same
+ * crowns the year looks at, taken from a window of the painting with no
+ * near elm in it, wearing the far-shore matte eroded a little and
+ * softened — the matte's own edge carries a pale rim of sky, and at this
+ * size a rim reads as a halo.
+ */
+async function shoreStrip(file, _ext, p) {
+  const { left, top, width: W, height: H } = p.band;
+  const rgb = await sharp(file).extract({ left, top, width: W, height: H }).raw().toBuffer({ resolveWithObject: true });
+  const matte = await sharp(p.matte).extract({ left, top, width: W, height: H }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const c = rgb.info.channels;
+  const m = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) m[i] = matte.data[i * 4 + 3] / 255;
+  const er = new Float32Array(W * H);
+  const R = p.erode ?? 3;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let lo = 1;
+      for (let dy = -R; dy <= R; dy++) {
+        for (let dx = -R; dx <= R; dx++) {
+          const xx = Math.min(W - 1, Math.max(0, x + dx));
+          const yy = Math.min(H - 1, Math.max(0, y + dy));
+          lo = Math.min(lo, m[yy * W + xx]);
+        }
+      }
+      er[y * W + x] = lo;
+    }
+  }
+  let soft = er;
+  for (let pass = 0; pass < (p.soften ?? 3); pass++) {
+    const nx = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            const yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+            sum += soft[yy * W + xx];
+            n++;
+          }
+        }
+        nx[y * W + x] = sum / n;
+      }
+    }
+    soft = nx;
+  }
+  const out = Buffer.alloc(W * H * 4);
+  for (let i = 0; i < W * H; i++) {
+    out[i * 4] = rgb.data[i * c];
+    out[i * 4 + 1] = rgb.data[i * c + 1];
+    out[i * 4 + 2] = rgb.data[i * c + 2];
+    out[i * 4 + 3] = Math.round(255 * Math.min(1, soft[i]));
+  }
+  console.log(`  far shore ${W} × ${H}, matte eroded ${R} and softened`);
+  return sharp(out, { raw: { width: W, height: H, channels: 4 } });
+}
+
+/**
  * The turf at our feet (18t): grass painted as its own element, graded
  * to the painting's own near lawn — its per-channel distribution matched
  * to the ground plate's nearest rows, so it is the same grass in the
@@ -1067,6 +1265,264 @@ async function turf(file, _ext, p = {}) {
     for (let x = 0; x < w; x++) out[(y * w + x) * 4 + 3] = alpha;
   }
   return sharp(out, { raw: { width: w, height: h, channels: 4 } });
+}
+
+/**
+ * A drawn tile graded to the painting (18x): the same per-channel
+ * quantile mapping `turf` uses, but for a tile the renderer repeats, so
+ * with no far fade — and, where a tile carries two things at once, one
+ * grading either side of the join. Scene 08's path tile is graded twice:
+ * its gravel to the painting's own path, its verges to the painting's
+ * lawn, so the allée is walked on the year's ground.
+ */
+/**
+ * Foliage, cut from its paper by how much paint is on it (18x): the
+ * flood-fill key is a yes-or-no mask, and against a crown of leaves it
+ * steps in blocks and leaves a rim of paper along every edge. This one
+ * has no threshold to step on. A pixel's alpha is how far it stands from
+ * the paper — in tone or in colour, whichever is further — eased over a
+ * few points, so a leaf tip fades out the way it was painted; and where
+ * a pixel is part paper the paper is taken back out of its colour, so
+ * nothing carries a white halo into the world.
+ *
+ * `soft` is where the ease begins and ends, in points of 255. `gain`
+ * pushes the inside of the subject to solid. `cropBottom` takes the last
+ * rows off, as `standing` does — a tree drawn to the foot of its frame
+ * keeps a fringe there whatever the key.
+ */
+async function foliageCutout(file, _ext, p = {}) {
+  const { data, info } = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h, channels: c } = info;
+  // The paper is whatever the frame's own border is, averaged.
+  const paper = [0, 0, 0];
+  {
+    let n = 0;
+    const take = (i) => {
+      for (let k = 0; k < 3; k++) paper[k] += data[i * c + k];
+      n++;
+    };
+    for (let x = 0; x < w; x++) {
+      take(x);
+      take(w + x);
+      take((h - 1) * w + x);
+      take((h - 2) * w + x);
+    }
+    for (let y = 0; y < h; y++) {
+      take(y * w);
+      take(y * w + 1);
+      take(y * w + w - 1);
+      take(y * w + w - 2);
+    }
+    for (let k = 0; k < 3; k++) paper[k] = paper[k] / n;
+  }
+  const [lo, hi] = p.soft ?? [9, 30];
+  // Paper has its own grain, and an ease that begins at nothing turns
+  // that grain into a veil of faint paint across the whole frame. Under
+  // this much, a pixel is paper.
+  const floorA = p.floor ?? 0.14;
+  const gain = p.gain ?? 1.18;
+  const ease = (t) => {
+    const q = Math.min(1, Math.max(0, t));
+    return q * q * (3 - 2 * q);
+  };
+  const out = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) {
+    const r = data[i * c];
+    const g = data[i * c + 1];
+    const b = data[i * c + 2];
+    // How far from paper: darker than it, or more coloured than it.
+    const dark = Math.max(paper[0] - r, paper[1] - g, paper[2] - b);
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    let a = Math.min(1, ease((Math.max(dark, chroma * 0.9) - lo) / (hi - lo)) * gain);
+    if (a < floorA) a = 0;
+    out[i * 4 + 3] = Math.round(a * 255);
+    if (a > 0.02) {
+      // Take the paper back out: what is left is the paint's own colour.
+      for (let k = 0; k < 3; k++) {
+        const v = data[i * c + k];
+        out[i * 4 + k] = Math.max(0, Math.min(255, Math.round((v - (1 - a) * paper[k]) / a)));
+      }
+    }
+  }
+  // The box is taken from where the subject is solid, with a little
+  // room for its soft edge: a box drawn round every faint speck is the
+  // whole frame.
+  const solid = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) solid[i * 4 + 3] = out[i * 4 + 3] >= 128 ? 255 : 0;
+  const core = alphaBox(solid, w, 0, 0, w, h);
+  if (!core) throw new Error(`${file}: nothing in it`);
+  const pad = 8;
+  const box = {
+    left: Math.max(0, core.left - pad),
+    top: Math.max(0, core.top - pad),
+    width: Math.min(w, core.left + core.width + pad) - Math.max(0, core.left - pad),
+    height: Math.min(h, core.top + core.height + pad) - Math.max(0, core.top - pad),
+  };
+  const drop = Math.max(0, Math.round(box.height * (p.cropBottom ?? 0)));
+  console.log(`  foliage: paper ${paper.map(Math.round).join(',')}, ${box.width} × ${box.height - drop} at ${box.left},${box.top}`);
+  return sharp(out, { raw: { width: w, height: h, channels: 4 } }).extract({
+    left: box.left,
+    top: box.top,
+    width: box.width,
+    height: Math.max(1, box.height - drop),
+  });
+}
+
+/**
+ * The light on a lawn (18x), taken from the painting as a map rather
+ * than as paint: a patch of the year's near lawn read for its luminance
+ * alone, its own slope across the frame flattened away, softened until
+ * only the shape of the sun-patches is left, and stretched to fill its
+ * range. Scene 08 lays it over the allée at a size no bay repeats, and
+ * mixes the lawn between its sunlit and its shaded grading through it,
+ * so the shade under the elms is the shade the painting has.
+ */
+async function dappleMap(file, _ext, p = {}) {
+  // Read small: the patches are metres across and the dots are
+  // millimetres, and averaging them away by resampling is both truer and
+  // far cheaper than blurring them away at full size.
+  const { data, info } = await sharp(file)
+    .extract(p.band)
+    .resize({ width: p.read ?? 280 })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const { width: w, height: h, channels: c } = info;
+  // What tells sun from shade in this painting is not how light the
+  // grass is but how yellow: the sun-patches are yellow over a ground of
+  // blue-green, so the map is the warm channels less the cold one.
+  const lum = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    lum[i] = ((data[i * c] + data[i * c + 1]) * 0.5 - data[i * c + 2]) / 255;
+  }
+  // Blur, twice over: once to soften the dots into patches, and once far
+  // wider, to find the picture's own slope so it can be taken out.
+  const blur = (a, passes) => {
+    let cur = a;
+    for (let k = 0; k < passes; k++) {
+      const nx = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          let sum = 0;
+          let n = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = x + dx;
+              const yy = y + dy;
+              if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+              sum += cur[yy * w + xx];
+              n++;
+            }
+          }
+          nx[y * w + x] = sum / n;
+        }
+      }
+      cur = nx;
+    }
+    return cur;
+  };
+  const soft = blur(lum, p.soften ?? 3);
+  const slope = blur(lum, p.flatten ?? 18);
+  const flat = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) flat[i] = soft[i] - (p.level ?? 0.6) * slope[i];
+  // Stretched between its own third and ninety-seventh percentiles, so a
+  // handful of stray pixels cannot decide the range.
+  const sorted = Float32Array.from(flat).sort();
+  const at = (q) => sorted[Math.round(q * (sorted.length - 1))];
+  const lo = at(0.03);
+  const hi = at(0.97);
+  const span = Math.max(1e-4, hi - lo);
+  const out = Buffer.alloc(w * h);
+  for (let i = 0; i < w * h; i++) out[i] = Math.round(255 * Math.min(1, Math.max(0, (flat[i] - lo) / span)));
+  console.log(`  dapple: ${w} × ${h}, ${lo.toFixed(3)}–${hi.toFixed(3)} of yellow over blue`);
+  return sharp(out, { raw: { width: w, height: h, channels: 1 } }).resize(p.tile ?? 512, p.tile ?? 512);
+}
+
+/** As drawn, cut to where the paint stops. */
+async function trimmedTile(file, _ext, p = {}) {
+  return sharp(file).extract(await paintedBox(file, p.bite ?? 6, p.columnsFrom ?? 1));
+}
+
+async function gradedTile(file, _ext, p = {}) {
+  // A tile that has to reach the frame's edge is cut to its paint first.
+  const cut = p.trim ? sharp(file).extract(await paintedBox(file)) : sharp(file);
+  const src = await cut.clone().removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = src.info;
+  const N = 64;
+  const quantiles = (buf, c, stride) => {
+    const v = [];
+    for (let i = c; i < buf.length; i += stride) v.push(buf[i]);
+    v.sort((a, b) => a - b);
+    return Array.from({ length: N + 1 }, (_, k) => v[Math.round((k * (v.length - 1)) / N)]);
+  };
+  /** The lookup that carries this tile's channel onto that sample's. */
+  const lutsFor = async (match) => {
+    const tgt = await sharp(match.file).extract(match.box).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    // A sample of lawn holds both the sun on it and the shade under the
+    // trees; `pick` takes one of them, by the sample's own luminance, so
+    // one drawing can be graded twice and mixed back together.
+    let take = tgt.data;
+    if (match.pick) {
+      const n = tgt.data.length / tgt.info.channels;
+      const lum = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const o = i * tgt.info.channels;
+        lum[i] = tgt.data[o] * 0.299 + tgt.data[o + 1] * 0.587 + tgt.data[o + 2] * 0.114;
+      }
+      const sorted = Float32Array.from(lum).sort();
+      const at = (q) => sorted[Math.min(n - 1, Math.max(0, Math.round(q * (n - 1))))];
+      // The painting's lawn is a blue-green ground with patches of
+      // strong yellow sun on it; a grading that takes the middle of that
+      // range gives neither. These take the ends.
+      const [q0, q1] = match.pick === 'light' ? [0.9, 1] : [0, 0.24];
+      const lo2 = at(q0);
+      const hi2 = at(q1);
+      const kept = [];
+      for (let i = 0; i < n; i++) {
+        if (lum[i] < lo2 || lum[i] > hi2) continue;
+        const o = i * tgt.info.channels;
+        kept.push(tgt.data[o], tgt.data[o + 1], tgt.data[o + 2]);
+      }
+      take = Uint8Array.from(kept);
+    }
+    const stride = match.pick ? 3 : tgt.info.channels;
+    return [0, 1, 2].map((c) => {
+      const a = quantiles(src.data, c, 3);
+      const b = quantiles(take, c, stride);
+      const lut = new Uint8Array(256);
+      for (let v = 0; v < 256; v++) {
+        let k = 0;
+        while (k < N - 1 && a[k + 1] < v) k++;
+        const span = Math.max(1, a[k + 1] - a[k]);
+        const t = Math.min(1, Math.max(0, (v - a[k]) / span));
+        lut[v] = Math.round(Math.min(255, Math.max(0, b[k] + (b[k + 1] - b[k]) * t)));
+      }
+      return lut;
+    });
+  };
+  const ground = await lutsFor(p.match);
+  const middle = p.matchMiddle ? await lutsFor(p.matchMiddle) : null;
+  // Which grading a pixel takes is decided by the drawing's own
+  // lightness, not by where it falls in the frame: gravel is the pale
+  // part of a path tile wherever its edge happens to wander, and a
+  // blend by column leaves a band of neither colour down each verge.
+  const [lo, hi] = p.middleAt ?? [0.6, 0.76];
+  const ease = (t) => {
+    const q = Math.min(1, Math.max(0, t));
+    return q * q * (3 - 2 * q);
+  };
+  const out = Buffer.alloc(w * h * 3);
+  for (let i3 = 0; i3 < w * h * 3; i3 += 3) {
+    const lum = (src.data[i3] * 0.299 + src.data[i3 + 1] * 0.587 + src.data[i3 + 2] * 0.114) / 255;
+    const k = middle ? ease((lum - lo) / (hi - lo)) : 0;
+    for (let c = 0; c < 3; c++) {
+      const v = src.data[i3 + c];
+      const g = ground[c][v];
+      out[i3 + c] = middle ? Math.round(g + (middle[c][v] - g) * k) : g;
+    }
+  }
+  console.log(`  ${w} × ${h} graded to the painting${middle ? ', its middle to the path' : ''}`);
+  return sharp(out, { raw: { width: w, height: h, channels: 3 } });
 }
 
 async function cutout(file, _ext, p = {}) {
@@ -1201,8 +1657,14 @@ const RECIPES = {
   'ref-check': refCheck,
   canopy: canopyStrip,
   cutout,
+  foliage: foliageCutout,
   strip,
   plain,
+  graded: gradedTile,
+  dapple: dappleMap,
+  trimmed: trimmedTile,
+  lake: lakeTile,
+  shore: shoreStrip,
   squares: squaresAtlas,
   'near-bank': nearBank,
   'far-bank': farBank,

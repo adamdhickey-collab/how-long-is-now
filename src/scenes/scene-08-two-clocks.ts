@@ -2,26 +2,37 @@
  * scene-08-two-clocks — the same ten minutes, walked twice.
  *
  * The second of the three moments, and the centrepiece: two views of one
- * corridor side by side, one walked by someone waiting for the ten
- * minutes to end and one by someone absorbed in them. While it is
- * happening the waiting corridor barely moves and the absorbed one races.
- * Then the label turns to LOOKING BACK, and the relationship reverses:
- * the waiting corridor has collapsed to a stub with a wall across it,
- * and the absorbed one has opened into dozens of fragments.
+ * walk side by side, one walked by someone waiting for the ten minutes
+ * to end and one by someone absorbed in them. While it is happening the
+ * waiting walk barely moves and the absorbed one races. Then the label
+ * turns to LOOKING BACK, and the relationship reverses: the waiting walk
+ * has collapsed to a stub with a thicket across it, and the absorbed one
+ * has opened into dozens of fragments.
  *
- * Nothing here decides *when*. The corridor's size, the two clocks'
- * travel, the turn and the fragments are all declared in the manifest;
- * this file knows how to build a corridor and how to read the declaration
- * at a given moment. The corridor itself is a procedural stand-in for the
- * generated plate to come (ASSETS.md); the choreography is not.
+ * The walk is the park's (18x). It used to be an office corridor, which
+ * read as another project spliced into the piece; the park has the same
+ * shape in it twice — the path along the shore, and the allée of elms,
+ * which is a corridor made of trunks — so the corridor is now that: a
+ * gravel path underfoot, an elm every bay on either hand whose crown
+ * closes over it, the lake glimpsed between the trunks on one side and
+ * the lawn on the other. The argument is untouched; only the building
+ * is gone. Everything in it is drawn art, hung in the world at declared
+ * sizes: the path is a tile, the elms and the thicket are cutouts that
+ * turn to face whichever camera is looking, the sky a painted card
+ * carried ahead, the lake and the far shore the painting's own.
+ *
+ * Nothing here decides *when*. The allée's size, the two clocks' travel,
+ * the turn and the fragments are all declared in the manifest; this file
+ * knows how to build the allée and how to read the declaration at a
+ * given moment.
  *
  * The frame is split: one view rendered through the waiting clock's
  * camera, the other through the absorbed one's — side by side when the
  * frame is wider than it is tall, the waiting clock on the left; one
  * above the other when it is taller, the waiting clock on top. Both
- * cameras stand in the same corridor — it is one image, used twice — and
+ * cameras stand on the same path — it is one place, used twice — and
  * only what is true of each clock differs between the two passes: how
- * far along it stands, where its end wall is, whether the fragments are
+ * far along it stands, where its end is, whether the fragments are
  * there.
  */
 
@@ -43,10 +54,16 @@ const MOTE_PX = 2.2;
 const INK = 0xe8e6e1;
 const DIM = 0x8a877f;
 const GROUND = 0x060708;
-/** Eye height in the corridor, world units. */
+/** Eye height on the path, world units. */
 const EYE = 1.55;
 /** The gap between the two views, CSS px, in the ground colour. */
 const GUTTER = 2;
+/** The sky's distance from the walker: a card carried with the camera,
+ *  always this far ahead. It stands this many times the painted sky's
+ *  own rise, so its edges are never in frame — past the painting its
+ *  top and bottom rows hold. */
+const SKY_AT = 300;
+const SKY_SPAN = 6;
 
 /** A view's place in the frame: CSS px from the frame's top-left. */
 interface View {
@@ -59,10 +76,10 @@ interface View {
 /**
  * Where each clock's view sits. Side by side when the frame is wider
  * than it is tall; stacked when it is taller — a phone held upright
- * cannot give two corridors half its width each, but can give them
- * half its height, and a corridor reads as well down a frame as across
- * one. Everything drawn over a view — the dial, the survey, the labels
- * — is placed through this, so the two compositions share one code.
+ * cannot give two walks half its width each, but can give them half its
+ * height, and a path reads as well down a frame as across one.
+ * Everything drawn over a view — the dial, the survey, the labels — is
+ * placed through this, so the two compositions share one code.
  */
 function views(W: number, H: number): { stacked: boolean; waiting: View; absorbed: View } {
   const g = Math.round(GUTTER / 2);
@@ -82,11 +99,11 @@ function views(W: number, H: number): { stacked: boolean; waiting: View; absorbe
   };
 }
 /**
- * The corridor's own fog, per unit of depth: exponential, not squared,
- * so the corridor darkens from the first bay and dissolves rather than
- * cutting off. Its end is never seen.
+ * The afternoon's haze, per unit of depth: exponential, not squared, so
+ * the allée softens from the first bay toward the sky's colour at the
+ * horizon and dissolves rather than cutting off. Its end is never seen.
  */
-const FOG = 0.06;
+const FOG = 0.0125;
 /** Timing of the dip to black at the turn, and of the labels' fades,
  *  as fractions of the manifest's `turnOver`. */
 const DIP_HOLD = 0.2;
@@ -113,156 +130,186 @@ export interface TwoClocksScene {
   render(renderer: THREE.WebGLRenderer): boolean;
 }
 
-// ------------------------------------------------------------- the corridor
+// ----------------------------------------------------------------- the ground
 
 /**
- * Every surface of the corridor is drawn by one shader from its world
- * position: which surface it is comes from its normal. Walls carry a door
- * every bay; the ceiling a light every lamp; the floor the lights'
- * reflections and its own tiles. Light pools under each lamp and falls
- * away between them, so the corridor reads as a row of rooms of light.
+ * The ground is one plane drawn from its world position: the path tile
+ * down the middle, its own grass carried out to either side, and past
+ * the shore on the lake side, water. Light pools on it between one
+ * tree's shade and the next, every `lamp`, so the walk keeps the rhythm
+ * of rooms of light the corridor had — sun and shade now, not tubes.
  */
-const corridorVertex = `
+const groundVertex = `
   varying vec3 vWorld;
-  varying vec3 vNormal;
   varying float vDepth;
   void main() {
     vec4 world = modelMatrix * vec4(position, 1.0);
     vWorld = world.xyz;
-    vNormal = normalize(mat3(modelMatrix) * normal);
     vec4 mvPosition = viewMatrix * world;
     vDepth = -mvPosition.z;
     gl_Position = projectionMatrix * mvPosition;
   }`;
 
-const corridorFragment = `
-  uniform vec3 uInk, uDim, uGround;
-  uniform float uWidth, uHeight, uBay, uLamp, uEnd, uBright, uFog;
-  uniform sampler2D uWall, uCeiling, uFloor;
-  uniform float uImages;
-  uniform float uThermal, uThermalTime, uTempLo, uTempHi;
-  uniform vec3 uRamp0, uRamp1, uRamp2, uRamp3;
+const groundFragment = `
+  uniform vec3 uHaze, uGrass, uGravel, uWaterCol;
+  uniform float uWidth, uTile, uGrassTile, uDappleTile, uLamp, uBright, uFog, uImages, uWaterFrom, uWaterTile;
+  uniform sampler2D uPath, uGrassMap, uGrassShade, uDapple, uWater;
   varying vec3 vWorld;
-  varying vec3 vNormal;
   varying float vDepth;
 
-  // The thermal reading, as scene 04 draws it: a ramp from cold to hot
-  // and hairline isotherms every eighth of the range.
-  vec3 thermalRamp(float t) {
-    t = clamp(t, 0.0, 1.0) * 3.0;
-    if (t < 1.0) return mix(uRamp0, uRamp1, t);
-    if (t < 2.0) return mix(uRamp1, uRamp2, t - 1.0);
-    return mix(uRamp2, uRamp3, t - 2.0);
-  }
-  float isotherm(float t) {
-    float k = t * 8.0;
-    float d = min(fract(k), 1.0 - fract(k));
-    float w = max(fwidth(k), 1e-4);
-    return 1.0 - smoothstep(0.5 * w, 1.5 * w, d);
-  }
-
-  // A hairline: 1 at the line, 0 a pixel away, from a signed distance.
-  float hair(float d) {
-    float w = fwidth(d);
-    return 1.0 - smoothstep(0.5 * w, 1.5 * w, abs(d));
-  }
-  // How lit a point at depth z is: light pools under each lamp, which
-  // hang at the middle of every uLamp, and falls away between them.
+  // How lit a point at depth z is: sun between one crown's shade and
+  // the next, every uLamp, shade under each.
   float pool(float z) {
     float c = 0.5 - 0.5 * cos(6.2831853 * z / uLamp);
-    return 0.22 + 0.78 * c * c;
+    return 0.9 + 0.1 * c * c;
   }
-
+  // The shade a trunk casts at its own foot, so it stands on the grass
+  // rather than in front of it: a pool at each rank, at each bay.
+  float footShade(vec3 p, float halfW) {
+    float across = exp(-pow((abs(p.x) - halfW) / 1.3, 2.0));
+    float along = 0.5 + 0.5 * cos(6.2831853 * p.z / uLamp);
+    return across * along;
+  }
   void main() {
-    vec3 n = vNormal;
     vec3 p = vWorld;
-    float halfW = uWidth * 0.5;
-    // The wall colour: the ground lifted a little toward ink.
-    vec3 wall = mix(uGround, uInk, 0.11);
-    vec3 col = wall;
-    float lit = pool(p.z);
-    // Beyond the end wall nothing is drawn: the corridor stops there.
-    if (p.z < uEnd - 0.01) discard;
-    // The surfaces' heat, °C, read by the thermal layer: the tubes warm
-    // the ceiling around them and, less, everything under them; the
-    // floor is the coolest thing here, except where a lamp's light lies.
-    float lampZ = (floor(p.z / uLamp) + 0.5) * uLamp;
-    float panelH = (1.0 - smoothstep(0.55, 0.62, abs(p.z - lampZ))) * (1.0 - smoothstep(0.16, 0.2, abs(p.x)));
-    float reflH = exp(-pow(p.x / 0.42, 2.0)) * exp(-pow((p.z - lampZ) / 0.9, 2.0));
-    float heat = 21.0;
-    if (n.y < -0.5) heat = 22.0 + 7.0 * panelH + 2.5 * lit;
-    else if (n.y > 0.5) heat = 18.5 + 1.2 * lit + 2.0 * reflH;
-    else if (abs(n.x) > 0.5) heat = 20.5 + 1.8 * lit;
-
+    vec3 col;
     if (uImages > 0.5) {
-      // The drawn plates: one bay of each surface, tiled along the
-      // corridor and mirrored at every join so nothing seams. The lamps
-      // are painted in the ceiling bay; the light they pool is still
-      // this shader's, as is the floor's reflection of them.
-      if (abs(n.x) > 0.5) {
-        col = texture2D(uWall, vec2(p.z / uBay, p.y / uHeight)).rgb * lit;
-      } else if (n.y < -0.5) {
-        col = texture2D(uCeiling, vec2(p.z / uLamp, p.x / uWidth + 0.5)).rgb * max(lit, 0.55);
-      } else if (n.y > 0.5) {
-        float zc = (floor(p.z / uLamp) + 0.5) * uLamp;
-        float refl = exp(-pow(p.x / 0.42, 2.0)) * exp(-pow((p.z - zc) / 0.9, 2.0));
-        col = texture2D(uFloor, vec2(p.z / uLamp, p.x / uWidth + 0.5)).rgb * lit * 0.9 + uInk * refl * 0.3;
-      } else {
-        // The end wall wears the doorless flank of the wall bay, mirrored
-        // about its centre, so no door is painted across a dead end.
-        col = texture2D(uWall, vec2(abs(p.x) / uBay, p.y / uHeight)).rgb * max(lit, 0.7);
-        col = mix(col, uDim, max(hair(p.y - 0.02), hair(p.y - uHeight + 0.02)) * 0.5);
-      }
-    } else if (abs(n.x) > 0.5) {
-      // A wall. A dado line at waist height; a door every bay, framed in
-      // a hairline of dim ink, its face a shade darker than the wall.
-      float zc = (floor(p.z / uBay) + 0.5) * uBay;
-      vec2 d = vec2(abs(p.z - zc) - 0.5, p.y - 2.1);
-      float inDoor = step(d.x, 0.0) * step(d.y, 0.0);
-      col = mix(col, mix(uGround, uInk, 0.075), inDoor);
-      float frame = max(hair(d.x) * step(p.y, 2.1), hair(d.y) * step(abs(p.z - zc), 0.5));
-      col = mix(col, uDim, frame * 0.7);
-      col = mix(col, uDim, hair(p.y - 0.95) * 0.35 * (1.0 - inDoor));
-      // A handle: a dot of ink, on the side away from the hinge.
-      float handle = 1.0 - smoothstep(0.02, 0.035, length(vec2(p.z - zc - 0.36, p.y - 1.0)));
-      col = mix(col, uDim, handle * inDoor);
-      col *= lit;
-    } else if (n.y < -0.5) {
-      // The ceiling. A fluorescent panel every lamp, emitting ink.
-      float zc = (floor(p.z / uLamp) + 0.5) * uLamp;
-      float panel = (1.0 - smoothstep(0.55, 0.62, abs(p.z - zc))) * (1.0 - smoothstep(0.16, 0.2, abs(p.x)));
-      col = mix(col * lit * 0.85, uInk, panel);
-    } else if (n.y > 0.5) {
-      // The floor. Tiles as hairlines; under each lamp its reflection, a
-      // soft streak down the middle that brightens as the lamp is neared.
-      float tile = max(hair(fract(p.x + 0.5) - 0.5), hair(fract(p.z) - 0.5));
-      col = mix(col, uDim, tile * 0.28);
-      float zc = (floor(p.z / uLamp) + 0.5) * uLamp;
-      float refl = exp(-pow(p.x / 0.42, 2.0)) * exp(-pow((p.z - zc) / 0.9, 2.0));
-      col = col * lit * 0.9 + uInk * refl * 0.35;
+      // The lawn, tiled both ways, lit through the painting's own light
+      // on its own lawn: one grading of the grass for the sun on it and
+      // one for the shade under the elms, mixed between by a map laid at
+      // a size no bay repeats. The path is laid down the middle, its own
+      // verges graded to this same grass so the join between them is
+      // nowhere to be found; and it wanders a little as it goes, because
+      // nothing in a park runs true for a hundred and sixty metres.
+      float sun = texture2D(uDapple, p.xz / uDappleTile).r;
+      sun = smoothstep(0.26, 0.74, sun);
+      vec3 grass = mix(texture2D(uGrassShade, p.xz / uGrassTile).rgb, texture2D(uGrassMap, p.xz / uGrassTile).rgb, sun);
+      float wander = sin(p.z * 0.074) * 0.22 + sin(p.z * 0.031 + 1.7) * 0.16;
+      float across = p.x - wander;
+      vec3 tile = texture2D(uPath, vec2(across / uTile + 0.5, p.z / uTile)).rgb;
+      // The same light crosses the path: gravel in shade keeps its own
+      // colour and loses a little of it, and cools.
+      tile = mix(tile * vec3(0.80, 0.84, 0.93), tile, sun);
+      float onPath = 1.0 - smoothstep(uTile * 0.5 - 1.2, uTile * 0.5, abs(across));
+      col = mix(grass, tile, onPath);
+      // The lake: water past the shore, a pale rim where they meet, the
+      // rim the path's own gravel.
+      // The shore is a curve, not a kerb: where the water begins moves
+      // as it goes, or the lake reads as a road running beside the path.
+      float shoreAt = uWaterFrom + sin(p.z * 0.21) * 0.7 + sin(p.z * 0.083 + 2.1) * 1.3;
+      vec3 water = texture2D(uWater, p.xz / uWaterTile).rgb;
+      vec3 rim = mix(texture2D(uPath, vec2(0.5, p.z / uTile)).rgb * vec3(0.84, 0.88, 0.95), texture2D(uPath, vec2(0.5, p.z / uTile)).rgb, sun);
+      float shore = exp(-pow((p.x - shoreAt) / 0.45, 2.0));
+      col = mix(col, rim, shore * 0.85);
+      col = mix(col, water, smoothstep(shoreAt - 0.25, shoreAt + 0.35, p.x));
     } else {
-      // The end wall, when there is one near enough to see: blank, lit
-      // by the lamp before it however it falls between the lamps, with a
-      // hairline where it meets the floor and ceiling.
-      col = wall * max(lit, 0.7);
-      col = mix(col, uDim, max(hair(p.y - 0.02), hair(p.y - uHeight + 0.02)) * 0.5);
+      // Until the drawings have arrived: the same ground in flat colour.
+      col = mix(uGrass, uGravel, 1.0 - smoothstep(uTile * 0.12, uTile * 0.13, abs(p.x)));
+      col = mix(col, uWaterCol, smoothstep(uWaterFrom - 0.25, uWaterFrom + 0.35, p.x));
     }
-    if (uThermal > 0.0) {
-      float t = (heat - uTempLo) / (uTempHi - uTempLo);
-      t += sin(p.z * 0.9 + uThermalTime * 0.17) * 0.02 + sin(p.y * 2.3 - uThermalTime * 0.11) * 0.02;
-      vec3 read = thermalRamp(t) * (0.55 + 0.45 * lit);
-      read = mix(read, uInk, isotherm(t) * 0.45);
-      // Not quite all the way: the corridor stays legible under its reading.
-      col = mix(col, read, uThermal * 0.82);
-    }
-    col = mix(col, uGround, 1.0 - exp(-vDepth * uFog));
+    // The dapple is the elms': it fades off the ground past them, and
+    // never lies on the water.
+    float underElms = 1.0 - smoothstep(uWidth * 0.5 + 1.0, uWidth * 0.5 + 3.5, abs(p.x));
+    col *= mix(1.0, pool(p.z), underElms);
+    col *= 1.0 - 0.3 * footShade(p, uWidth * 0.5);
+    col = mix(col, uHaze, 1.0 - exp(-vDepth * uFog));
     col *= uBright;
     gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }`;
 
+// ----------------------------------------------------------------- the plates
+
 /**
- * A fragment: a pane hung in the corridor, a hairline of ink around a
+ * Every drawn thing standing in the allée is a plate: a keyed cutout on
+ * a quad, hazed with distance. Instanced plates — the trunks, the brush
+ * — stand with their foot at the instance's origin, scaled by it, and
+ * turn about that foot to face whichever camera is looking, so a trunk
+ * passed at arm's length never thins to its edge. A plain plate (the
+ * far shore, the thicket, the sky) is placed by its mesh.
+ */
+const plateVertex = `
+  uniform vec2 uRepeat, uOffset;
+  varying vec2 vUv;
+  varying float vDepth;
+  void main() {
+    vUv = uv * uRepeat + uOffset;
+    #ifdef STANDING
+      // The foot is where the instance says, carried by the mesh's own
+      // place — the stand of brush is moved to whichever end this pass
+      // is looking at, and a standing plate must move with it.
+      vec3 foot = (modelMatrix * vec4(instanceMatrix[3].xyz, 1.0)).xyz;
+      float sx = instanceMatrix[0][0];
+      float sy = instanceMatrix[1][1];
+      vec2 toCam = cameraPosition.xz - foot.xz;
+      float yaw = atan(toCam.x, toCam.y);
+      vec2 q = vec2(position.x * sx, position.y * sy);
+      vec4 world = vec4(foot + vec3(cos(yaw) * q.x, q.y, -sin(yaw) * q.x), 1.0);
+    #else
+      vec4 world = modelMatrix * vec4(position, 1.0);
+    #endif
+    vec4 mvPosition = viewMatrix * world;
+    vDepth = -mvPosition.z;
+    gl_Position = projectionMatrix * mvPosition;
+  }`;
+
+const plateFragment = `
+  uniform sampler2D uMap;
+  uniform vec3 uHaze;
+  uniform float uBright, uFog;
+  uniform vec2 uFade;
+  varying vec2 vUv;
+  varying float vDepth;
+  void main() {
+    vec4 t = texture2D(uMap, vUv);
+    // A plate that runs away down the walk — the far shore beside it —
+    // is given a distance to end at. Without one its crowns collapse
+    // into a picket fence at the vanishing point, since a wall seen
+    // almost edge-on is a thousand metres of painting in ten pixels.
+    if (uFade.y > 0.0) t.a *= 1.0 - smoothstep(uFade.x, uFade.x + uFade.y, vDepth);
+    // The plates' own soft edge is kept and handed to the sampler as
+    // coverage (18x): a leaf ends the way it was painted rather than on
+    // whatever contour a threshold happens to cut. Only what is paper
+    // is thrown away.
+    if (t.a < 0.03) discard;
+    vec3 col = mix(t.rgb, uHaze, 1.0 - exp(-vDepth * uFog));
+    gl_FragColor = vec4(col * uBright, t.a);
+    #include <colorspace_fragment>
+  }`;
+
+/** The sky: a card carried ahead of the camera, the painting's zenith
+ *  over its horizon, the horizon the haze everything else dissolves to. */
+const skyVertex = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+  }`;
+const skyFragment = `
+  uniform vec3 uZenith, uHorizon;
+  uniform float uBright, uHas, uSpan, uAcross;
+  uniform sampler2D uMap;
+  varying vec2 vUv;
+  void main() {
+    // The painted sky, its foot on the horizon at the card's middle and
+    // its own rows holding above and below — the card reaches well past
+    // the frame in every direction, so nothing is ever seen past it.
+    // Until it has arrived, the afternoon's two colours in its place.
+    float t = clamp((vUv.y - 0.5) * uSpan, 0.0, 1.0);
+    vec3 col = mix(uHorizon, uZenith, pow(t, 0.75));
+    if (uHas > 0.5) {
+      // Below the horizon the painting has nothing to say, and its
+      // bottom row held there would stretch its own grain into a picket
+      // fence along the skyline; the card holds the haze instead, which
+      // is what the ground dissolves into anyway.
+      col = mix(uHorizon, texture2D(uMap, vec2(vUv.x * uAcross, t)).rgb, smoothstep(0.0, 0.035, t));
+    }
+    gl_FragColor = vec4(col * uBright, 1.0);
+    #include <colorspace_fragment>
+  }`;
+
+/**
+ * A fragment: a pane hung in the allée, a hairline of ink around a
  * translucent face, with one of a few plain marks on it — a stand-in for
  * the cutouts to come. `aSeed` picks the mark and its placement.
  */
@@ -331,6 +378,12 @@ const fragmentFragment = `
     #include <colorspace_fragment>
   }`;
 
+/** A deterministic hash in [0, 1): the same allée every visit. */
+const hash = (n: number) => {
+  const s = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return s - Math.floor(s);
+};
+
 // ------------------------------------------------------------------ scene
 
 export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMotion: boolean): TwoClocksScene {
@@ -338,94 +391,225 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   if (!declared) return { setActive: () => {}, update: () => {}, render: () => false };
   const tc: TwoClocks = declared;
   const { corridor, waiting, absorbed, fragment } = tc;
+  const { width, height, depth } = corridor;
+  const plates = corridor.plates;
+  const sky = corridor.sky;
+  const { images } = corridor;
 
   const group = new THREE.Group();
   group.name = 'two-clocks';
   group.visible = false;
   world.add(group);
 
-  // ---- the corridor: four long planes and an end wall, one material.
-  const uniforms = {
-    uInk: { value: new THREE.Color(INK) },
-    uDim: { value: new THREE.Color(DIM) },
-    uGround: { value: new THREE.Color(GROUND) },
-    uWidth: { value: corridor.width },
-    uHeight: { value: corridor.height },
-    uBay: { value: corridor.bay },
-    uLamp: { value: corridor.lamp },
-    uEnd: { value: -corridor.depth },
+  // ---- shared light: the haze everything dissolves to, and the dip.
+  const haze = new THREE.Color(sky.horizon);
+  const shared = {
+    uHaze: { value: haze },
     uBright: { value: 1 },
     uFog: { value: FOG },
-    uWall: { value: null as THREE.Texture | null },
-    uCeiling: { value: null as THREE.Texture | null },
-    uFloor: { value: null as THREE.Texture | null },
-    uImages: { value: 0 },
-    uThermal: { value: 0 },
-    uThermalTime: { value: 0 },
-    uTempLo: { value: 16 },
-    uTempHi: { value: 30 },
-    uRamp0: { value: new THREE.Color(0x24425f) },
-    uRamp1: { value: new THREE.Color(0x35566a) },
-    uRamp2: { value: new THREE.Color(0xe0b884) },
-    uRamp3: { value: new THREE.Color(0xffe6b0) },
   };
-  const layers = absorbed.layers ?? [];
-  const layer = (kind: AbsorbedLayer['kind']) => layers.find((l) => l.kind === kind);
-  const thermalDef = layer('thermal');
-  if (thermalDef) {
-    const ramp = thermalDef.ramp ?? [];
-    const stops = [uniforms.uRamp0, uniforms.uRamp1, uniforms.uRamp2, uniforms.uRamp3];
-    stops.forEach((u, i) => {
-      const c = ramp[Math.min(i, ramp.length - 1)];
-      if (c !== undefined) u.value.setHex(c);
-    });
-    if (thermalDef.range) {
-      uniforms.uTempLo.value = thermalDef.range[0];
-      uniforms.uTempHi.value = thermalDef.range[1];
-    }
-  }
-  const corridorMat = new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader: corridorVertex,
-    fragmentShader: corridorFragment,
-    side: THREE.DoubleSide,
-  });
 
-  const { width, height, depth } = corridor;
-  const surface = (w: number, h: number, rotate: (m: THREE.Mesh) => void) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), corridorMat);
-    rotate(m);
-    group.add(m);
-    return m;
-  };
-  // The planes run from z = +bay (a little behind the camera's start) to
-  // -depth; their centre is at z = (bay - depth) / 2.
+  // ---- the ground: one plane, the path down its middle, running from
+  // z = +bay (a little behind the camera's start) to -depth.
   const zMid = (corridor.bay - depth) / 2;
   const run = depth + corridor.bay;
-  surface(width, run, (m) => {
+  const groundUniforms = {
+    ...shared,
+    uGrass: { value: new THREE.Color(sky.grass) },
+    uGravel: { value: new THREE.Color(sky.gravel) },
+    uWaterCol: { value: new THREE.Color(sky.water) },
+    uWidth: { value: width },
+    uTile: { value: plates.tile },
+    uGrassTile: { value: plates.grass },
+    uDappleTile: { value: plates.dapple },
+    uLamp: { value: corridor.lamp },
+    uImages: { value: 0 },
+    uWaterFrom: { value: plates.water.from },
+    uWaterTile: { value: plates.water.tile },
+    uPath: { value: null as THREE.Texture | null },
+    uGrassMap: { value: null as THREE.Texture | null },
+    uGrassShade: { value: null as THREE.Texture | null },
+    uDapple: { value: null as THREE.Texture | null },
+    uWater: { value: null as THREE.Texture | null },
+  };
+  const groundMat = new THREE.ShaderMaterial({
+    uniforms: groundUniforms,
+    vertexShader: groundVertex,
+    fragmentShader: groundFragment,
+  });
+  {
+    // The ground reaches exactly to the far bank on either hand: past
+    // it there would be water beyond the far shore, and a lake has to
+    // stop where its trees stand.
+    // The ground runs well past where the walk ends, so that its own
+    // far edge is somewhere inside the haze rather than a line across
+    // the frame.
+    const far = run + 140;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(plates.shore.at * 2, far), groundMat);
     m.rotation.x = -Math.PI / 2;
-    m.position.set(0, 0, zMid);
+    m.position.set(0, 0, (corridor.bay - depth - 140) / 2);
+    m.frustumCulled = false;
+    group.add(m);
+  }
+
+  // ---- the sky card, carried ahead of whichever camera is drawing.
+  const skyMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uZenith: { value: new THREE.Color(sky.zenith) },
+      uHorizon: { value: haze },
+      uBright: shared.uBright,
+      uHas: { value: 0 },
+      uSpan: { value: SKY_SPAN },
+      uAcross: { value: 1 },
+      uMap: { value: null as THREE.Texture | null },
+    },
+    vertexShader: skyVertex,
+    fragmentShader: skyFragment,
+    depthWrite: false,
   });
-  surface(width, run, (m) => {
-    m.rotation.x = Math.PI / 2;
-    m.position.set(0, height, zMid);
-  });
-  surface(run, height, (m) => {
-    m.rotation.y = Math.PI / 2;
-    m.position.set(-width / 2, height / 2, zMid);
-  });
-  surface(run, height, (m) => {
-    m.rotation.y = -Math.PI / 2;
-    m.position.set(width / 2, height / 2, zMid);
-  });
-  // The end wall. Where it stands is set per pass; far away it is fogged.
-  const endWall = surface(width, height, (m) => {
-    m.position.set(0, height / 2, -depth);
+  const skyCard = new THREE.Mesh(new THREE.PlaneGeometry(SKY_AT * 4, plates.sky * SKY_SPAN), skyMat);
+  skyCard.renderOrder = -1;
+  skyCard.frustumCulled = false;
+  group.add(skyCard);
+
+  // ---- the plates. Each material waits for its image; a plate with no
+  // image yet is not drawn, so the allée fills in as its art arrives and
+  // never shows a blank card.
+  const plateMat = (standing: boolean) => {
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        ...shared,
+        uMap: { value: null as THREE.Texture | null },
+        uFade: { value: new THREE.Vector2(0, 0) },
+        uRepeat: { value: new THREE.Vector2(1, 1) },
+        uOffset: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: plateVertex,
+      fragmentShader: plateFragment,
+      side: THREE.DoubleSide,
+    });
+    // Coverage, not blending: the frame is multisampled, so a plate's
+    // soft edge can be dithered across the samples and still write depth
+    // — which means the elms need no sorting against one another.
+    mat.alphaToCoverage = true;
+    if (standing) mat.defines = { STANDING: 1 };
+    return mat;
+  };
+  /** A unit quad with its foot at the origin, for standing plates. */
+  const footQuad = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0);
+
+  // The trunks: one every bay on either hand, two drawings between them,
+  // each flipped, leaned and sized a little by its own hash so no two
+  // bays are the same bay. The foot stands a little inside the declared
+  // width so the root flare meets the grass beside the path.
+  const kinds = Math.max(1, images?.trees.length ?? 2);
+  const trunkMats = Array.from({ length: kinds }, () => plateMat(true));
+  const trunkMeshes: THREE.InstancedMesh[] = [];
+  {
+    const bays = Math.ceil(run / corridor.bay) + 1;
+    const placed: { mat: THREE.Matrix4; which: number }[] = [];
+    const m = new THREE.Matrix4();
+    for (let i = -1; i < bays; i++) {
+      for (const side of [-1, 1]) {
+        const seed = i * 4 + side + 2;
+        const h0 = hash(seed);
+        const h1 = hash(seed + 0.37);
+        const h2 = hash(seed + 0.71);
+        // Which drawing this elm is: the ranks step through the set out
+        // of phase with each other, so the two sides never pair up.
+        const which = (i * 2 + (side > 0 ? 1 : 0)) % kinds;
+        const scale = plates.tree * (0.86 + 0.28 * h0);
+        const flip = h1 < 0.5 ? -1 : 1;
+        const x = side * (width / 2 + (h2 - 0.5) * 0.5);
+        const z = -i * corridor.bay + (h0 - 0.5) * 0.8;
+        m.makeScale(flip * scale, scale, 1);
+        m.setPosition(x, -plates.sink, z);
+        placed.push({ mat: m.clone(), which });
+      }
+    }
+    trunkMats.forEach((mat, which) => {
+      const mine = placed.filter((p) => p.which === which);
+      const mesh = new THREE.InstancedMesh(footQuad, mat, mine.length);
+      mine.forEach((p, i) => mesh.setMatrixAt(i, p.mat));
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.frustumCulled = false;
+      mesh.visible = false;
+      group.add(mesh);
+      trunkMeshes.push(mesh);
+    });
+  }
+
+  // The brush: the thicket drawing again, smaller, scattered over the
+  // lawn on the side away from the lake.
+  let thicketStanding = false;
+  const brushMat = plateMat(true);
+  const brush = (() => {
+    const { brush: b } = plates;
+    const count = Math.ceil(run / b.every);
+    const mesh = new THREE.InstancedMesh(footQuad, brushMat, count);
+    const m = new THREE.Matrix4();
+    for (let i = 0; i < count; i++) {
+      const h0 = hash(i * 1.7 + 3);
+      const h1 = hash(i * 2.3 + 5);
+      const scale = b.height * (0.8 + 0.4 * h0);
+      const x = -(b.from + (b.to - b.from) * h1);
+      const z = corridor.bay - i * b.every - h0 * b.every * 0.6;
+      m.makeScale(h1 < 0.5 ? -scale : scale, scale, 1);
+      m.setPosition(x, -plates.sink, z);
+      mesh.setMatrixAt(i, m);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    group.add(mesh);
+    return mesh;
+  })();
+
+  // The far shore: the painting's own treeline across the lake, standing
+  // at the lake's far side, and the same trees behind the lawn on the
+  // other hand with the water at their foot cut away.
+  const shoreMat = plateMat(false);
+  const lawnEdgeMat = plateMat(false);
+  for (const mat of [shoreMat, lawnEdgeMat]) mat.uniforms.uFade.value.set(plates.shore.at * 0.9, plates.shore.at * 0.8);
+  const shoreMeshes = [shoreMat, lawnEdgeMat].map((mat, i) => {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+    const side = i === 0 ? 1 : -1;
+    mesh.rotation.y = -side * (Math.PI / 2);
+    mesh.position.set(side * plates.shore.at, 0, zMid);
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    group.add(mesh);
+    return mesh;
   });
 
-  // ---- the fragments: instanced panes along the absorbed corridor's
-  // remembered length, hung on alternate walls with every third afloat
-  // in the middle, each turned a little toward the walker.
+  // The thicket: what closes the waiting clock's stub, looking back. Not
+  // a wall across the path but a stand of the same brush, several of it
+  // side by side and stepped back, so the way ahead is grown over rather
+  // than blocked off. Where the stand stands is set per pass.
+  const thicketMat = plateMat(true);
+  const thicket = (() => {
+    const across = 5;
+    const mesh = new THREE.InstancedMesh(footQuad, thicketMat, across);
+    const m = new THREE.Matrix4();
+    for (let i = 0; i < across; i++) {
+      const h0 = hash(i * 3.1 + 11);
+      const scale = plates.thicket * (0.85 + 0.35 * h0);
+      const x = (i - (across - 1) / 2) * plates.thicket * 1.15;
+      m.makeScale(h0 < 0.5 ? -scale : scale, scale, 1);
+      m.setPosition(x, -plates.sink, (h0 - 0.5) * 1.6);
+      mesh.setMatrixAt(i, m);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    group.add(mesh);
+    return mesh;
+  })();
+
+  // ---- the fragments: instanced panes along the absorbed walk's
+  // remembered length, hung beside the trunks on alternate hands with
+  // every third afloat over the path, each turned a little toward the
+  // walker.
   const fragGeo = new THREE.PlaneGeometry(fragment.width, fragment.height);
   const seeds = new Float32Array(absorbed.fragments);
   for (let i = 0; i < absorbed.fragments; i++) seeds[i] = (i * 0.618034) % 1;
@@ -464,12 +648,12 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       const z = -corridor.bay * 0.6 - t * (length - corridor.bay);
       const y = 1.05 + s * 0.85;
       if (i % 3 === 2) {
-        // Afloat: across the corridor, facing the walker, drifted aside.
+        // Afloat: across the path, facing the walker, drifted aside.
         pos.set((s - 0.5) * 0.9, y, z);
         e.set(0, (s - 0.5) * 0.5, (s - 0.5) * 0.2);
       } else {
         const side = i % 3 === 0 ? -1 : 1;
-        pos.set(side * (width / 2 - 0.3), y, z);
+        pos.set(side * (width / 2 - 0.6), y, z);
         e.set(0, -side * (Math.PI / 2 - 0.35 - s * 0.3), 0);
       }
       q.setFromEuler(e);
@@ -480,10 +664,12 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   }
   group.add(frags);
 
-  // ---- the motes: what is in the corridor's air, lit where the lamps
-  // pool their light, drifting toward the absorbed clock, each with a
-  // short trail of where it has just been. Kept in a reach ahead of the
-  // camera and wrapped as they pass; drawn only in the absorbed pass.
+  // ---- the motes: what is in the air under the elms, lit where the sun
+  // comes through, drifting toward the absorbed clock, each with a short
+  // trail of where it has just been. Kept in a reach ahead of the camera
+  // and wrapped as they pass; drawn only in the absorbed pass.
+  const layers = absorbed.layers ?? [];
+  const layer = (kind: AbsorbedLayer['kind']) => layers.find((l) => l.kind === kind);
   const motesDef = layer('motes');
   const moteCount = motesDef?.count ?? 0;
   const moteAhead = new Float32Array(moteCount);
@@ -561,9 +747,9 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     group.add(m);
   }
 
-  // ---- the cameras: one per clock, each standing in the corridor.
+  // ---- the cameras: one per clock, each standing on the path.
   const makeCam = () => {
-    const c = new THREE.PerspectiveCamera(55, 1, 0.1, depth + 20);
+    const c = new THREE.PerspectiveCamera(55, 1, 0.1, SKY_AT + 100);
     c.position.set(0, EYE, 0);
     c.lookAt(0, EYE, -1);
     return c;
@@ -571,29 +757,123 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
   const camWaiting = makeCam();
   const camAbsorbed = makeCam();
 
-  // ---- the imagery, where the manifest has it: fetched once the opening
-  // frame has its own, switched on only once every piece of a set has
-  // arrived, so the corridor never shows half-drawn. Until then the
-  // stand-in draws.
+  // ---- the imagery: fetched once the opening frame has its own, each
+  // plate shown the moment its picture is here and sized from it — the
+  // manifest declares one dimension of each, the drawing's proportions
+  // give the other.
   const loader = new THREE.TextureLoader();
-  const load = (path: string, wrap: THREE.Wrapping) =>
+  const load = (path: string, wrapS: THREE.Wrapping, wrapT = wrapS, data = false) =>
     opening.then(() => loader.loadAsync(plateUrl(path))).then((tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = wrap;
-      tex.wrapT = wrap;
-      tex.anisotropy = 8;
+      // A map that is read for its values rather than its colour must
+      // not be decoded as a picture: the dapple's mid-grey is a mix, not
+      // a tone, and sRGB decoding would pull it down to a fifth of it.
+      tex.colorSpace = data ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+      tex.wrapS = wrapS;
+      tex.wrapT = wrapT;
+      // As much as the card will give, clamped on upload: the far shore
+      // and the lake are read at a grazing angle, where too few taps
+      // show as a picket fence along the horizon.
+      tex.anisotropy = 16;
       return tex;
     });
-  if (corridor.images) {
-    const { wall, ceiling, floor } = corridor.images;
-    Promise.all([wall, ceiling, floor].map((path) => load(path, THREE.MirroredRepeatWrapping)))
-      .then(([w, c, f]) => {
-        uniforms.uWall.value = w;
-        uniforms.uCeiling.value = c;
-        uniforms.uFloor.value = f;
-        uniforms.uImages.value = 1;
+  const aspectOf = (tex: THREE.Texture) => {
+    const img = tex.image as { width: number; height: number };
+    return img.width / img.height;
+  };
+  const quiet = () => {};
+  if (images) {
+    Promise.all(
+      [images.path, images.grass, images.grassShade, images.dapple, images.water].map((path, i) =>
+        load(path, THREE.RepeatWrapping, THREE.MirroredRepeatWrapping, i === 3),
+      ),
+    )
+      .then(([p, g, gs, d, w]) => {
+        groundUniforms.uPath.value = p;
+        groundUniforms.uGrassMap.value = g;
+        groundUniforms.uGrassShade.value = gs;
+        groundUniforms.uDapple.value = d;
+        groundUniforms.uWater.value = w;
+        groundUniforms.uImages.value = 1;
       })
-      .catch(() => {});
+      .catch(quiet);
+    images.trees.forEach((path, i) => {
+      const mat = trunkMats[i % trunkMats.length];
+      const mesh = trunkMeshes[i % trunkMeshes.length];
+      load(path, THREE.ClampToEdgeWrapping)
+        .then((tex) => {
+          mat.uniforms.uMap.value = tex;
+          // The unit quad is as wide as the drawing is, for its height.
+          const a = aspectOf(tex);
+          const m = new THREE.Matrix4();
+          for (let k = 0; k < mesh.count; k++) {
+            mesh.getMatrixAt(k, m);
+            const sy = m.elements[5];
+            const flip = Math.sign(m.elements[0]);
+            m.elements[0] = flip * sy * a;
+            mesh.setMatrixAt(k, m);
+          }
+          mesh.instanceMatrix.needsUpdate = true;
+          mesh.visible = true;
+        })
+        .catch(quiet);
+    });
+    load(images.thicket, THREE.ClampToEdgeWrapping)
+      .then((tex) => {
+        const a = aspectOf(tex);
+        thicketMat.uniforms.uMap.value = tex;
+        const wide = (mesh: THREE.InstancedMesh) => {
+          const m = new THREE.Matrix4();
+          for (let k = 0; k < mesh.count; k++) {
+            mesh.getMatrixAt(k, m);
+            m.elements[0] = Math.sign(m.elements[0]) * m.elements[5] * a;
+            mesh.setMatrixAt(k, m);
+          }
+          mesh.instanceMatrix.needsUpdate = true;
+        };
+        wide(thicket);
+        brushMat.uniforms.uMap.value = tex;
+        const m = new THREE.Matrix4();
+        for (let k = 0; k < brush.count; k++) {
+          brush.getMatrixAt(k, m);
+          const sy = m.elements[5];
+          m.elements[0] = Math.sign(m.elements[0]) * sy * a;
+          brush.setMatrixAt(k, m);
+        }
+        brush.instanceMatrix.needsUpdate = true;
+        brush.visible = true;
+        thicketStanding = true;
+      })
+      .catch(quiet);
+    load(images.sky, THREE.MirroredRepeatWrapping, THREE.ClampToEdgeWrapping)
+      .then((tex) => {
+        // As wide as the painted sky is for the rise it covers, walked
+        // out and back enough times to reach past the frame's edges.
+        const across = plates.sky * aspectOf(tex);
+        const times = Math.ceil((SKY_AT * 2) / across);
+        skyCard.geometry.dispose();
+        skyCard.geometry = new THREE.PlaneGeometry(across * times, plates.sky * SKY_SPAN);
+        skyMat.uniforms.uAcross.value = times;
+        skyMat.uniforms.uMap.value = tex;
+        skyMat.uniforms.uHas.value = 1;
+      })
+      .catch(quiet);
+    load(images.shore, THREE.MirroredRepeatWrapping, THREE.ClampToEdgeWrapping)
+      .then((tex) => {
+        const a = aspectOf(tex);
+        const h = plates.shore.height;
+        shoreMeshes.forEach((mesh, i) => {
+          const mat = mesh.material as THREE.ShaderMaterial;
+          mat.uniforms.uMap.value = tex;
+          // Behind the lawn the strip's foot — the far water — is cut.
+          const cut = i === 0 ? 0 : plates.shore.waterRows;
+          mat.uniforms.uRepeat.value.set(run / (h * a), 1 - cut);
+          mat.uniforms.uOffset.value.set(0, cut);
+          mesh.geometry.dispose();
+          mesh.geometry = new THREE.PlaneGeometry(run, h * (1 - cut)).translate(0, (h * (1 - cut)) / 2, 0);
+          mesh.visible = true;
+        });
+      })
+      .catch(quiet);
   }
   if (fragment.atlas) {
     const { image, cols, rows, count } = fragment.atlas;
@@ -603,12 +883,12 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
         fragUniforms.uAtlasGrid.value.set(cols, rows, count);
         fragUniforms.uAtlasOn.value = 1;
       })
-      .catch(() => {});
+      .catch(quiet);
   }
 
   // ---- the labels, in the figure's overlay: the state of the ten minutes
-  // across the top, and at the foot of each corridor, who is walking it,
-  // on the HUD's own baseline.
+  // across the top, and at the foot of each view, who is walking it, on
+  // the HUD's own baseline.
   const svg = document.getElementById('figure') as SVGSVGElement | null;
   const labels = svg ? document.createElementNS(NS, 'g') : null;
   const text = (cls: string, anchor: string) => {
@@ -629,15 +909,15 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     absorbedEl.textContent = tc.labels.absorbed;
   }
   // ---- the waiting clock's one instrument: a seconds dial at the end
-  // of its corridor — a ring of sixty hairline ticks, a hand in the
-  // accent that jumps a second at a time, and the count so far beneath.
-  // Drawn in the overlay at the waiting view's vanishing point.
+  // of its walk — a ring of sixty hairline ticks, a hand in the accent
+  // that jumps a second at a time, and the count so far beneath. Drawn
+  // in the overlay at the waiting view's vanishing point.
   const dial = svg && tc.instrument ? document.createElementNS(NS, 'g') : null;
   const dialFace = document.createElementNS(NS, 'g');
   const dialRing = document.createElementNS(NS, 'circle');
   const dialTicks = document.createElementNS(NS, 'path');
   // The overlay's hairlines were drawn for the piece's near-black ground;
-  // over a lit corridor they need what its text already has, a halo of
+  // over the afternoon they need what its text already has, a halo of
   // the ground beneath them. The halo is the same shapes, wider, under.
   const dialRingHalo = document.createElementNS(NS, 'circle');
   const dialTicksHalo = document.createElementNS(NS, 'path');
@@ -766,7 +1046,6 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     absorbed: { z: 0, end: -depth },
     bright: 0,
     show: 0,
-    thermal: 0,
     motes: 0,
   };
   let lastNow = performance.now();
@@ -800,7 +1079,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     // The turn: over `turnOver` of the scene, centred on `turn`, the
     // frame dips to black and the labels change. k runs 0 → 1 across it;
     // the world is at its darkest in the middle, and the cameras and
-    // walls swap to their remembered state there, unseen.
+    // ends swap to their remembered state there, unseen.
     const t0 = turn - turnOver / 2;
     const t1 = turn + turnOver / 2;
     const k = clamp01((local - t0) / turnOver);
@@ -819,7 +1098,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       pass.absorbed.end = -depth;
       pass.show = 0;
     } else {
-      // Looking back: the waiting corridor is a stub, its wall right
+      // Looking back: the waiting walk is a stub, its thicket right
       // there, and there is nowhere to walk. The absorbed one is walked
       // its whole remembered length, past every fragment.
       pass.waiting.z = 0;
@@ -851,12 +1130,10 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     const dt = Math.min((now - lastNow) / 1000, 0.1);
     lastNow = now;
     if (!reducedMotion) elapsed += dt;
-    pass.thermal = alpha * layerOn(thermalDef, local);
-    uniforms.uThermalTime.value = elapsed;
     pass.motes = alpha * layerOn(motesDef, local);
     if (pass.motes > 0 && moteCount > 0) {
       const camZ = pass.absorbed.z;
-      const back = MOTE_DRIFT * MOTE_TRAIL_S;
+      const trail = MOTE_DRIFT * MOTE_TRAIL_S;
       for (let i = 0; i < moteCount; i++) {
         if (!reducedMotion) {
           moteAhead[i] -= MOTE_DRIFT * dt;
@@ -872,7 +1149,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
         motePos[o + 2] = z;
         motePos[o + 3] = x;
         motePos[o + 4] = y;
-        motePos[o + 5] = z - back;
+        motePos[o + 5] = z - trail;
       }
       (moteGeo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
     }
@@ -911,25 +1188,19 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
 
     renderer.setScissorTest(true);
     renderer.setClearColor(GROUND, 1);
+    shared.uBright.value = pass.bright;
+    fragUniforms.uBright.value = pass.bright;
 
     // The waiting clock first (left, or top), then the absorbed one.
-    const draw = (
-      v: View,
-      cam: THREE.PerspectiveCamera,
-      p: { end: number },
-      show: number,
-      thermal: number,
-      motes: number,
-    ) => {
-      uniforms.uEnd.value = p.end;
-      uniforms.uBright.value = pass.bright;
-      uniforms.uThermal.value = thermal;
+    const draw = (v: View, cam: THREE.PerspectiveCamera, p: { z: number; end: number }, show: number, motes: number) => {
       fragUniforms.uShow.value = show;
-      fragUniforms.uBright.value = pass.bright;
       moteUniforms.uOn.value = motes * pass.bright;
       moteUniforms.uDot.value = MOTE_PX * Math.min(window.devicePixelRatio, 2);
-      endWall.position.z = p.end;
-      endWall.visible = p.end > -depth + 1;
+      // The stand of brush grows across the path at this clock's end;
+      // the sky card is carried ahead of this clock's eye.
+      thicket.position.set(0, 0, p.end);
+      thicket.visible = p.end > -depth + 1 && thicketStanding;
+      skyCard.position.set(0, EYE, p.z - SKY_AT);
       frags.visible = show > 0;
       moteLines.visible = motes > 0;
       moteDots.visible = motes > 0;
@@ -938,9 +1209,8 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
       renderer.setScissor(v.x, H - v.y - v.h, v.w, v.h);
       renderer.render(world, cam);
     };
-    draw(vw, camWaiting, pass.waiting, 0, 0, 0);
-    draw(va, camAbsorbed, pass.absorbed, pass.show, pass.thermal, pass.motes);
-
+    draw(vw, camWaiting, pass.waiting, 0, 0);
+    draw(va, camAbsorbed, pass.absorbed, pass.show, pass.motes);
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);
     return true;
