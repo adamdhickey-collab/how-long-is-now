@@ -170,6 +170,8 @@ export interface Hold {
   appearances?: { period: number; dwell: number; trace: number; rarer: number };
   /** The holder's time lapse on the world's clock, see Lapse. */
   lapse?: Lapse;
+  /** Plates the holder brings in on its own progress, by id. */
+  reveal?: Record<string, { from: number; to?: number; over?: number }>;
 }
 
 /** The record's band holds at most this many years, one figure each. */
@@ -2235,6 +2237,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       const hOut = holder.scene.fadeOut ?? 0;
       alpha = Math.min(alpha, hIn > 0 ? (readAt - hFrom) / hIn : readAt >= hFrom ? 1 : 0);
       if (hOut > 0) alpha = Math.min(alpha, (1 - readAt) / hOut);
+      // The holder's one blink: the world to black and back, so that
+      // what it is looking at can change in the dark.
+      const dip = holder.scene.dip;
+      if (dip && dip.over > 0) {
+        const k = clamp01(Math.abs(readAt - dip.at) / (dip.over / 2));
+        alpha = Math.min(alpha, k * k * (3 - 2 * k));
+      }
     }
     alpha = clamp01(alpha);
 
@@ -2490,7 +2499,19 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       // Beyond the seat's frame (18t): nothing while we sit in the
       // painting, arriving as the eye leaves it, and gone with the elms
       // as the eye rises past them.
-      let there = presence(p) * (p.seat || p.beyond ? seated : 1);
+      // What belongs to the seat goes as the eye rises; what only says
+      // `beyond` has its own height to arrive at and stays after it.
+      let there = presence(p) * (p.seat ? seated : 1);
+      // A plate the painting does not have is not drawn at all, unless
+      // the scene holding this world asks for it — and then on the
+      // holder's own progress, since the year itself is pinned.
+      if (p.hidden) there = 0;
+      const shown = holder?.reveal?.[p.id];
+      if (shown) {
+        const over = shown.over ?? 0.06;
+        there = clamp01((readAt - shown.from) / over);
+        if (shown.to !== undefined) there = Math.min(there, clamp01((shown.to - readAt) / over));
+      }
       if (p.beyond) {
         const arrived = clamp01((camera.position.y - p.beyond.from) / p.beyond.over);
         // The painting owns the frame in its own season only: in the

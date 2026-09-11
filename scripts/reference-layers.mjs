@@ -1,3 +1,4 @@
+import { STYLE } from './park-layers.mjs';
 /**
  * The reference painting, taken apart (session 18: pointillism v2).
  *
@@ -362,3 +363,76 @@ export const alleeLayers = [
 ];
 
 
+
+
+/**
+ * The lifetime's own picture (18y): the park seen standing and stepped
+ * back, which is where the lifetime's camera goes. Until now the scene
+ * climbed out of the painting and the painting went with it — the elms
+ * are only real from the seat, so they fade as the eye rises, and what
+ * was left was the widened bands with their seams, a smeared foreground
+ * and no frame at all. These two carry that view instead: the park
+ * without its near elms, and the near elms as a cut-out to stand in it,
+ * which can grow through the eighty years without the picture changing
+ * underneath them. Run with `--wide`; they land under
+ * assets/raw/scene-05.
+ */
+const WIDE_STYLE = `The attached image is the style reference: pointillist, small dots of pure colour, a sunlit late-summer afternoon at Lake Harriet, Minneapolis. Keep exactly its palette, its light and its dot size.`;
+
+const wideArt = (id, size, prompt) => ({ id, dir: 'scene-05', size, preamble: WIDE_STYLE, prompt });
+
+export const wideLayers = [
+  wideArt('wide-park', '1536x1024', 'The same lake and the same late-summer afternoon as the reference, seen from further back and a little higher — from the top of the lawn, standing, a hundred paces behind the shore. The picture fills the frame edge to edge with no white anywhere, no border and no vignette. A broad sweep of sunlit mown grass across the lower half, dappled with shadow and falling gently away; the paved shore path crossing it from side to side about halfway up; the lake beyond it, wide and blue and catching the light, with three or four small white sailboats; the far shore\'s treeline along the far side with the pale bandshell at centre-right; and above it a high summer sky with a few small clouds. A dozen small figures at rest on the grass and a few walking the path, all of them far off and small. No large tree, no branch and no trunk anywhere in the picture.'),
+  // v2: the trunks leave by the bottom edge. v1 drew them standing in
+  // their own strip of grass, which cannot be keyed away — it is green,
+  // and the matte keeps everything that is not paper — and a tree with
+  // its own ground under it cannot be stood in someone else's lawn.
+  wideArt('wide-elms', '1536x1024', 'The near elms of a park, drawn as a frame around an empty middle: two great old elms, one at the left edge and one at the right, their trunks running straight down and out through the bottom edge of the frame and their heavy boughs arching inward and meeting across the top, hung with masses of late-August leaves in green and yellow-green with the light through them and gaps of nothing between the clusters. Seen from below and a little behind, as if standing at the top of a lawn looking out between them. Do not draw the ground: no grass, no earth, no roots, no shadow, nothing at all where the trunks leave the frame. The whole middle of the picture — everything the two trees do not cover — is flat pure white, and so is the bottom edge between the two trunks.'),
+];
+
+
+/**
+ * What the ending notices (18y). The concept has always asked that the
+ * return show "things that were background now subtly visible: a shadow
+ * moves, a cloud reforms, a beetle crosses a leaf, water hits the
+ * shore". They were instruments for a while — a ring, a radar, a thermal
+ * ramp — and the rule since 18h is that an instrument has to change how
+ * long something feels rather than show what is there. These are the
+ * things themselves, painted, each arriving in its own minute of the
+ * last scene. Run with `--notice`; they land under assets/raw/scene-10.
+ */
+const noticeArt = (id, size, prompt) => ({ id, dir: 'scene-10', size, preamble: STYLE, prompt });
+
+export const noticeLayers = [
+  noticeArt('notice-beetle', '1024x1024', 'One green elm leaf lying on mown grass, seen close and from above, with a small black beetle walking across it, its shell catching the afternoon light. The leaf and the beetle only, drawn large and filling most of the frame; the grass beneath them just enough to sit on, and everything else flat pure white.'),
+  noticeArt('notice-water', '1536x1024', 'A low, wide strip of lake water meeting a stone shore: small waves running in and breaking pale along the stones, the light on them, a little foam and a wet line on the stone. Seen from the bank at standing height, straight on, as one long horizontal band across the middle of the frame; everything above and below it flat pure white. No sky, no trees, no people, no boats.'),
+  noticeArt('notice-cloud', '1536x1024', 'One small flat-bottomed summer cloud, white and luminous with a faint warm underside, alone in the middle of the frame with nothing else in it; the rest of the frame flat pure white. No sky colour, no horizon, no land.'),
+];
+
+
+/**
+ * The day's other half (18aa). Scene 03 runs the world's clock from
+ * 4:17 in the afternoon round to 4:17 again: the sun sets behind the
+ * elms, night falls, and it comes back over the left of the frame.
+ * Until now all of that was a tint — the plates darkened toward two
+ * declared colours and the painting sat there in the dark. These are
+ * the pictures the night wants instead: the sky and the water get their
+ * own paint at dusk and after it, and a few things come out that are
+ * not there in the afternoon.
+ *
+ * Each is a band or a cut-out on white, so it can be laid into the
+ * painting's own geometry rather than replacing it. Run with `--night`;
+ * they land under assets/raw/scene-03.
+ */
+const NIGHT_STYLE = `The attached image is the style reference: pointillist, small dots of pure colour, a park on the east shore of Lake Harriet, Minneapolis, looking across the water to the bandshell. Keep exactly its dot size and its way of building everything out of dots. The palette is the one thing that changes: this picture is the same place at a different hour.`;
+
+const nightArt = (id, prompt) => ({ id, dir: 'scene-03', size: '1536x1024', preamble: NIGHT_STYLE, prompt });
+
+export const nightLayers = [
+  nightArt('sky-dusk', 'A wide band of sunset sky, and nothing else: it fills the top third of the frame from edge to edge and everything below it is flat pure white. Deep apricot and rose along the bottom of the band where the sun has just gone down behind the trees, warming to gold, and climbing through pale violet to a dusty blue at the top. A few long flat clouds lit orange underneath. No land, no water, no trees, no birds, no sun disc.'),
+  nightArt('sky-night', 'A wide band of night sky, and nothing else: it fills the top third of the frame from edge to edge and everything below it is flat pure white. Deep blue-black at the top softening to a dark slate blue at the bottom of the band, with a scatter of small stars and, at the right of the band, a gibbous moon, small and pale. A faint warm glow along the very bottom edge where a city lies beyond the trees. No land, no water, no trees, no clouds.'),
+  nightArt('water-dusk', 'A wide band of lake water at sunset, and nothing else: it fills the middle third of the frame from edge to edge and everything above and below it is flat pure white. The water dark and quiet, lying in horizontal ripples, with a broad path of apricot and gold light running down the middle of the band toward the viewer where the sky is reflected. No shore, no sky, no boats, no trees.'),
+  nightArt('water-night', 'A wide band of lake water at night, and nothing else: it fills the middle third of the frame from edge to edge and everything above and below it is flat pure white. Very dark blue lying in quiet horizontal ripples, with a narrow path of pale moonlight running down the middle of the band toward the viewer and a few small points of reflected light from the far shore. No shore, no sky, no boats, no trees.'),
+  nightArt('night-deer', 'Two white-tailed deer standing at the edge of a lake at night, seen from the side at some distance, small in the frame and drawn in the dark blues and violets of night with a little pale moonlight along their backs: one with its head down to drink, one standing and looking out. Nothing beneath them and nothing behind them — no water, no grass, no ground, no shadow — only the two deer on flat pure white, in the middle of the frame.'),
+  nightArt('night-fireflies', 'Fireflies over long grass on a summer night: two or three dozen small warm-yellow points of light scattered across the frame at different heights, each one a soft glow, a few brighter than the rest, with faint darker-blue grass tips drawn only at the very bottom edge of the frame. Everything else flat pure white, with nothing drawn between the lights.'),
+];

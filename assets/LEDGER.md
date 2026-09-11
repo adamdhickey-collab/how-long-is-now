@@ -1749,3 +1749,240 @@ takes off their feet are under it rather than a flat cut floating above
 it; every plate takes all the anisotropy the card will give; and the
 haze is a third deeper, so the far end of the walk goes before it can
 alias.
+
+### 18y · how it ends, and no more static
+
+Adam, on two things at once: the static has to go, and the ending — the
+biggest unresolved thing — just fades off and looks rough.
+
+**The static.** A dot screen in screen space and an emulsion re-thrown
+every frame were laid over the park in 18o and 18p, to give the plates
+one surface and the piece the feel of film. They are gone. The painting
+has its own dots; a second set of them crawling over the top was an
+effect over artwork, and it read as noise on a video rather than paint
+on paper. The declaration is kept, unset, so one line brings it back.
+
+**The ending.** The lifetime climbed out of the painting and the
+painting went with it: what is only real from the seat — the elms, the
+people, the turf — fades as the eye rises past four and a half metres,
+and what was left at the top of the climb was the widened bands with
+their seams, a smeared foreground, and no frame at all. Two things fix
+it, and both of them are pictures rather than machinery.
+
+- **The lifetime has a painting of its own**: the park seen standing and
+  stepped back, painted whole, with its near elms as a second plate laid
+  over it in register — two great elms framing the lawn, the path, two
+  people walking, the lake beyond. It hangs a long way off, so the
+  camera's rise barely moves it, and is drawn in front of the whole park,
+  so it covers the seat's picture rather than sitting behind it.
+- **The change happens in a blink.** Halfway through the eighty years the
+  eye closes and opens, and inside that dark the seat's park goes and
+  the lifetime's own picture takes the frame. A dissolve between two
+  paintings of the same place is a smear; a blink is the piece's own
+  language, and it is what it used to open with. The seat's fade is
+  sharpened to match, so nothing is ever seen half-there.
+
+**And then it ends.** The return used to take its interface away and
+leave the painting up, which is not an ending. The eye closes now, on
+the scroll, across the last stretch of the last scene, and stays closed.
+Its four leftover instruments — a ring of seasons, a radar, a thermal, a
+flow — are off too, as every other scene's have been since 18h.
+
+Not done: the concept asks that the return show what was background
+becoming visible — a beetle crossing a leaf, water hitting the shore, a
+cloud reforming. The prompts for those three are written and the run is
+one command; the image credits ran out before it could be made. The
+holder will want a `reveal` of its own to bring them in one at a time on
+its own progress, since a held world's plate windows are frozen.
+
+Also found, and worth remembering: **the stills this session were being
+judged through the wrong lens.** The browser pane's window is nearly
+square, and a readback rendered at 1400 × 800 still used the camera the
+pane's shape had set, so every frame was drawn at aspect 0.99 and then
+stretched. The snap helper sets the camera's aspect and the composition's
+own fov for the still's shape before the last step now.
+
+### 18z · the pictures are drawn in a browser now
+
+Adam: use Chrome to generate images on ChatGPT from here on out, so no
+more money goes on it — and make it as seamless as possible. The API had
+just run out of credit mid-session with three plates unmade, so the
+timing made the point for him.
+
+The pipeline never wanted the API. It wanted a PNG at
+`assets/raw/<dir>/<id>-v<n>.png`. So `generate.mjs --queue` now resolves
+every job exactly as the API call would — the whole prompt, the size,
+the reference images on disk, the version the result should land as —
+and writes them to `assets/raw/QUEUE.json`; `art-catch.mjs` holds the
+queue, hands the jobs over one at a time, and takes the pictures back.
+
+Getting the picture back was the whole problem. **chatgpt.com cannot
+talk to localhost**: a `fetch` to a local server fails outright and a
+form post to it never arrives, so the page cannot hand anything over
+directly. Downloads would work, but every picture would then need
+finding and renaming. The way out is the clipboard: the generated image
+is served from chatgpt.com itself, so the page may `fetch` its own
+picture and write the blob to the clipboard, and `art-catch clip <i>`
+has AppleScript hand the clipboard's PNG straight to the job's own path.
+Nothing passes through Downloads and nothing is renamed by hand.
+
+Two pictures were drawn this way to prove it — the beetle on its leaf
+and the small cloud, both for the ending — and they are the API's equal.
+The recipe, with every gotcha found on the way (press Return rather than
+clicking a send button that moves; click the page before writing to the
+clipboard, or it refuses on an unfocused document; attach the style
+reference to a chat's first message only), is written down as a skill at
+`.claude/skills/draw-in-the-browser`.
+
+### 18y2 · the three things the ending notices
+
+The concept has always asked that the return show what was background
+becoming visible. It does now: the water breaking on the near shore
+arrives a quarter of the way in, a cloud over the far trees at two
+fifths, and at three fifths a leaf at our feet with a beetle crossing
+it. Each arrives and stays, so the last scene thickens with noticing
+rather than turning over, and then the line comes, the interface goes
+and the eye closes.
+
+They are the first pictures drawn in the browser rather than bought
+(18z), and they needed three things of the cutter:
+
+- **A soft matte finds a leaf and loses a cloud.** A cloud is white on
+  white paper: its edges are dots of colour, which the matte catches,
+  but its middle is the paper's own white. `fill` floods the paper in
+  from the frame's edges and makes everything the flood cannot reach
+  part of the subject, taking its colour from the paint that is there —
+  the first pass filled it with black, which is what an empty pixel is.
+- **A rectangle laid into a painting reads as a patch.** The water came
+  back as a band of lake over a band of pebbles with hard edges, so
+  `feather` fades a plate out from its own edges — measured from the
+  subject's box, not the paper's, which was the first mistake.
+- **A held world's plate windows are frozen**, since the hold pins the
+  year at one instant. So a holder now declares a `reveal`: which plates
+  arrive, when, on its own progress. The plates themselves are `hidden`,
+  meaning the painting does not have them and nothing draws them until
+  a scene asks.
+
+One placement rule worth keeping: a viewport wider than the painting's
+frame sees it through a narrower lens, so the top and the bottom of the
+picture are off the screen on anything widescreen. Both the cloud and
+the leaf were first placed in bands nobody would ever see.
+
+### 18aa · the sun goes down, and something comes out
+
+Adam: the sunset and the night are a generic black fade, make it a
+richer experience — maybe some nighttime wildlife. They were exactly
+that: the plates darkened toward two declared colours and the painting
+sat there in the dark with its afternoon still in it.
+
+Six pictures, all drawn in the browser (18z): a band of sunset sky and a
+band of night sky with stars, a moon and the city's glow along the
+bottom; the lake taking the sunset and the lake under the moon; two deer
+come down to the water; and fireflies over the lawn. The day's own scene
+says when each arrives and goes, on its own progress — the sun sets
+about a sixth of the way through it and comes up past the half — which
+needed the holder's `reveal` (18y) to learn an end as well as a start.
+
+Three things had to be got right for a painted hour to sit inside a
+painted afternoon:
+
+- **A band is not a rectangle.** Laid as one, the sunset water covered
+  the lawn and cut the lake in half with a straight line. The painting's
+  own water and sky are whole-frame layers of the wide continuation, so
+  the cutter now drops a drawn band into an empty wide frame at the box
+  it belongs in — `wide-band` — and the composition places it by the
+  same path as the plate it is standing in for.
+- **And it wears that plate's own matte.** The lake's near edge runs
+  across the frame on a diagonal and its far edge is the shoreline;
+  masked by the painting's own water, the sunset lies exactly on the
+  water and nowhere else. The sky does the same and so keeps the far
+  treeline's silhouette out of the stars.
+- **The matte's edge is a staircase**, cut row by row, and the painting
+  hides that because its water and its bank are near neighbours in
+  colour. A night lake is not, so the mask is softened before it is
+  worn.
+
+A lying plate, for the record, is placed on the ground from its own
+picture's shape — so a band that is not the wide frame's shape lands
+nowhere near the water it was meant to be. That cost an hour.
+
+### 18ab · the elms in three seasons, the allée's far end, and an audit
+
+Three things, in the order they were found.
+
+**The elms we sit under were smears.** August's canopy is the painting's
+own; the other three were derived from it in 18w by filling its
+silhouette with leaves painted for the season, and they came out as a
+dark slab over the left trunk and a white one over the right — which is
+exactly what there was to look at the moment the camera began to pull
+back. They are not drawn any more. The same elms are painted properly,
+stage by stage, as the boughs, which hang from the seat in every season
+but late summer, so the frame's top is theirs from the first turn of the
+year. (The four park paintings those plates were derived from are good;
+they were keyed by flood fill, which is why the versions cut for the
+park's own scene were smears too — October's ground is cream, January's
+pale blue, April's pale yellow, and a flood looking for white stops at
+the first dot of any of them. Those are cut with the soft matte now.)
+
+**The absorbed clock walked out of the allée.** The trees were planted
+over the corridor's declared depth, a hundred and sixty units; the
+absorbed clock covers thirty bays of six and a bit, which is a hundred
+and eighty-six, so for the last stretch of the lived half it was walking
+an empty plain with a path on it. The allée is planted as far as either
+clock actually walks, and the ground carried past that.
+
+**And then an audit.** Adam: there are so many visual defects I don't
+know where to start — catalogue them. Thirty-one frames, one every
+scene at several points, read back at 1400 × 800 through the
+composition's own lens; the catalogue is `assets/DEFECTS.md`, thirty-four
+entries, two of them already fixed above.
+
+The finding that matters: **the widened bands carry rectangles in every
+season but summer.** Every whole-frame plate was painted at the
+painting's size and widened to twice it so the camera can leave the
+frame; summer's were cleaned by hand in 18s and the other three were
+never touched. The panels, mosaic blocks and vertical seams that show
+through the year and the day are all that one thing. It is one job, not
+fifty.
+
+Worth remembering for any future audit: the browser pane reports a
+zero-size window, so anything laid out from `innerWidth` draws nothing —
+scene 09 came back pure black until `innerWidth` and `innerHeight` were
+defined on the window before capture.
+
+### 18ac · the seasons get their own colour back
+
+D-01, the audit's one systemic defect: every band but August's carried
+rectangles. Three faults in the same place, and a fourth above it.
+
+A season's band was built by setting that season's painting into
+August's outpainted continuation, recolouring the continuation through a
+24³ colour lookup learned from the two paintings, and grading the whole
+thing. The lookup was **read cell by cell**, so a sky — which changes
+slowly, and therefore crosses cell boundaries slowly — came out as flat
+patches. Cells the lookup had no data for were **skipped**, so August
+showed through those pixels as pale panels. And the **grade's lift**
+took the seasons nearly white: spring's sky band, looked at on its own,
+was very nearly paper.
+
+The fix is not to improve any of that but to stop doing it. August's
+band is already right, so a season now takes **that band's own alpha and
+its continuation**, mapped to the season by matching the two paintings'
+own distributions channel by channel over the band, with the season's
+painting laid into it where the painting reaches, eased over the last
+few pixels of its edge. Inside the frame it is the season as painted;
+outside it is August's continuation wearing the season's colour. No
+lookup, no cells, nothing invented. (The trilinear read and the
+fully-filled table were written first, and are kept — they are right
+either way — but they are not what fixed this.)
+
+The fourth fault was August's own: **the continuation's sky above the
+painting** arrives as vertical panels of slightly different blue. It is
+held now from the painting's own topmost sky, column by column, eased
+into what is there and keeping the continuation's grain, so the fill is
+not a wash.
+
+October and April are seasons again rather than washes. What is left of
+D-01 is all in the continuation: block texture in the corners above the
+painting where its elm foliage is, a soft far shore around the bandshell,
+and a faint diagonal at the bottom-left where the ground band ends.

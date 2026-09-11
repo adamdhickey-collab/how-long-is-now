@@ -130,6 +130,14 @@ export interface Plate {
    * since a bough overhead is only overhead while we are under it.
    */
   beyond?: { from: number; over: number; exceptSeason?: string };
+  /** Drawn over the painting whatever its distance (18y): the lifetime's
+   *  own picture is a long way off, so that the camera's rise barely
+   *  moves it, but it has to cover the seat's plates rather than sit
+   *  behind them. */
+  front?: boolean;
+  /** Never drawn on its own account (18y): a plate the painting does not
+   *  have until a later scene holds this world and reveals it. */
+  hidden?: boolean;
   /** With `ref`: the plate lies on the ground (y = baseY) from the
    *  box's nearest row to its furthest, instead of standing at z. */
   lay?: boolean;
@@ -939,6 +947,16 @@ export interface Scene {
     appearances?: { period: number; dwell: number; trace: number; rarer: number };
     /** The holder's time lapse, on the span of world time it covers. */
     lapse?: Lapse;
+    /**
+     * Plates this scene brings in on its own progress (18y), by id: from
+     * this point, eased over `over`, and there for the rest of it, or
+     * until `to` if it gives one — the day's night comes and goes. A
+     * held world's own plate windows are frozen — the hold pins the year
+     * at one instant — so anything that is to arrive while it is held
+     * has to be the holder's own doing. The ending uses it for the three
+     * things it notices.
+     */
+    reveal?: Record<string, { from: number; to?: number; over?: number }>;
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -950,6 +968,22 @@ export interface Scene {
    * does rather than watches. Under reduced motion the eye stays open.
    */
   blink?: { after: number; close: number; open: number };
+  /**
+   * A scene holding another's world can close the eye once in the middle
+   * of itself (18y): over `over` of the scene, centred on `at`, the world
+   * goes to black and comes back. The lifetime uses it to change what it
+   * is looking at — the seat's park for the park seen from further back
+   * — without dissolving one painting through another.
+   */
+  dip?: { at: number; over: number };
+  /**
+   * The eye closing at the end (18y), and staying closed: the lids come
+   * in from the frame's edges across this stretch of the scene, on the
+   * scroll rather than on a clock, so the last thing the piece does is
+   * the visitor's own. The piece used to stop by taking its interface
+   * away and leaving the painting up, which is not an ending.
+   */
+  close?: { from: number; to: number };
   /**
    * The invitation: the HUD's hint arrives so many seconds after the
    * scene is entered rather than with the rest of the interface, so the
@@ -1189,6 +1223,20 @@ export const scenes: Scene[] = [
       // A day as a time lapse: an hour and a half's stay, an hour's gap;
       // the lawn empties with the light.
       lapse: { dwell: 5400, gap: 4200, edge: 0.1, density: 0.6, cap: { lawn: 6, path: 4, water: 3 } },
+      // The hours, painted (18aa). Scroll runs the clock from 4:17 in
+      // the afternoon round to 4:17 again, so the sun goes down about a
+      // sixth of the way in and comes up again past the half. The sky
+      // and the lake take their sunset, then their night, and give them
+      // back; the deer come down to the water while it is dark and the
+      // fireflies are out over the lawn a little longer.
+      reveal: {
+        'sky-dusk': { from: 0.12, to: 0.28, over: 0.05 },
+        'water-dusk': { from: 0.12, to: 0.28, over: 0.05 },
+        'sky-night': { from: 0.23, to: 0.57, over: 0.05 },
+        'water-night': { from: 0.23, to: 0.57, over: 0.05 },
+        'night-fireflies': { from: 0.26, to: 0.5, over: 0.06 },
+        'night-deer': { from: 0.32, to: 0.47, over: 0.04 },
+      },
     },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
@@ -1240,7 +1288,7 @@ export const scenes: Scene[] = [
       // What is only real from the seat fades once the eye is this high,
       // over this much more: above the year's small pull back, so the elms
       // frame the whole year and go only as the lifetime climbs.
-      seatFade: { until: 4.6, over: 1.6 },
+      seatFade: { until: 4.55, over: 0.3 },
       // Sunset: the sky pale violet overhead and apricot at the treeline,
       // the ground warmed; night: deep blue, the ground blue-black.
       light: {
@@ -1269,12 +1317,13 @@ export const scenes: Scene[] = [
     // The painting lives: strokes shifting at a hand-drawn nine frames a
     // second, the people breathing, the elms swaying, the water shimmering.
     boil: { fps: 9, amount: 1 },
-    // The reference's dots are four or five of its pixels across; on a
-    // frame that shows the painting about screen-wide that is three CSS
-    // pixels or so.
-    // Old film: the dot screen re-thrown every frame, a fine emulsion
-    // grain over it, the exposure flickering by a hair.
-    grain: { size: 3.2, amount: 0.22, tint: 0.06, film: { noise: 0.07, flicker: 0.012 } },
+    // No grain (18y). A dot screen in screen space and an emulsion
+    // re-thrown every frame were laid over the park in 18o and 18p, to
+    // give the plates one surface and the piece the feel of film. Adam:
+    // remove the static, I really don't like that anymore. It was an
+    // effect over artwork that already has its own dots, and it crawled.
+    // The declaration is kept, unset, because the reader is still built
+    // and one line here brings it back.
     // The year as a time lapse: three days' stay, two days' gap, so the
     // August crowd flickers through its window of the year.
     lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.85, cap: { lawn: 7, path: 5, water: 3 } },
@@ -1295,7 +1344,16 @@ export const scenes: Scene[] = [
       { id: 'near-bank', z: 4, lay: true, ref: [0, 280, 1536, 744], width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/ref/ground.webp', AUTUMN: 'plates/scene-04/ref/ground-autumn.webp', WINTER: 'plates/scene-04/ref/ground-winter.webp', SPRING: 'plates/scene-04/ref/ground-spring.webp' } },
       // Just behind the bicycle that leans on the trunk (its feet put it
       // at about 11.5) and the three nearest people, ahead of everyone else.
-      { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, stages: [{ at: 0, image: 'plates/scene-04/ref/trees.webp' }, { at: 0.30, image: 'plates/scene-04/ref/trees-autumn.webp' }, { at: 0.55, image: 'plates/scene-04/ref/trees-winter.webp' }, { at: 0.78, image: 'plates/scene-04/ref/trees-spring.webp' }] },
+      // The elms we sit under. Only August's is the painting's own; the
+      // other three were derived from it (18w) by filling its silhouette
+      // with leaves painted for the season, and they came out as smears
+      // — a dark slab over the left trunk, a white one over the right —
+      // which is what there was to see the moment the camera began to
+      // pull back. They are gone (18ab). The same elms are painted
+      // properly stage by stage as the boughs below, which hang from the
+      // seat in every season but this one, so the frame's top is theirs
+      // from the first turn of the year.
+      { id: 'trees', z: 11, seat: true, ref: [0, 0, 1536, 760], width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/ref/trees.webp' } },
       // The frame beyond the painting (18t). The pull-back used to be fed
       // by the continuation on every side, and its far edges read as
       // patchwork — the canopy cut off straight at the painting's top,
@@ -1312,9 +1370,216 @@ export const scenes: Scene[] = [
       // The trunks are bark in every season, as the painting's own are:
       // one image under all four, so they stack rather than cross-fade
       // and never go half-there at the turn of a season.
-      { id: 'trunk-left', z: 11, beyond: { from: 2.52, over: 0.35 }, world: { x: -6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-left.webp', AUTUMN: 'plates/scene-04/frame/trunk-left.webp', WINTER: 'plates/scene-04/frame/trunk-left.webp', SPRING: 'plates/scene-04/frame/trunk-left.webp' } },
-      { id: 'trunk-right', z: 11, beyond: { from: 2.52, over: 0.35 }, world: { x: 6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-right.webp', AUTUMN: 'plates/scene-04/frame/trunk-right.webp', WINTER: 'plates/scene-04/frame/trunk-right.webp', SPRING: 'plates/scene-04/frame/trunk-right.webp' } },
-      { id: 'turf', lay: true, z: 16.8, beyond: { from: 2.52, over: 0.35 }, world: { x: 0, y: 0, z: 19.6, w: 20, h: 12.8 }, width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/frame/turf-summer.webp', AUTUMN: 'plates/scene-04/frame/turf-autumn.webp', WINTER: 'plates/scene-04/frame/turf-winter.webp', SPRING: 'plates/scene-04/frame/turf-spring.webp' } },
+      { id: 'trunk-left', z: 11, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: -6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-left.webp', AUTUMN: 'plates/scene-04/frame/trunk-left.webp', WINTER: 'plates/scene-04/frame/trunk-left.webp', SPRING: 'plates/scene-04/frame/trunk-left.webp' } },
+      { id: 'trunk-right', z: 11, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: 6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-right.webp', AUTUMN: 'plates/scene-04/frame/trunk-right.webp', WINTER: 'plates/scene-04/frame/trunk-right.webp', SPRING: 'plates/scene-04/frame/trunk-right.webp' } },
+      { id: 'turf', lay: true, z: 16.8, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: 0, y: 0, z: 19.6, w: 20, h: 12.8 }, width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/frame/turf-summer.webp', AUTUMN: 'plates/scene-04/frame/turf-autumn.webp', WINTER: 'plates/scene-04/frame/turf-winter.webp', SPRING: 'plates/scene-04/frame/turf-spring.webp' } },
+      // The lifetime's own picture (18y). The eighty years used to be
+      // watched from a camera that climbed out of the painting, and the
+      // painting went with it: what is only real from the seat — the
+      // elms, the people, the turf — fades as the eye rises, and what
+      // was left was the widened bands with their seams, a smeared
+      // foreground and no frame at all. So the lifetime has a picture of
+      // its own: the park seen standing and stepped back, painted whole,
+      // with its near elms as a second plate laid over it in register.
+      // A long way off, so the rise barely moves it, and drawn in front
+      // of everything, so it covers the seat's park as that goes.
+      {
+        id: 'wide-park',
+        z: -60,
+        front: true,
+        beyond: { from: 4.62, over: 0.18 },
+        world: { x: 0, y: -13, z: -60, w: 150, h: 100 },
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-05/wide-park.webp',
+          AUTUMN: 'plates/scene-05/wide-park.webp',
+          WINTER: 'plates/scene-05/wide-park.webp',
+          SPRING: 'plates/scene-05/wide-park.webp',
+        },
+      },
+      {
+        id: 'wide-elms',
+        z: -60,
+        front: true,
+        beyond: { from: 4.62, over: 0.18 },
+        world: { x: 0, y: -13, z: -60, w: 150, h: 100 },
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.06,
+        images: {
+          'LATE SUMMER': 'plates/scene-05/wide-elms.webp',
+          AUTUMN: 'plates/scene-05/wide-elms.webp',
+          WINTER: 'plates/scene-05/wide-elms.webp',
+          SPRING: 'plates/scene-05/wide-elms.webp',
+        },
+      },
+      // The day's dusk and its night (18aa). The sun setting used to be a
+      // tint: the plates darkened toward two declared colours and the
+      // painting sat in the dark with its afternoon still in it. These
+      // are the hours painted — the sky and the water get their own
+      // pictures over the afternoon's, laid in the same boxes so the
+      // geometry never moves — and two things that are only out after
+      // dark. The day's own scene says when each of them comes and goes.
+      {
+        id: 'sky-dusk',
+        z: -169,
+        hidden: true,
+        ref: [0, 0, 1536, 340],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/sky-dusk.webp',
+          AUTUMN: 'plates/scene-03/sky-dusk.webp',
+          WINTER: 'plates/scene-03/sky-dusk.webp',
+          SPRING: 'plates/scene-03/sky-dusk.webp',
+        },
+      },
+      {
+        id: 'sky-night',
+        z: -168,
+        hidden: true,
+        ref: [0, 0, 1536, 340],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/sky-night.webp',
+          AUTUMN: 'plates/scene-03/sky-night.webp',
+          WINTER: 'plates/scene-03/sky-night.webp',
+          SPRING: 'plates/scene-03/sky-night.webp',
+        },
+      },
+      {
+        id: 'water-dusk',
+        // Laid exactly where the painting's own water is laid (18aa):
+        // the band is dropped into the wide frame by the cutter, so the
+        // composition places it by the same path and it lies on the same
+        // ground rather than standing in front of it.
+        z: -52,
+        lay: true,
+        hidden: true,
+        ref: [0, 260, 1536, 360],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/water-dusk.webp',
+          AUTUMN: 'plates/scene-03/water-dusk.webp',
+          WINTER: 'plates/scene-03/water-dusk.webp',
+          SPRING: 'plates/scene-03/water-dusk.webp',
+        },
+      },
+      {
+        id: 'water-night',
+        z: -52,
+        lay: true,
+        hidden: true,
+        ref: [0, 260, 1536, 360],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/water-night.webp',
+          AUTUMN: 'plates/scene-03/water-night.webp',
+          WINTER: 'plates/scene-03/water-night.webp',
+          SPRING: 'plates/scene-03/water-night.webp',
+        },
+      },
+      {
+        id: 'night-deer',
+        z: 6,
+        hidden: true,
+        // On the bank, not in the lake: the box's foot is on the grass
+        // below the near waterline, and `feet` puts them at the distance
+        // that row stands at.
+        feet: true,
+        ref: [86, 468, 168, 100],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/night-deer.webp',
+          AUTUMN: 'plates/scene-03/night-deer.webp',
+          WINTER: 'plates/scene-03/night-deer.webp',
+          SPRING: 'plates/scene-03/night-deer.webp',
+        },
+      },
+      {
+        id: 'night-fireflies',
+        z: 10,
+        hidden: true,
+        ref: [120, 600, 1100, 380],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/night-fireflies.webp',
+          AUTUMN: 'plates/scene-03/night-fireflies.webp',
+          WINTER: 'plates/scene-03/night-fireflies.webp',
+          SPRING: 'plates/scene-03/night-fireflies.webp',
+        },
+      },
+      // What the ending notices (18y): three things that were always in
+      // this park and never looked at. They are not in the painting, so
+      // nothing draws them until the last scene holds this world and
+      // asks for them, one at a time. The water goes just in front of
+      // the near bank and behind everyone standing on it; the cloud in
+      // the sky; the leaf at our feet, nearer than anyone. All three sit
+      // well inside the painting's height: a viewport wider than the
+      // frame sees the frame through a narrower lens, so the top and the
+      // bottom of the picture are off the screen on anything widescreen,
+      // and a notice placed in either is a notice nobody sees.
+      {
+        id: 'notice-water',
+        z: 4.5,
+        hidden: true,
+        ref: [0, 344, 400, 141],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.08,
+        images: {
+          'LATE SUMMER': 'plates/scene-10/notice-water.webp',
+          AUTUMN: 'plates/scene-10/notice-water.webp',
+          WINTER: 'plates/scene-10/notice-water.webp',
+          SPRING: 'plates/scene-10/notice-water.webp',
+        },
+      },
+      {
+        id: 'notice-cloud',
+        z: -160,
+        hidden: true,
+        ref: [430, 126, 400, 137],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-10/notice-cloud.webp',
+          AUTUMN: 'plates/scene-10/notice-cloud.webp',
+          WINTER: 'plates/scene-10/notice-cloud.webp',
+          SPRING: 'plates/scene-10/notice-cloud.webp',
+        },
+      },
+      {
+        id: 'notice-beetle',
+        z: 14,
+        hidden: true,
+        ref: [258, 726, 168, 161],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        images: {
+          'LATE SUMMER': 'plates/scene-10/notice-beetle.webp',
+          AUTUMN: 'plates/scene-10/notice-beetle.webp',
+          WINTER: 'plates/scene-10/notice-beetle.webp',
+          SPRING: 'plates/scene-10/notice-beetle.webp',
+        },
+      },
       // The nearest people, each one its own plate at its own distance, redrawn from the painting and fitted into its box there. All August: there for the second and gone once the year turns.
       {
         // Nearer the bicycle than the painting had her, by a little (18g):
@@ -2781,6 +3046,12 @@ export const scenes: Scene[] = [
       grow: 1.7,
       appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
     },
+    // Halfway through the eighty years the eye closes, and when it opens
+    // the park is seen from further back: the seat's elms and lawn have
+    // gone and the lifetime's own painting has taken the frame. Both
+    // changes happen inside the dark, so no picture is ever dissolved
+    // through another.
+    dip: { at: 0.42, over: 0.13 },
     camera: {
       from: { y: 3.4, z: 19.5, lookY: -1.3 },
       to: { y: 6.5, z: 26, lookY: 1.5 },
@@ -2806,30 +3077,42 @@ export const scenes: Scene[] = [
     // Longer than the second it opened on: an ending needs room to leave in.
     lengthVh: 180,
     describe:
-      'The park again, exactly as it opened, from the same bench at the same second. Every instrument is faintly on at once, then each goes, until only the afternoon is left. After the line, the clock and the labels fade too.',
+      'The park again, exactly as it opened, from the same bench at the same second. Nothing has changed in it; three things in it are noticed that were not before \u2014 the water breaking on the near shore, a cloud that has formed over the far trees, and a leaf at our feet with a beetle crossing it. Then the line, the clock and the labels fade, and the eye closes.',
     caption: 'The moment didn’t get longer.\nYou got closer.',
     captionAt: { from: 0.58, to: 0.88 },
     timeRate: 1,
     // Exactly the same lake, from exactly the same seat, at exactly the
     // same second the piece opened on — the camera does not move,
     // because nothing about the afternoon has changed. Only what is
-    // being noticed has. Every instrument is faintly on at once, and
-    // then they go, one by one: the ring of seasons first, the most
-    // abstract of them, and the wind on the water last, being the least
-    // like an instrument and the most like the world. Then the line,
-    // and then the interface itself.
-    hold: { of: 'scene-04-year', at: 0 },
+    // being noticed has. Then the line, and then the interface itself.
+    // The same second, and three things in it that were always there:
+    // the water on the shore, then a cloud that was not in the sky when
+    // we sat down, then a leaf at our feet with a beetle crossing it.
+    // Each arrives and stays, so the picture thickens with noticing
+    // rather than turning over.
+    hold: {
+      of: 'scene-04-year',
+      at: 0,
+      reveal: {
+        'notice-water': { from: 0.24, over: 0.08 },
+        'notice-cloud': { from: 0.42, over: 0.08 },
+        'notice-beetle': { from: 0.6, over: 0.08 },
+      },
+    },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
     },
-    instruments: [
-      { kind: 'ring', from: 0, to: 0.18, strength: 0.5 },
-      { kind: 'radar', from: 0, to: 0.3, strength: 0.5, period: 6, scope: { corner: 'top-right', size: 0.28, inset: { x: 0.04, y: 0.095 } } },
-      { kind: 'thermal', from: 0, to: 0.42, strength: 0.32, ramp: [0x24425f, 0x35566a, 0xe0b884, 0xffe6b0], range: [18, 34] },
-      { kind: 'flow', from: 0, to: 0.54, strength: 0.5 },
-    ],
-    hudOut: { from: 0.88, to: 0.98 },
+    // The ending used to take its instruments off one by one — the ring
+    // of seasons, then a radar, a thermal, the wind on the water — while
+    // the rest of the piece had had its overlays switched off since 18h.
+    // What the concept asks for here is not instruments going but things
+    // arriving: what was background, noticed. They are painted, and the
+    // hold below says when each of them comes.
+    instruments: [],
+    hudOut: { from: 0.84, to: 0.93 },
+    // And then the eye closes, and stays closed.
+    close: { from: 0.94, to: 1 },
     // The same eye blinks in the same second, on the same count as it
     // did at the opening: the one thing that happens here that also
     // happened then.

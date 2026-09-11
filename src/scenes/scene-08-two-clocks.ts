@@ -411,8 +411,14 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
 
   // ---- the ground: one plane, the path down its middle, running from
   // z = +bay (a little behind the camera's start) to -depth.
-  const zMid = (corridor.bay - depth) / 2;
-  const run = depth + corridor.bay;
+  // How far the allée is planted: not the declared depth but as far as
+  // either clock actually walks (18ab). The absorbed one covers thirty
+  // bays while it is happening and twenty more looking back, and past
+  // the last tree it was walking an empty plain with a path on it.
+  const walked = Math.max(absorbed.livedBays, absorbed.rememberedBays + 1, waiting.livedBays) * corridor.bay;
+  const planted = Math.max(depth, walked + corridor.bay * 6);
+  const zMid = (corridor.bay - planted) / 2;
+  const run = planted + corridor.bay;
   const groundUniforms = {
     ...shared,
     uGrass: { value: new THREE.Color(sky.grass) },
@@ -447,7 +453,7 @@ export function createTwoClocksScene(world: THREE.Scene, def: Scene, reducedMoti
     const far = run + 140;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(plates.shore.at * 2, far), groundMat);
     m.rotation.x = -Math.PI / 2;
-    m.position.set(0, 0, (corridor.bay - depth - 140) / 2);
+    m.position.set(0, 0, (corridor.bay - planted - 140) / 2);
     m.frustumCulled = false;
     group.add(m);
   }

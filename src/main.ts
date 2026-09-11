@@ -153,6 +153,8 @@ let hudShown = 1;
 // The scene's own running time, and whether its blink has happened.
 let sceneShown = 0;
 let blinked = false;
+/** How far the ending's eye has closed, so the lids are only written when it moves. */
+let lidShut = 0;
 
 // The invitation waits, if the opening scene says so, until the second
 // has been sat in for as long as the manifest asks; under reduced motion
@@ -315,6 +317,19 @@ function frame(now: number) {
     clock.style.opacity = String(hudOpacity);
   }
 
+  // The ending: the eye closes on the scroll and stays closed. The lids
+  // are the blink's own, so this only ever runs after it — the blink is
+  // seconds into the scene and this is the end of it.
+  const shut = active.close
+    ? Math.min(Math.max((local - active.close.from) / Math.max(1e-6, active.close.to - active.close.from), 0), 1)
+    : 0;
+  if (shut !== lidShut) {
+    lidShut = shut;
+    const eased = shut * shut * (3 - 2 * shut);
+    lidUpper.style.transform = `translateY(${-100 + 100 * eased}%)`;
+    lidLower.style.transform = `translateY(${100 - 100 * eased}%)`;
+  }
+
   // The field turns faster as the time scale grows — log-scaled so a
   // lifetime doesn't reduce the world to noise (unless we want it to).
   const rate = active.timeRate > 0 ? Math.log10(1 + active.timeRate) : 0;
@@ -376,6 +391,7 @@ function frame(now: number) {
           life: active.hold.life,
           appearances: active.hold.appearances,
           lapse: active.hold.lapse,
+          reveal: active.hold.reveal,
         }
       : undefined,
   );

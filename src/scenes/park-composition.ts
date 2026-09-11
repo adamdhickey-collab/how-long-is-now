@@ -148,7 +148,9 @@ export function buildComposition(
         // Ordered as the projected plates are: a lying plate by its far
         // edge, a standing one by its depth.
         const orderZ = p.lay ? wz - wh / 2 - 0.5 : wz;
-        mesh.renderOrder = orderZ / 20 - 1.3 + index * 0.001 + i * 0.0001;
+        // A plate drawn in front is drawn in front of the whole park,
+        // however far away it is placed.
+        mesh.renderOrder = (p.front ? 8 : orderZ / 20 - 1.3) + index * 0.001 + i * 0.0001;
         mesh.frustumCulled = false;
         mesh.name = `${p.id}:${key}`;
         group.add(mesh);

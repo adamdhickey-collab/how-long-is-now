@@ -264,6 +264,32 @@ function seasonLookup(summer, season, regionOfPainting = () => 0, regions = 1, o
   const gains = tables.map((t) => (opts.detailGain === 'auto' ? Math.min(2.4, Math.max(0.7, t.n && t.dS ? t.dT / t.dS : 1)) : opts.detailGain ?? 0.6));
   const satGain = tables.reduce((a, t) => a + (t.n && t.sS ? t.sT / t.sS : 1), 0) / tables.length;
   if (opts.detailGain === 'auto') console.log(`  grade: dots × ${gains.map((g) => g.toFixed(2)).join(' ')}, saturation × ${satGain.toFixed(2)}`);
+  // The table is read between its cells, not out of them (18ac). Read
+  // cell by cell, a smooth gradient — a sky, a lawn falling away — is
+  // mapped in steps, and the steps show as a mosaic of flat patches
+  // wherever the colour changes slowly. Eight cells, trilinear.
+  const between = (t, r, g, b, k) => {
+    const f = (v) => Math.min(N - 1.0001, Math.max(0, (v * N) / 256 - 0.5));
+    const fr = f(r);
+    const fg = f(g);
+    const fb = f(b);
+    const r0 = fr | 0;
+    const g0 = fg | 0;
+    const b0 = fb | 0;
+    const dr = fr - r0;
+    const dg = fg - g0;
+    const db = fb - b0;
+    let v = 0;
+    for (let i = 0; i < 8; i++) {
+      const rr = r0 + (i & 1);
+      const gg = g0 + ((i >> 1) & 1);
+      const bb = b0 + ((i >> 2) & 1);
+      const w = (i & 1 ? dr : 1 - dr) * ((i >> 1) & 1 ? dg : 1 - dg) * ((i >> 2) & 1 ? db : 1 - db);
+      if (w <= 0) continue;
+      v += w * t.lut[(rr * N * N + gg * N + bb) * 3 + k];
+    }
+    return v;
+  };
   /** Apply to an RGBA buffer of the given size; regionAt gives a pixel's region. */
   const apply = (data, w, h, regionAt = () => 0) => {
     const lp = lowpass(data, w, h, R);
@@ -272,9 +298,11 @@ function seasonLookup(summer, season, regionOfPainting = () => 0, regions = 1, o
       const o = (y * w + x) * 4;
       const reg = regionAt(x, y);
       const t = tables[reg];
-      const c = cell(lp[o], lp[o + 1], lp[o + 2]);
-      if (!t.filled[c]) continue;
-      for (let k = 0; k < 3; k++) out[o + k] = Math.max(0, Math.min(255, Math.round(t.lut[c * 3 + k] + gains[reg] * (data[o + k] - lp[o + k]))));
+      if (!t.n) continue;
+      for (let k = 0; k < 3; k++) {
+        const base = between(t, lp[o], lp[o + 1], lp[o + 2], k);
+        out[o + k] = Math.max(0, Math.min(255, Math.round(base + gains[reg] * (data[o + k] - lp[o + k]))));
+      }
     }
     return out;
   };
@@ -386,6 +414,31 @@ function fillTable({ sum, cnt, lut, filled }, N) {
     }
     filled.set(next);
     if (!grew) break;
+  }
+  // Whatever the dilation could not reach takes the nearest filled cell
+  // in colour space (18ac). Left unfilled, those cells used to mean "do
+  // not touch this pixel", and a patch of summer sky would survive into
+  // October as a pale panel.
+  const left = [];
+  for (let c = 0; c < N * N * N; c++) if (!filled[c]) left.push(c);
+  if (left.length) {
+    const have = [];
+    for (let c = 0; c < N * N * N; c++) if (filled[c]) have.push(c);
+    for (const c of left) {
+      const r = (c / (N * N)) | 0;
+      const g = ((c / N) | 0) % N;
+      const b = c % N;
+      let best = -1;
+      let bd = Infinity;
+      for (const h of have) {
+        const hr = (h / (N * N)) | 0;
+        const hg = ((h / N) | 0) % N;
+        const hb = h % N;
+        const d = (hr - r) ** 2 + (hg - g) ** 2 + (hb - b) ** 2;
+        if (d < bd) { bd = d; best = h; }
+      }
+      if (best >= 0) { filled[c] = 1; for (let k = 0; k < 3; k++) lut[c * 3 + k] = lut[best * 3 + k]; }
+    }
   }
 }
 
@@ -1396,7 +1449,7 @@ async function prepare(files, opts = {}) {
     // the sky band's fill was built from this season's own line: rebuild
     skyBelow(skyOnly, base, skyTop, w, h);
   }
-  const prepared = { w, h, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar, treesRGB };
+  const prepared = { w, h, ox, oy, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar, treesRGB };
   cache.set(key, prepared);
   return prepared;
 }
@@ -1561,8 +1614,52 @@ const under = (y, row, above) => (above ? (y < row + OVER ? 1 : 0) : y > row - O
 // (the composition orders lying plates by their far edge, standing ones
 // by their z). Each band is opaque past the edge the one in front of it
 // feathers over.
+/**
+ * The sky above the painting (18ac): held, not invented. The outpainted
+ * continuation is another picture's sky up there, and it arrives as
+ * vertical panels of slightly different blue with hard edges between
+ * them — invisible from the seat, and the first thing the eye finds the
+ * moment the camera draws back. Each column is filled instead from the
+ * painting's own topmost sky, eased into what is there over the last of
+ * it, with the continuation's own grain kept so the fill is not a wash.
+ */
+function holdSkyAbove(data, w, h, oy, top = 64, over = 90) {
+  if (oy <= 0) return;
+  for (let x = 0; x < w; x++) {
+    const mean = [0, 0, 0];
+    for (let y = oy; y < oy + top; y++) {
+      const o = (y * w + x) * 4;
+      for (let c = 0; c < 3; c++) mean[c] += data[o + c] / top;
+    }
+    // A sky is a little deeper overhead than at the treeline.
+    for (let y = 0; y < oy; y++) {
+      const o = (y * w + x) * 4;
+      const up = (oy - y) / oy;
+      // the grain that is there, kept: this pixel less its column's own
+      // local mean over a few rows
+      let local = [0, 0, 0];
+      let n = 0;
+      for (let k = -3; k <= 3; k++) {
+        const yy = Math.min(h - 1, Math.max(0, y + k));
+        const oo = (yy * w + x) * 4;
+        for (let c = 0; c < 3; c++) local[c] += data[oo + c];
+        n++;
+      }
+      local = local.map((v) => v / n);
+      const k = Math.min(1, (oy - y) / over);
+      const t = k * k * (3 - 2 * k);
+      for (let c = 0; c < 3; c++) {
+        const deep = mean[c] * (1 - up * 0.06) - (c === 2 ? 0 : up * 4);
+        const held = deep + (data[o + c] - local[c]);
+        data[o + c] = Math.max(0, Math.min(255, Math.round(data[o + c] * (1 - t) + held * t)));
+      }
+    }
+  }
+}
+
 export async function refSky(files, opts) {
   const p = await prepare(files, opts);
+  if (p.oy > 0) holdSkyAbove(p.skyOnly, p.w, p.h, p.oy);
   // Opaque all the way down to the water's far edge: the far shore
   // stands in front of it, and when the eye rises and they part, what
   // shows between them is sky, not the void — sky, because below the

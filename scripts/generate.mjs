@@ -14,9 +14,15 @@
  *   node scripts/generate.mjs --corridor       scene 08's corridor and fragments
  *   node scripts/generate.mjs --memory         scene 09's memory sheets
  *   node scripts/generate.mjs --dry           print what would be sent
+ *   node scripts/generate.mjs --queue         write the jobs out for the browser
+ *                                              to do instead of the API — see
+ *                                              scripts/art-catch.mjs
  *   node scripts/generate.mjs --ref <file>    another reference image
  *   node scripts/generate.mjs --quality medium
  *   node scripts/generate.mjs --allee           the elm allée the two clocks walk
+ *   node scripts/generate.mjs --wide            the lifetime's stepped-back park
+ *   node scripts/generate.mjs --notice          what the ending notices
+ *   node scripts/generate.mjs --night           the day's dusk and its night
  *   node scripts/generate.mjs --frame           the boughs, trunks and turf beyond the
  *                                               painting's frame, for the pull-back
  *   node scripts/generate.mjs --people          new people for every season, in the
@@ -29,7 +35,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers, memoryLayers } from './park-layers.mjs';
-import { layers as takenApart, peopleLayers, frameLayers, alleeLayers } from './reference-layers.mjs';
+import { layers as takenApart, peopleLayers, frameLayers, alleeLayers, wideLayers, noticeLayers, nightLayers } from './reference-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -44,6 +50,7 @@ const flag = (name) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const dry = args.includes('--dry');
+const queueOnly = args.includes('--queue');
 const only = flag('--only')?.split(',').map((s) => s.trim()).filter(Boolean);
 const seasons = args.includes('--seasons');
 const crowd = args.includes('--crowd');
@@ -53,6 +60,9 @@ const apart = args.includes('--taken-apart');
 const people = args.includes('--people');
 const frame = args.includes('--frame');
 const allee = args.includes('--allee');
+const wide = args.includes('--wide');
+const notice = args.includes('--notice');
+const night = args.includes('--night');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -125,6 +135,43 @@ async function prepared(layer) {
   return { image, mask };
 }
 
+/**
+ * The same jobs, written out for a browser to do (18z). The API is not
+ * the only way to reach the model, and it is the one that costs money.
+ * `--queue` resolves every layer exactly as the API call would — the
+ * whole prompt, the size, the reference images on disk, the version the
+ * result should land as — and writes them to assets/raw/QUEUE.json for
+ * scripts/art-catch.mjs to hand to whoever is drawing.
+ */
+const ASPECT = { '1536x1024': 'landscape', '1024x1536': 'portrait', '1024x1024': 'square' };
+
+async function queueJob(layer) {
+  const version = nextVersion(layer);
+  const out = resolve(outDir(layer), `${layer.id}-v${version}.png`);
+  const prompt = `${layer.preamble ?? STYLE}\n\n${layer.prompt}`;
+  const attach = [];
+  for (const r of layer.refs ?? []) attach.push(resolve(root, r));
+  if (layer.crop || layer.src) {
+    // The crop or the masked source is written out, since a browser can
+    // only attach a file that exists.
+    mkdirSync(outDir(layer), { recursive: true });
+    const { image } = await prepared(layer);
+    const file = resolve(outDir(layer), `${layer.id}-source.png`);
+    writeFileSync(file, image);
+    attach.push(file);
+  }
+  if (!layer.noRef) attach.push(ref);
+  return {
+    id: layer.id,
+    out,
+    size: layer.size,
+    aspect: ASPECT[layer.size] ?? 'landscape',
+    attach,
+    prompt,
+    done: false,
+  };
+}
+
 // ---------------------------------------------------------------- one layer
 async function generate(layer, key) {
   const version = nextVersion(layer);
@@ -181,7 +228,7 @@ async function generate(layer, key) {
 
 // ---------------------------------------------------------------- run
 async function main() {
-  const key = dry ? 'dry' : readKey();
+  const key = dry || queueOnly ? 'none' : readKey();
   if (!key) {
     console.error('No OPENAI_API_KEY in the environment or in .env at the repo root.');
     process.exit(1);
@@ -190,11 +237,21 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const pool = allee ? alleeLayers : frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
+  const pool = night ? nightLayers : notice ? noticeLayers : wide ? wideLayers : allee ? alleeLayers : frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
   const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
     console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);
     process.exit(1);
+  }
+  if (queueOnly) {
+    const jobs = [];
+    for (const layer of todo) jobs.push(await queueJob(layer));
+    const file = resolve(root, 'assets/raw/QUEUE.json');
+    writeFileSync(file, `${JSON.stringify(jobs, null, 2)}\n`);
+    console.log(`${jobs.length} job(s) → ${file}`);
+    for (const [i, j] of jobs.entries()) console.log(`  ${i}  ${j.id}  ${j.aspect}  → ${j.out.replace(`${root}/`, '')}`);
+    console.log('\nnode scripts/art-catch.mjs serve   # then draw them, and post them back');
+    return;
   }
   console.log(`${todo.length} layer(s), ${CONCURRENCY} at a time, quality ${quality}${dry ? ' (dry run)' : ''}`);
   const queue = [...todo];

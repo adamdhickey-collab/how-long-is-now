@@ -51,6 +51,22 @@ No other colors or faces without a deliberate decision.
 - **Performance budget:** 60fps mid-range laptop, 30fps floor on phone,
   first frame under 3s. A change that breaks this isn't done.
 
+## New artwork is drawn in the browser, not bought
+
+The image API charges per picture. Every layer can be drawn in the
+user's own ChatGPT instead, through Chrome, and landed at the exact path
+the cutter expects. Use the `draw-in-the-browser` skill; the short
+version is:
+
+```bash
+node scripts/generate.mjs <selector> --queue   # write the jobs out
+node scripts/art-catch.mjs next                # the prompt to paste
+node scripts/art-catch.mjs clip 0              # the clipboard → its path
+node scripts/plates.mjs <scene>                # cut as always
+```
+
+Dropping `--queue` still calls the API, for when that is wanted.
+
 ## Verify before pushing
 
 ```bash

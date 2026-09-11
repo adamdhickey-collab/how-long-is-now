@@ -165,24 +165,24 @@ const SCENES = {
       lines: 'keep',
       grade: 'assets/raw/park/reference.png',
     })),
-    // The seasons (18j): the same bands from each season's edits, cut
-    // along the summer's lines.
+    // The seasons (18ac): August's band, wearing the season's colour,
+    // with the season's own painting laid into it. Cut through the
+    // widening pipeline until then — the painting set into a
+    // continuation recoloured by a lookup, then graded — which quantised
+    // the skies into patches, left August showing through wherever the
+    // lookup had no data, and lifted the whole thing until spring was
+    // nearly white. The elms' own plate is no longer among these: the
+    // boughs carry the frame in every season but August (18ab).
     ...['autumn', 'winter', 'spring'].flatMap((season) =>
-      ['sky', 'far-shore', 'water', 'ground', 'trees'].map((id) => ({
+      ['sky', 'far-shore', 'water', 'ground'].map((id) => ({
         id,
         variant: season,
-        // The elms' leaves for this season come from the bough painted
-        // for it (18w); their shape stays the painting's own.
-        leafArt: id === 'trees' ? `assets/raw/scene-04/frame/boughs-${season}-v1.keyed.png` : undefined,
-        // (the summer's empty view rides along only so the pair is a pair;
-        // a season takes the summer's matte and base, see reference-bands)
-        raw: [`quiet-${season}-v1.png`, 'empty-view-v2.png', 'wide-park-v8.png'],
-        recipe: `ref-${id}`,
+        raw: `quiet-${season}-v1.png`,
+        recipe: 'season-band',
+        band: id,
+        from: `public/plates/scene-04/ref/${id}.webp`,
+        summer: 'assets/raw/scene-04/ref/quiet-park-v1.png',
         budgetKb: id === 'ground' ? 1500 : 1000,
-        lines: 'summer',
-        season,
-        seasonOf: 'assets/raw/scene-04/ref/quiet-park-v1.png',
-        grade: 'assets/raw/park/reference.png',
       })),
     ),
     ...[
@@ -277,10 +277,17 @@ const SCENES = {
     { id: 'lawn', variant: 'spring', raw: 'lawn-spring-v3.png', recipe: 'plain' },
     // The framing card keeps its whole canvas in every season, so the
     // trunks stand in the same place whatever hangs from them.
-    { id: 'trees', variant: 'late-summer', raw: 'trees-v2.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'autumn', raw: 'trees-autumn-v2.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'winter', raw: 'trees-winter-v2.png', recipe: 'plain', key: true },
-    { id: 'trees', variant: 'spring', raw: 'trees-spring-v2.png', recipe: 'plain', key: true },
+    // The elms we sit under, in four seasons. Keyed by flood fill until
+    // 18ab, which is why they came out as smears: only the summer plate
+    // is drawn on white paper — October's ground is cream, January's a
+    // pale blue, April's a pale yellow — and a flood that is looking for
+    // white stops at the first dot of any of those. The soft matte reads
+    // the paper wherever it is told to look, and each keeps its whole
+    // frame so that the four register and can be mixed.
+    { id: 'trees', variant: 'late-summer', raw: 'trees-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 600, top: 760, width: 300, height: 160 } },
+    { id: 'trees', variant: 'autumn', raw: 'trees-autumn-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 600, top: 760, width: 300, height: 160 } },
+    { id: 'trees', variant: 'winter', raw: 'trees-winter-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 600, top: 760, width: 300, height: 160 } },
+    { id: 'trees', variant: 'spring', raw: 'trees-spring-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 600, top: 760, width: 300, height: 160 } },
     { id: 'foreground', raw: 'foreground-v1.png', recipe: 'cutout', key: true },
     // Two sheets of sitters into one atlas of eighteen; the world places
     // each group at most once, so nobody is on the lawn twice.
@@ -321,6 +328,40 @@ const SCENES = {
       recipe: 'squares',
       count: 30,
     },
+  ],
+  // The lifetime's own picture (18y): the park seen standing and stepped
+  // back, and the near elms to stand in it. Both keep their whole frame,
+  // so that laid over one another they register exactly.
+  'scene-05': [
+    { id: 'wide-park', raw: 'wide-park-v2.png', recipe: 'plain' },
+    { id: 'wide-elms', raw: 'wide-elms-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 660, top: 660, width: 220, height: 200 } },
+  ],
+  // The day's dusk and its night (18aa): two sky bands and two water
+  // bands, which are whole rectangles and keep every pixel — a soft
+  // matte would take the stars out of the night, since a star is nearly
+  // paper — and two cut-outs of what comes out after dark.
+  'scene-03': [
+    { id: 'sky-dusk', raw: 'sky-dusk-v1.png', recipe: 'wide-band', box: [0, 0, 1536, 340], mask: 'public/plates/scene-04/ref/sky.webp', maskSoften: 3 },
+    { id: 'sky-night', raw: 'sky-night-v1.png', recipe: 'wide-band', box: [0, 0, 1536, 340], mask: 'public/plates/scene-04/ref/sky.webp', maskSoften: 3 },
+    { id: 'water-dusk', raw: 'water-dusk-v1.png', recipe: 'wide-band', box: [0, 250, 1536, 380], mask: 'public/plates/scene-04/ref/water.webp', maskSoften: 5 },
+    { id: 'water-night', raw: 'water-night-v1.png', recipe: 'wide-band', box: [0, 250, 1536, 380], mask: 'public/plates/scene-04/ref/water.webp', maskSoften: 5 },
+    { id: 'night-deer', raw: 'night-deer-v1.png', recipe: 'foliage', soft: [6, 26], floor: 0.1 },
+    { id: 'night-fireflies', raw: 'night-fireflies-v1.png', recipe: 'foliage', soft: [5, 22], floor: 0.06, cropBottom: 0.2 },
+  ],
+  // What the ending notices (18y): three things that were always in the
+  // park, arriving one at a time in the last scene.
+  'scene-10': [
+    { id: 'notice-beetle', raw: 'notice-beetle-v1.png', recipe: 'foliage' },
+    {
+      id: 'notice-water',
+      raw: 'notice-water-v1.png',
+      recipe: 'foliage',
+      // A rectangle of water laid into a painting that has its own: the
+      // sides and the far edge go to nothing, and only the near edge,
+      // where the wave breaks, arrives at full strength.
+      feather: { left: 150, right: 150, top: 90, bottom: 40 },
+    },
+    { id: 'notice-cloud', raw: 'notice-cloud-v1.png', recipe: 'foliage', fill: true, feather: { left: 40, right: 40, top: 40, bottom: 40 } },
   ],
   'scene-08': [
     // The corridor's three surface bays were cut here until 18x, when
@@ -1293,9 +1334,15 @@ async function turf(file, _ext, p = {}) {
 async function foliageCutout(file, _ext, p = {}) {
   const { data, info } = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h, channels: c } = info;
-  // The paper is whatever the frame's own border is, averaged.
+  // The paper is whatever the frame's own border is, averaged — unless
+  // the subject runs off the edges, in which case the border is subject
+  // and `paperFrom` says where to read the paper instead.
   const paper = [0, 0, 0];
-  {
+  if (p.paperFrom) {
+    const box = await sharp(file).extract(p.paperFrom).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const n = box.info.width * box.info.height;
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) paper[k] += box.data[i * box.info.channels + k] / n;
+  } else {
     let n = 0;
     const take = (i) => {
       for (let k = 0; k < 3; k++) paper[k] += data[i * c + k];
@@ -1344,13 +1391,73 @@ async function foliageCutout(file, _ext, p = {}) {
       }
     }
   }
-  // The box is taken from where the subject is solid, with a little
-  // room for its soft edge: a box drawn round every faint speck is the
-  // whole frame.
+  // A plate that has to register with another picture of the same view
+  // keeps its whole frame; otherwise the box is taken from where the
+  // subject is solid, with a little room for its soft edge, since a box
+  // drawn round every faint speck of paper grain is the whole frame.
+  // A cloud is white on white paper: its edges are dots of colour, which
+  // the matte finds, but its middle is the same white as the ground it
+  // was drawn on. `fill` floods the paper in from the frame's edges and
+  // makes everything the flood could not reach part of the subject.
+  if (p.fill) {
+    const outside = new Uint8Array(w * h);
+    const stack = [];
+    const push = (i) => {
+      if (!outside[i] && out[i * 4 + 3] < 40) {
+        outside[i] = 1;
+        stack.push(i);
+      }
+    };
+    for (let x = 0; x < w; x++) {
+      push(x);
+      push((h - 1) * w + x);
+    }
+    for (let y = 0; y < h; y++) {
+      push(y * w);
+      push(y * w + w - 1);
+    }
+    while (stack.length) {
+      const i = stack.pop();
+      const x = i % w;
+      if (x > 0) push(i - 1);
+      if (x < w - 1) push(i + 1);
+      if (i >= w) push(i - w);
+      if (i < (h - 1) * w) push(i + w);
+    }
+    let filled = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (outside[i] || out[i * 4 + 3] === 255) continue;
+      // The paint that was there is the subject's own: a cloud's middle
+      // is the white it was drawn in, not the black of an empty pixel.
+      for (let k = 0; k < 3; k++) out[i * 4 + k] = data[i * c + k];
+      out[i * 4 + 3] = 255;
+      filled++;
+    }
+    console.log(`  filled ${filled} px the flood could not reach`);
+  }
   const solid = Buffer.alloc(w * h * 4);
   for (let i = 0; i < w * h; i++) solid[i * 4 + 3] = out[i * 4 + 3] >= 128 ? 255 : 0;
-  const core = alphaBox(solid, w, 0, 0, w, h);
+  const core = p.whole ? { left: 0, top: 0, width: w, height: h } : alphaBox(solid, w, 0, 0, w, h);
   if (!core) throw new Error(`${file}: nothing in it`);
+  // A plate cut as a rectangle — a band of water, a strip of shore — is
+  // laid into a painting that already has water and shore in it, and a
+  // straight edge would read as a patch. `feather` fades it out, from
+  // the subject's own edges rather than the paper's.
+  if (p.feather) {
+    const f = p.feather;
+    const ramp = (d, n) => (n > 0 ? Math.min(1, Math.max(0, d / n)) : 1);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const k =
+          ramp(x - core.left, f.left ?? 0) *
+          ramp(core.left + core.width - 1 - x, f.right ?? 0) *
+          ramp(y - core.top, f.top ?? 0) *
+          ramp(core.top + core.height - 1 - y, f.bottom ?? 0);
+        const i = (y * w + x) * 4 + 3;
+        out[i] = Math.round(out[i] * (k * k * (3 - 2 * k)));
+      }
+    }
+  }
   const pad = 8;
   const box = {
     left: Math.max(0, core.left - pad),
@@ -1436,6 +1543,153 @@ async function dappleMap(file, _ext, p = {}) {
   for (let i = 0; i < w * h; i++) out[i] = Math.round(255 * Math.min(1, Math.max(0, (flat[i] - lo) / span)));
   console.log(`  dapple: ${w} × ${h}, ${lo.toFixed(3)}–${hi.toFixed(3)} of yellow over blue`);
   return sharp(out, { raw: { width: w, height: h, channels: 1 } }).resize(p.tile ?? 512, p.tile ?? 512);
+}
+
+/**
+ * A band laid into the wide frame (18aa). The painting's own water and
+ * sky are whole-frame layers of the 3072 × 2048 continuation, with the
+ * painting's own pixel (0, 0) at (768, 512) in it, and the composition
+ * places those by a path of their own. A band that is to sit exactly
+ * where one of them sits has to be one of them: this drops the drawn
+ * band into an empty wide frame at the box it belongs in, in the
+ * painting's own pixels, and the scene then treats it like any other
+ * whole-frame layer.
+ */
+async function wideBand(file, _ext, p) {
+  const [bx, by, bw, bh] = p.box;
+  const cut = await paintedBox(file, p.bite ?? 4);
+  const band = await sharp(file).extract(cut).resize(bw, bh, { fit: 'fill' }).png().toBuffer();
+  console.log(`  band ${cut.width} × ${cut.height} → the wide frame at ${768 + bx}, ${512 + by}`);
+  const laid = await sharp({
+    create: { width: 3072, height: 2048, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: band, left: 768 + bx, top: 512 + by }])
+    .png()
+    .toBuffer();
+  if (!p.mask) return sharp(laid);
+  // The painting's own water is not a rectangle: its near edge runs
+  // across the frame on the diagonal and its far edge is the shoreline.
+  // Wearing that plate's own alpha, the band covers the water and
+  // nothing else, with the same soft edges the painting has.
+  const a = await sharp(laid).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const m = await sharp(p.mask).resize(a.info.width, a.info.height, { fit: 'fill' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = a.info.width;
+  const H = a.info.height;
+  // The matte's own edge is a staircase — it was cut row by row — and
+  // the painting hides that because its water and its bank are near
+  // neighbours in colour. A night lake is not: softened, the dark water
+  // fades into the bank the way the light one sits on it.
+  let alpha = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) alpha[i] = m.data[i * 4 + 3] / 255;
+  for (let pass = 0; pass < (p.maskSoften ?? 0); pass++) {
+    const nx = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            const yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+            sum += alpha[yy * W + xx];
+            n++;
+          }
+        }
+        nx[y * W + x] = sum / n;
+      }
+    }
+    alpha = nx;
+  }
+  const out = Buffer.from(a.data);
+  for (let i = 0; i < W * H; i++) out[i * 4 + 3] = Math.round(out[i * 4 + 3] * alpha[i]);
+  return sharp(out, { raw: { width: a.info.width, height: a.info.height, channels: 4 } });
+}
+
+/**
+ * A season's band, from the season's own painting (18ac).
+ *
+ * The bands for October, January and April used to be cut the way
+ * August's are — the painting set into an outpainted continuation, the
+ * continuation recoloured to the season through a lookup learned from
+ * the pair of paintings, the whole thing graded. Three things went
+ * wrong at once and the result was the thing that made the year look
+ * broken: the lookup quantised a smooth sky into flat patches, the
+ * cells it had no data for left August showing through in panels, and
+ * the grade lifted the seasons until their skies were nearly white.
+ *
+ * This does none of that. August's band is already right — its matte
+ * was drawn by hand and its continuation cleaned — so a season takes
+ * that band's own alpha and its continuation, mapped to the season's
+ * colour by matching the two paintings' own distributions channel by
+ * channel over the band, and then has the season's painting laid into
+ * it where the painting reaches. No lookup, no cells, nothing invented:
+ * inside the frame it is the season as painted, and outside it is
+ * August's continuation wearing the season's colour.
+ */
+async function seasonBand(file, _ext, p) {
+  const wide = await sharp(p.from).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = wide.info.width;
+  const H = wide.info.height;
+  const season = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const summer = await sharp(p.summer).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const pw = season.info.width;
+  const ph = season.info.height;
+  const [ox, oy] = p.origin ?? [768, 512];
+  const sc = season.info.channels;
+  const uc = summer.info.channels;
+
+  // The two paintings' own colours, over the part of the band the
+  // painting covers: what August is here, and what the season is.
+  const N = 64;
+  const quantiles = (pick) => {
+    const v = [];
+    for (let y = 0; y < ph; y++) {
+      for (let x = 0; x < pw; x++) {
+        const a = wide.data[(((y + oy) * W) + x + ox) * 4 + 3];
+        if (a < 128) continue;
+        v.push(pick(y * pw + x));
+      }
+    }
+    if (!v.length) return null;
+    v.sort((a, b) => a - b);
+    return Array.from({ length: N + 1 }, (_, k) => v[Math.round((k * (v.length - 1)) / N)]);
+  };
+  const luts = [];
+  for (let c = 0; c < 3; c++) {
+    const a = quantiles((i) => summer.data[i * uc + c]);
+    const b = quantiles((i) => season.data[i * sc + c]);
+    const lut = new Uint8Array(256);
+    for (let v = 0; v < 256; v++) {
+      if (!a || !b) { lut[v] = v; continue; }
+      let k = 0;
+      while (k < N - 1 && a[k + 1] < v) k++;
+      const span = Math.max(1, a[k + 1] - a[k]);
+      const t = Math.min(1, Math.max(0, (v - a[k]) / span));
+      lut[v] = Math.round(Math.min(255, Math.max(0, b[k] + (b[k + 1] - b[k]) * t)));
+    }
+    luts.push(lut);
+  }
+
+  const out = Buffer.from(wide.data);
+  for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) out[i * 4 + c] = luts[c][out[i * 4 + c]];
+  // The painting itself, laid in where it reaches, eased over the last
+  // few pixels of its own edge so the join with the continuation is not
+  // a line.
+  const F = p.feather ?? 24;
+  for (let y = 0; y < ph; y++) {
+    for (let x = 0; x < pw; x++) {
+      const o = ((y + oy) * W + x + ox) * 4;
+      if (out[o + 3] === 0) continue;
+      const edge = Math.min(x, pw - 1 - x, y, ph - 1 - y);
+      const k = Math.min(1, edge / F);
+      const t = k * k * (3 - 2 * k);
+      const so = (y * pw + x) * sc;
+      for (let c = 0; c < 3; c++) out[o + c] = Math.round(out[o + c] * (1 - t) + season.data[so + c] * t);
+    }
+  }
+  console.log(`  ${p.band}: August's band wearing ${file.split('/').pop()}`);
+  return sharp(out, { raw: { width: W, height: H, channels: 4 } });
 }
 
 /** As drawn, cut to where the paint stops. */
@@ -1663,6 +1917,8 @@ const RECIPES = {
   graded: gradedTile,
   dapple: dappleMap,
   trimmed: trimmedTile,
+  'wide-band': wideBand,
+  'season-band': seasonBand,
   lake: lakeTile,
   shore: shoreStrip,
   squares: squaresAtlas,
