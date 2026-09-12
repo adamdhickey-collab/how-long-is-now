@@ -170,8 +170,9 @@ export interface Hold {
   appearances?: { period: number; dwell: number; trace: number; rarer: number };
   /** The holder's time lapse on the world's clock, see Lapse. */
   lapse?: Lapse;
-  /** Plates the holder brings in on its own progress, by id. */
-  reveal?: Record<string, { from: number; to?: number; over?: number }>;
+  /** Plates the holder brings in on its own progress, by id: one window
+   *  or several, for something that comes twice, as dusk does. */
+  reveal?: Record<string, { from: number; to?: number; over?: number } | { from: number; to?: number; over?: number }[]>;
 }
 
 /** The record's band holds at most this many years, one figure each. */
@@ -1994,10 +1995,21 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
   let activeMembers: Record<string, number[]> = kindMembers;
   /** Which member index is painted (in the picture at time zero). */
   const painted = new Set<number>();
+  /**
+   * What is standing in the park that the lapse never moves: the
+   * bicycle against the elm, the bench, anything with feet and no kind
+   * (18af). The seating kept the crowd from sitting on one another but
+   * knew nothing about these, so a man and his dog were regularly seated
+   * through the bicycle.
+   */
+  const fixtures: { x: number; z: number; w: number }[] = [];
   {
     let li = 0;
     for (const cp of composition?.plates ?? []) {
-      if (cp.def.kind && cp.foot) { li++; if (!cp.def.later) painted.add(li); }
+      if (cp.def.kind && cp.foot) { li++; if (!cp.def.later) painted.add(li); continue; }
+      if (cp.foot && cp.width && !cp.def.lay && !cp.def.beyond && cp.def.z > 0) {
+        fixtures.push({ x: cp.foot.x, z: cp.foot.z, w: cp.width });
+      }
     }
   }
   /**
@@ -2022,9 +2034,13 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
     // the path stands as much in front of a picnic as another picnic
     // does. The spots were laid out by eye in the painting's pixels and
     // some are nearer to one another than a person is wide.
-    const taken: { x: number; z: number; w: number }[] = [];
+    // Room enough not to overlap, rather than just enough not to
+    // coincide (18af): at a little over half the two widths, a pair of
+    // neighbours still cut into one another by a tenth of themselves,
+    // and three of them together read as a pile.
+    const taken: { x: number; z: number; w: number }[] = [...fixtures];
     const clear = (at: { x: number; z: number }, wid: number) =>
-      taken.every((t) => Math.hypot(t.x - at.x, t.z - at.z) > 0.55 * (t.w + wid) + 0.12);
+      taken.every((t) => Math.hypot(t.x - at.x, t.z - at.z) > 0.72 * (t.w + wid) + 0.3);
     for (const [kind, pool] of Object.entries(spots)) {
       const members = activeMembers[kind] ?? [];
       if (!members.length) continue;
@@ -2240,8 +2256,9 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       // The holder's one blink: the world to black and back, so that
       // what it is looking at can change in the dark.
       const dip = holder.scene.dip;
-      if (dip && dip.over > 0) {
-        const k = clamp01(Math.abs(readAt - dip.at) / (dip.over / 2));
+      for (const d of dip ? (Array.isArray(dip) ? dip : [dip]) : []) {
+        if (d.over <= 0) continue;
+        const k = clamp01(Math.abs(readAt - d.at) / (d.over / 2));
         alpha = Math.min(alpha, k * k * (3 - 2 * k));
       }
     }
@@ -2501,16 +2518,30 @@ export function createYearScene(world: THREE.Scene, def: Scene, reducedMotion: b
       // as the eye rises past them.
       // What belongs to the seat goes as the eye rises; what only says
       // `beyond` has its own height to arrive at and stays after it.
-      let there = presence(p) * (p.seat ? seated : 1);
+      //
+      // Everything that is not drawn in front goes with it (18ah). The
+      // lifetime's own picture is laid over the seat's park rather than
+      // swapped for it, and that is sound while the frame is at full
+      // strength — but the blink it happens in takes the whole world's
+      // alpha down together, and at two thirds of it the cover stopped
+      // covering: the painting's own people, on a lawn the wide picture
+      // draws somewhere else, stood through it as ghosts for the second
+      // the eye was opening. Only what says `front` is of the picture
+      // that is arriving.
+      let there = presence(p) * (p.seat || !p.front ? seated : 1);
       // A plate the painting does not have is not drawn at all, unless
       // the scene holding this world asks for it — and then on the
       // holder's own progress, since the year itself is pinned.
       if (p.hidden) there = 0;
       const shown = holder?.reveal?.[p.id];
       if (shown) {
-        const over = shown.over ?? 0.06;
-        there = clamp01((readAt - shown.from) / over);
-        if (shown.to !== undefined) there = Math.min(there, clamp01((shown.to - readAt) / over));
+        there = 0;
+        for (const win of Array.isArray(shown) ? shown : [shown]) {
+          const over = win.over ?? 0.06;
+          let up = clamp01((readAt - win.from) / over);
+          if (win.to !== undefined) up = Math.min(up, clamp01((win.to - readAt) / over));
+          there = Math.max(there, up);
+        }
       }
       if (p.beyond) {
         const arrived = clamp01((camera.position.y - p.beyond.from) / p.beyond.over);

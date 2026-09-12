@@ -164,11 +164,18 @@ const groundFragment = `
     return 0.9 + 0.1 * c * c;
   }
   // The shade a trunk casts at its own foot, so it stands on the grass
-  // rather than in front of it: a pool at each rank, at each bay.
+  // rather than in front of it: a pool at each rank, at each bay — and
+  // no two the same (18af). Every trunk used to throw the same shadow
+  // the same way at the same length, which reads as a printed pattern
+  // rather than a row of trees.
   float footShade(vec3 p, float halfW) {
-    float across = exp(-pow((abs(p.x) - halfW) / 1.3, 2.0));
-    float along = 0.5 + 0.5 * cos(6.2831853 * p.z / uLamp);
-    return across * along;
+    float bay = floor(p.z / uLamp);
+    float n = fract(sin(bay * 12.9898 + (p.x < 0.0 ? 1.7 : 4.3)) * 43758.5453);
+    float lean = (n - 0.5) * 1.6;
+    float len = 0.8 + n * 0.9;
+    float across = exp(-pow((abs(p.x) - halfW + lean) / (1.3 * len), 2.0));
+    float along = 0.5 + 0.5 * cos(6.2831853 * (p.z / uLamp - n * 0.18));
+    return across * along * (0.75 + 0.5 * n);
   }
   void main() {
     vec3 p = vWorld;
@@ -341,9 +348,11 @@ const fragmentFragment = `
   }
   void main() {
     vec2 q = vUv - 0.5;
-    // The pane: a border a hair in, the face faintly there.
-    float border = max(hair(abs(q.x) - 0.47), hair(abs(q.y) - 0.47));
-    float face = 0.10;
+    // The pane: the piece it carries, and almost nothing else (18af).
+    // A hairline border and a grey face made every remembered thing look
+    // like a dialog box hung in a park.
+    float border = max(hair(abs(q.x) - 0.47), hair(abs(q.y) - 0.47)) * 0.25;
+    float face = 0.03;
     if (uAtlasOn > 0.5) {
       // A cutout from the atlas, by seed: the pane's height is the tile's,
       // the tile centred across it, the cutout over the faint face.

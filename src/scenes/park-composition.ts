@@ -123,31 +123,63 @@ export function buildComposition(
         const pos: number[] = [];
         const uv: number[] = [];
         const uvq: number[] = [];
-        for (const [cu, cv] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
-          const su = flip ? u1 - (u1 - u0) * cu : u0 + (u1 - u0) * cu;
-          // A lying plate runs from its far edge (v 1) to its near one.
-          if (p.lay) pos.push(wx + (cu - 0.5) * ww, wy, wz + (0.5 - cv) * wh);
-          else pos.push(wx + (cu - 0.5) * ww, wy + (cv - 0.5) * wh, wz);
-          uv.push(su, cv);
-          uvq.push(su, cv, 1);
+        const col: number[] = [];
+        // A tiling plate is subdivided down its depth so its far edge can
+        // be eased away in the geometry (18ak). The fade used to live in
+        // the picture's own alpha, which a tile cannot carry: repeated,
+        // the fade repeats with it. In the vertices it is where it should
+        // be — a property of this plate's far edge, not of the paint.
+        const tileRep = p.tile ? (Array.isArray(p.tile) ? p.tile : [p.tile, 1]) : null;
+        const rows = tileRep ? 10 : 1;
+        for (let r = 0; r <= rows; r++) {
+          for (const cu of [0, 1] as const) {
+            const cv = r / rows;
+            const su = flip ? u1 - (u1 - u0) * cu : u0 + (u1 - u0) * cu;
+            // A lying plate runs from its far edge (v 1) to its near one.
+            if (p.lay) pos.push(wx + (cu - 0.5) * ww, wy, wz + (0.5 - cv) * wh);
+            else pos.push(wx + (cu - 0.5) * ww, wy + (cv - 0.5) * wh, wz);
+            uv.push(su, cv);
+            uvq.push(su, cv, 1);
+            // 1 at the near edge, easing to nothing over the last fifth
+            // of the far side, so the tile arrives out of the painting's
+            // own ground rather than against it.
+            const t = Math.min(1, Math.max(0, (0.97 - cv) / 0.12));
+            const a = tileRep ? t * t * (3 - 2 * t) : 1;
+            col.push(1, 1, 1, a);
+          }
         }
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
         geo.setAttribute('uvq', new THREE.Float32BufferAttribute(uvq, 3));
-        geo.setIndex([0, 1, 2, 2, 1, 3]);
+        if (tileRep) geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+        const wIdx: number[] = [];
+        for (let r = 0; r < rows; r++) {
+          const a = r * 2;
+          wIdx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+        }
+        geo.setIndex(wIdx);
         geo.computeBoundingSphere();
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.wrapS = THREE.MirroredRepeatWrapping;
         tex.wrapT = THREE.ClampToEdgeWrapping;
-        tex.anisotropy = 8;
-        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false, side: THREE.DoubleSide });
+        // A picture drawn to tile is laid across its quad rather than
+        // stretched over it (18aj): the turf at our feet covers twenty
+        // units of ground with one drawing, and stretched its dots came
+        // out three times the painting's. Across only — down the quad
+        // the perspective does the compressing, and the picture's own
+        // far edge has to stay the one far edge.
+        if (tileRep) { tex.wrapT = THREE.MirroredRepeatWrapping; tex.repeat.set(tileRep[0], tileRep[1]); }
+        tex.anisotropy = 16;
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false, side: THREE.DoubleSide, vertexColors: !!tileRep });
         cp.width = ww;
         onMaterial?.(mat, p, { height: wh, texel: [1 / iw, 1 / ih] });
         const mesh = new THREE.Mesh(geo, mat);
         // Ordered as the projected plates are: a lying plate by its far
         // edge, a standing one by its depth.
-        const orderZ = p.lay ? wz - wh / 2 - 0.5 : wz;
+        // A lying plate that is part of the ground draws with the ground
+        // (18ak), so that whoever is standing on it is drawn after it.
+        const orderZ = p.lay ? (p.under ? -60 : wz - wh / 2 - 0.5) : wz;
         // A plate drawn in front is drawn in front of the whole park,
         // however far away it is placed.
         mesh.renderOrder = (p.front ? 8 : orderZ / 20 - 1.3) + index * 0.001 + i * 0.0001;
@@ -204,6 +236,16 @@ export function buildComposition(
         geo.setIndex([0, 1, 2, 2, 1, 3]);
         geo.computeBoundingSphere();
         tex.colorSpace = THREE.SRGBColorSpace;
+        // A picture drawn to tile is laid across its quad rather than
+        // stretched over it (18aj). Across only: down the quad the
+        // perspective does the compressing, and the picture's own far
+        // edge has to stay the one far edge.
+        if (p.tile) {
+          const t = Array.isArray(p.tile) ? p.tile : [p.tile, 1];
+          tex.wrapS = THREE.MirroredRepeatWrapping;
+          tex.wrapT = t[1] > 1 ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
+          tex.repeat.set(t[0], t[1]);
+        }
         tex.anisotropy = 8;
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
         cp.width = ww;
@@ -286,21 +328,37 @@ export function buildComposition(
         const vPerZ = (h2 / n / ih2) / Math.max(1e-3, nearZ - prevZ);
         const skirtTo = eye.position.z + 30;
         const SKIRT_ROWS = 6;
-        // The skirt holds one row of the image from forty pixels inside
-        // the box's own foot — the frame's foot for the ground, the
-        // water's near edge for the water — rather than the image's last
-        // row, which for a whole-frame layer is the continuation below
-        // the frame (18s: its trunks smeared along the bottom), and
-        // rather than mirroring on, which repeated the path (18r).
-        void vPerZ;
+        // The skirt carries the picture on at the near row's own density
+        // (18ak). It used to hold a single row of the image from forty
+        // pixels inside the box's foot, repeated all the way back behind
+        // the seat — which is one row of dots smeared toward the viewer,
+        // and once the year's camera had backed away that smear was the
+        // bottom of the frame. Holding it was the lesser evil while the
+        // rows below the painting were the model's continuation, whose
+        // trunks smeared along the bottom (18s), and while mirroring on
+        // brought the path back with it (18r). Neither is true now: the
+        // frame below the painting's foot is the painting's own nearest
+        // lawn, folded, and nothing else — so the skirt simply goes on
+        // into it, and the texture's mirror gives it more of the same.
         const vSkirt = 1 - (by + bh - 40 - iy) / ih2;
+        void vSkirt;
+        void vPerZ;
+        // Not at the geometric rate: under the camera the ground is so
+        // near that the true rate moves the picture by almost nothing
+        // over the whole skirt, which is how one row came to be smeared
+        // across the foot of the frame in the first place. The skirt
+        // sweeps a fixed span of the picture instead — a tenth of the
+        // frame, folded on by the texture's own mirror into the nearest
+        // lawn — so what lies under the seat is grass going past rather
+        // than one row of it drawn out into stripes.
+        const SKIRT_SWEEP = 0.1;
         for (let r = 1; r <= SKIRT_ROWS; r++) {
           const zz = nearZ + ((skirtTo - nearZ) * r) / SKIRT_ROWS;
           for (let c = 0; c <= cols; c++) {
             const o = (nearRow + c) * 3;
             pos.push(pos[o], pos[o + 1], zz);
             const uo = (nearRow + c) * 2;
-            pushUv(uv[uo], vSkirt, pos[o], pos[o + 1], zz);
+            pushUv(uv[uo], uv[uo + 1] - (SKIRT_SWEEP * r) / SKIRT_ROWS, pos[o], pos[o + 1], zz);
           }
         }
         rows = n + SKIRT_ROWS;
@@ -323,7 +381,20 @@ export function buildComposition(
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = p.lay ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
       tex.wrapT = p.lay ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
-      tex.anisotropy = 8;
+      // A plate whose picture is drawn to tile is laid across its quad
+      // rather than stretched over it (18aj), so its dots stay the size
+      // the painting's are however much ground it has to cover. Across
+      // only: down the quad, perspective does the compressing.
+      if (p.tile) {
+        const t = Array.isArray(p.tile) ? p.tile : [p.tile, 1];
+        tex.wrapS = THREE.MirroredRepeatWrapping;
+        tex.wrapT = t[1] > 1 ? THREE.MirroredRepeatWrapping : THREE.ClampToEdgeWrapping;
+        tex.repeat.set(t[0], t[1]);
+      }
+      // The ground is read at a grazing angle once the camera backs
+      // away, and a mat of dots read that way swims unless the sampler
+      // is allowed to take a long enough footprint.
+      tex.anisotropy = 16;
       const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, fog: false });
       // The plate's world height, for whatever the material does with it.
       let minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity, minX = Infinity, maxX = -Infinity;

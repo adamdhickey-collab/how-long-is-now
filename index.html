@@ -40,7 +40,34 @@
     <!-- The HUD: the only UI the piece allows itself. -->
     <div class="hud">
       <p class="hud__scale" id="scale-label">1 SECOND</p>
-      <p class="hud__hint" id="scroll-hint">Scroll to leave now.</p>
+      <!-- The one invitation the piece makes. It used to be a dim line of
+           type that breathed, and it read as decoration: a visitor who
+           has not understood that scroll is a time input will not learn
+           it from a sentence in the corner. So it is drawn as a gauge —
+           a rail with the spans that are waiting below marked on it, and
+           a bead falling down it, which is the gesture — and the word the
+           whole piece is about is in the light of 4:17, the one colour
+           reserved for marking now. -->
+      <div class="hint" id="scroll-hint">
+        <svg class="hint__gauge" viewBox="0 0 24 84" aria-hidden="true" focusable="false">
+          <!-- The top of the axis is the span being stood in — one
+               second, and the light of 4:17 is on it — and everything
+               below it is the time that is waiting, in tighter and
+               tighter ticks. The bead is the gesture. -->
+          <line class="hint__rail" x1="12" y1="9" x2="12" y2="70" />
+          <line class="hint__tick hint__tick--now" x1="4" y1="9" x2="20" y2="9" />
+          <line class="hint__tick" x1="6" y1="28" x2="18" y2="28" />
+          <line class="hint__tick" x1="7" y1="43" x2="17" y2="43" />
+          <line class="hint__tick" x1="8" y1="57" x2="16" y2="57" />
+          <path class="hint__arrow" d="M6.8 65 L12 71.5 L17.2 65" />
+          <circle class="hint__glow" cx="12" cy="9" r="6" />
+          <circle class="hint__bead" cx="12" cy="9" r="3.2" />
+        </svg>
+        <span class="hint__body">
+          <span class="hint__line">Scroll to leave <em>now</em></span>
+          <span class="hint__note">The clock moves, not the page</span>
+        </span>
+      </div>
     </div>
 
     <!-- The figure: a drafting overlay a scene may annotate its world with.

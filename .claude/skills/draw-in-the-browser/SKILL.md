@@ -38,9 +38,16 @@ document.execCommand('selectAll', false, null);
 document.execCommand('insertText', false, prompt);
 ```
 
-Then **press Return** — `computer{action:'key', text:'Return'}` after
-focusing the composer. Do not click the send button by coordinate: it
-moves as the composer grows, and a miss lands in the text.
+Then **click the send button through the page**:
+
+```js
+document.querySelector('button[data-testid="send-button"]').click()
+```
+
+That always works. Pressing Return sometimes does and sometimes does
+not — the key reaches the page but not the editor, and you can lose ten
+minutes pressing it at a composer that never sends. Do not click the
+button by coordinate either: it moves as the composer grows.
 
 Add the aspect to the end of the prompt, since the web UI takes no size
 argument: `Draw this as a landscape image, 1536 by 1024.` (or square, or
@@ -97,4 +104,10 @@ node scripts/plates.mjs scene-10
   Retry the same call; it comes back.
 - Attach the reference to the *first* message of a chat only. Re-sending
   4 MB per picture is slow and the thread already holds the style.
+- **A chat that stops answering has hit a limit.** If a send goes
+  through — the composer empties, the conversation gets a title — and no
+  reply comes back for two or three minutes, the account's image
+  generation is capped for the period. Nothing in the loop is broken;
+  stop, leave the queue as it is, and draw the rest later with
+  `art-catch status` to see what is still owed.
 - The API is still there for when it is wanted: drop `--queue`.

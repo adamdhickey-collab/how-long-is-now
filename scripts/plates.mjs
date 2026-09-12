@@ -234,10 +234,29 @@ const SCENES = {
       ground: false,
       whole: true,
     })),
+    // The turf at our feet, from the tiling lawn (18aj). It used to be one
+    // drawn rectangle of grass stretched over the whole near ground, so
+    // its dots came out three times the painting's and its colour a third
+    // of a season off: the strip along the foot of the frame was the one
+    // place a visitor could see that the world was made of pictures. The
+    // tile is drawn to repeat, so it is laid across rather than stretched,
+    // and it is graded to each season's own near lawn. No side fade: it
+    // is mirrored end to end now, and its sides are off the frame.
     ...['summer', 'autumn', 'winter', 'spring'].map((season) => ({
       id: `turf-${season}`,
-      raw: `turf-${season}-v2.png`,
+      // v2 (18al): the first tile was an even speckle with no light in
+      // it, so the foot of the frame read as texture rather than as a
+      // lawn in the afternoon. This one was drawn against a crop of the
+      // painting's own lawn at full size and carries its scattered
+      // patches of sun, which lie across the picture and so survive being
+      // laid across the quad.
+      raw: '../tiles/lawn-tile-v2.png',
       recipe: 'turf',
+      // No fade at all in the picture now (18ak): a tile cannot carry
+      // one, since the fade would repeat with the tile. The plate's own
+      // far edge is eased in its vertices instead.
+      fadeSide: 0,
+      fadeFar: 0,
       budgetKb: 700,
       alphaQuality: 90,
       // the painting's own nearest lawn, in the wide frame's pixels
@@ -335,17 +354,62 @@ const SCENES = {
   'scene-05': [
     { id: 'wide-park', raw: 'wide-park-v2.png', recipe: 'plain' },
     { id: 'wide-elms', raw: 'wide-elms-v2.png', recipe: 'foliage', whole: true, paperFrom: { left: 660, top: 660, width: 220, height: 200 } },
+    // The same two elms at twenty years (18ah), in the same frame so that
+    // laid in the same box they stand in the same ground: the eighty
+    // years grow the trees, and the change from one picture to the other
+    // happens inside the second blink, so neither is dissolved through
+    // the other.
+    { id: 'wide-elms-young', raw: 'wide-elms-young-v1.png', recipe: 'foliage', whole: true, paperFrom: { left: 660, top: 660, width: 220, height: 200 } },
+    // Twelve people at the lifetime's own scale (18ah). The eighty years
+    // used to stop moving at the blink: the appearances are the year's
+    // own people, and the blink takes them away with the rest of the
+    // seat's park, leaving a painting with nobody in it and a camera
+    // pushing slowly at it. These are drawn for the wide picture, cut
+    // from one sheet by scripts/split-sheet.mjs, and each one comes and
+    // goes on the scene's own progress.
+    { id: 'life-figure-01', raw: 'lifetime-figure-01-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-02', raw: 'lifetime-figure-02-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-03', raw: 'lifetime-figure-03-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-04', raw: 'lifetime-figure-04-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-05', raw: 'lifetime-figure-05-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-06', raw: 'lifetime-figure-06-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-07', raw: 'lifetime-figure-07-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-08', raw: 'lifetime-figure-08-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-09', raw: 'lifetime-figure-09-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-10', raw: 'lifetime-figure-10-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-11', raw: 'lifetime-figure-11-v1.png', recipe: 'foliage' },
+    { id: 'life-figure-12', raw: 'lifetime-figure-12-v1.png', recipe: 'foliage' },
   ],
   // The day's dusk and its night (18aa): two sky bands and two water
   // bands, which are whole rectangles and keep every pixel — a soft
   // matte would take the stars out of the night, since a star is nearly
   // paper — and two cut-outs of what comes out after dark.
+  // The four oddballs (18ae), one a season: the cutter treats them as
+  // any other figure, except the bather, who is cut off at the waist so
+  // that he can stand in the lake rather than on it.
+  'scene-04/people': [
+    { id: 'odd-summer-bather', raw: 'odd-summer-bather-v1.png', recipe: 'foliage', cropBottom: 0.42 },
+    { id: 'odd-autumn-sofa', raw: 'odd-autumn-sofa-v1.png', recipe: 'foliage' },
+    { id: 'odd-winter-swimmer', raw: 'odd-winter-swimmer-v1.png', recipe: 'foliage' },
+    { id: 'odd-spring-knight', raw: 'odd-spring-knight-v1.png', recipe: 'foliage' },
+  ],
   'scene-03': [
     { id: 'sky-dusk', raw: 'sky-dusk-v1.png', recipe: 'wide-band', box: [0, 0, 1536, 340], mask: 'public/plates/scene-04/ref/sky.webp', maskSoften: 3 },
-    { id: 'sky-night', raw: 'sky-night-v1.png', recipe: 'wide-band', box: [0, 0, 1536, 340], mask: 'public/plates/scene-04/ref/sky.webp', maskSoften: 3 },
-    { id: 'water-dusk', raw: 'water-dusk-v1.png', recipe: 'wide-band', box: [0, 250, 1536, 380], mask: 'public/plates/scene-04/ref/water.webp', maskSoften: 5 },
+    { id: 'sky-night', raw: 'sky-night-v2.png', recipe: 'wide-band', box: [0, 0, 1536, 340], mask: 'public/plates/scene-04/ref/sky.webp', maskSoften: 3 },
+    { id: 'water-dusk', raw: 'water-dusk-v2.png', recipe: 'wide-band', box: [0, 250, 1536, 380], mask: 'public/plates/scene-04/ref/water.webp', maskSoften: 5 },
     { id: 'water-night', raw: 'water-night-v1.png', recipe: 'wide-band', box: [0, 250, 1536, 380], mask: 'public/plates/scene-04/ref/water.webp', maskSoften: 5 },
-    { id: 'night-deer', raw: 'night-deer-v1.png', recipe: 'foliage', soft: [6, 26], floor: 0.1 },
+    // The far shore and the near ground at the same two hours (18ai). The
+    // day used to change only its sky and its lake: the treeline and the
+    // lawn stayed in full afternoon through the sunset and through the
+    // night, so what the visitor saw at midnight was a daylight park with
+    // a dark band across the top of it. Each of these is drawn as its own
+    // band and cut by the plate it stands in for, so the world turns
+    // together.
+    { id: 'shore-dusk', raw: 'shore-dusk-v1.png', recipe: 'wide-band', box: [0, 58, 1536, 324], mask: 'public/plates/scene-04/ref/far-shore.webp', maskSoften: 4 },
+    { id: 'shore-night', raw: 'shore-night-v1.png', recipe: 'wide-band', box: [0, 58, 1536, 324], mask: 'public/plates/scene-04/ref/far-shore.webp', maskSoften: 4 },
+    { id: 'ground-dusk', raw: 'ground-dusk-v1.png', recipe: 'wide-band', box: [0, 297, 1536, 730], mask: 'public/plates/scene-04/ref/ground.webp', maskSoften: 5, budgetKb: 1200 },
+    { id: 'ground-night', raw: 'ground-night-v1.png', recipe: 'wide-band', box: [0, 297, 1536, 730], mask: 'public/plates/scene-04/ref/ground.webp', maskSoften: 5, budgetKb: 1200 },
+    { id: 'night-deer', raw: 'night-deer-v2.png', recipe: 'foliage', soft: [6, 26], floor: 0.1 },
     { id: 'night-fireflies', raw: 'night-fireflies-v1.png', recipe: 'foliage', soft: [5, 22], floor: 0.06, cropBottom: 0.2 },
   ],
   // What the ending notices (18y): three things that were always in the
@@ -354,11 +418,16 @@ const SCENES = {
     { id: 'notice-beetle', raw: 'notice-beetle-v1.png', recipe: 'foliage' },
     {
       id: 'notice-water',
-      raw: 'notice-water-v1.png',
+      // Repainted 18ah. The first one was a photographic close-up of a
+      // pebble beach, in neither the painting's idiom nor its subject:
+      // laid into the park's grassy bank it read as a change of ground
+      // where it should have been a change of light. This is the lake's
+      // last few feet running up into the grass.
+      raw: 'notice-water-edge-v1.png',
       recipe: 'foliage',
       // A rectangle of water laid into a painting that has its own: the
       // sides and the far edge go to nothing, and only the near edge,
-      // where the wave breaks, arrives at full strength.
+      // where the water runs over the grass, arrives at full strength.
       feather: { left: 150, right: 150, top: 90, bottom: 40 },
     },
     { id: 'notice-cloud', raw: 'notice-cloud-v1.png', recipe: 'foliage', fill: true, feather: { left: 40, right: 40, top: 40, bottom: 40 } },
@@ -392,11 +461,16 @@ const SCENES = {
       recipe: 'graded',
       match: { file: 'assets/raw/scene-04/ref/summer-quiet.png', box: { left: 900, top: 1150, width: 1400, height: 300 }, pick: 'dark' },
     },
+    // The dapple, painted (18ah). It used to be read off a band of the
+    // painting's own near lawn, and a band of a painting is a band: laid
+    // over the allée at any size it stretched its patches into stripes
+    // down the walk, which is the one thing dappled light does not do.
+    // This is a square of nothing but that light, drawn to tile, so the
+    // map has no direction in it to begin with.
     {
       id: 'allee-dapple',
-      raw: '../scene-04/ref/summer-quiet.png',
+      raw: 'allee/allee-dapple-art-v1.png',
       recipe: 'dapple',
-      band: { left: 900, top: 1150, width: 1400, height: 300 },
       tile: 512,
     },
     // The sky is left as it was painted: graded to the painting's own
@@ -1299,11 +1373,22 @@ async function turf(file, _ext, p = {}) {
   }
   // The far edge is the image's top: eased over the top third, so the
   // new grass arrives out of the painting's own rather than against it.
-  const fade = Math.max(1, Math.round(h * (p.fadeFar ?? 0.12)));
+  // The far edge is the image's top: eased over the top third, so the
+  // new grass arrives out of the painting's own rather than against it.
+  // The sides go the same way (18ad): the turf is a rectangle of lawn
+  // laid over a lawn, and its left edge drew a diagonal across the frame
+  // wherever the two greens were not the same green.
+  const farFade = p.fadeFar ?? 0.12;
+  const fade = farFade > 0 ? Math.max(1, Math.round(h * farFade)) : 0;
+  const sideFade = p.fadeSide ?? 0.14;
+  const side = sideFade > 0 ? Math.max(1, Math.round(w * sideFade)) : 0;
+  const ease = (t) => { const q = Math.min(1, Math.max(0, t)); return q * q * (3 - 2 * q); };
   for (let y = 0; y < h; y++) {
-    const t = Math.min(1, y / fade);
-    const alpha = Math.round(255 * (t * t * (3 - 2 * t)));
-    for (let x = 0; x < w; x++) out[(y * w + x) * 4 + 3] = alpha;
+    for (let x = 0; x < w; x++) {
+      const far = fade > 0 ? ease(y / fade) : 1;
+      const k = side > 0 ? far * ease(x / side) * ease((w - 1 - x) / side) : far;
+      out[(y * w + x) * 4 + 3] = Math.round(255 * k);
+    }
   }
   return sharp(out, { raw: { width: w, height: h, channels: 4 } });
 }
@@ -1489,7 +1574,7 @@ async function dappleMap(file, _ext, p = {}) {
   // millimetres, and averaging them away by resampling is both truer and
   // far cheaper than blurring them away at full size.
   const { data, info } = await sharp(file)
-    .extract(p.band)
+    .extract(p.band ?? (await sharp(file).metadata().then((m) => ({ left: 0, top: 0, width: m.width, height: m.height }))))
     .resize({ width: p.read ?? 280 })
     .removeAlpha()
     .raw()
@@ -1673,6 +1758,66 @@ async function seasonBand(file, _ext, p) {
 
   const out = Buffer.from(wide.data);
   for (let i = 0; i < W * H; i++) for (let c = 0; c < 3; c++) out[i * 4 + c] = luts[c][out[i * 4 + c]];
+  // And brought to the season's own chroma (18ag). A lookup a channel at
+  // a time lifts August's lawn until it is pale, but it cannot take the
+  // green out of it: outside the painting the continuation kept the
+  // grass's blue and gold dots, so the January ground carried a band of
+  // summer along the frame's left edge and its foot, and where the
+  // lookup ran off the end of its own table, a streak of magenta. Snow
+  // is grey and a spring lawn is not an August one; so the chroma the
+  // season actually has, inside the painting, is measured, and the
+  // continuation is pulled to it and held there.
+  {
+    const chroma = (buf, at, n) => {
+      let sum = 0, count = 0;
+      for (let k = 0; k < n; k++) {
+        const o = at(k);
+        if (o < 0) continue;
+        const r = buf[o], g = buf[o + 1], b = buf[o + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        sum += (mx - mn) / Math.max(1, mx);
+        count++;
+      }
+      return count ? sum / count : 0;
+    };
+    const inside = chroma(season.data, (k) => {
+      const x = k % pw, y = (k / pw) | 0;
+      return wide.data[((y + oy) * W + x + ox) * 4 + 3] < 128 ? -1 : (y * pw + x) * sc;
+    }, pw * ph);
+    const beyond = chroma(out, (k) => {
+      const x = k % W, y = (k / W) | 0;
+      if (out[(y * W + x) * 4 + 3] < 128) return -1;
+      if (x >= ox && x < ox + pw && y >= oy && y < oy + ph) return -1;
+      return (y * W + x) * 4;
+    }, W * H);
+    const pull = beyond > 0.001 ? Math.min(1, inside / beyond) : 1;
+    if (pull < 0.995) {
+      for (let y = 0; y < H; y++)
+        for (let x = 0; x < W; x++) {
+          const o = (y * W + x) * 4;
+          if (out[o + 3] === 0) continue;
+          // full outside the painting, easing in over its edge so the
+          // join does not step
+          const dx = Math.min(x - ox, ox + pw - 1 - x);
+          const dy = Math.min(y - oy, oy + ph - 1 - y);
+          const d = Math.min(dx, dy);
+          const t = d <= 0 ? 1 : d >= 160 ? 0 : 1 - (d / 160) * (d / 160) * (3 - 2 * (d / 160));
+          if (t <= 0) continue;
+          let k = 1 + (pull - 1) * t;
+          const lum = 0.299 * out[o] + 0.587 * out[o + 1] + 0.114 * out[o + 2];
+          // and no pixel far past what the season holds: the lookup ran
+          // off its own table on the continuation's bark and left a
+          // streak of magenta down the frame's edge in January.
+          const mx = Math.max(out[o], out[o + 1], out[o + 2]);
+          const mn = Math.min(out[o], out[o + 1], out[o + 2]);
+          const here = (mx - mn) / Math.max(1, mx);
+          const cap = Math.max(0.02, inside * 2.5);
+          if (here * k > cap) k = Math.min(k, cap / Math.max(0.001, here));
+          for (let c = 0; c < 3; c++) out[o + c] = Math.max(0, Math.min(255, Math.round(lum + (out[o + c] - lum) * k)));
+        }
+      console.log(`  ${p.band}: chroma beyond the painting ${(beyond * 100).toFixed(1)}% pulled to the season's ${(inside * 100).toFixed(1)}%`);
+    }
+  }
   // The painting itself, laid in where it reaches, eased over the last
   // few pixels of its own edge so the join with the continuation is not
   // a line.
@@ -1947,6 +2092,69 @@ const exists = (f) =>
     () => false,
   );
 
+/**
+ * The colour under the transparency (18ad).
+ *
+ * A keyed plate's transparent pixels still hold a colour, and it is
+ * usually the dark or the paper the key threw away. Nothing samples
+ * them at full size — the alpha is zero — but everything samples them
+ * the moment the plate is minified, because a mip level is the average
+ * of the pixels under it, alpha and colour alike. A branch a pixel wide
+ * over a field of dark therefore averages to a dark smudge, and a
+ * canopy's worth of them arrives as a field of grey rectangles the size
+ * of the mip's own texels. It is the thing that made the elms' boughs
+ * look broken through the whole year and nobody could find it in the
+ * plate, because the plate is clean.
+ *
+ * So the colour is bled outward: every transparent pixel takes the mean
+ * colour of whatever opaque neighbours it has, over and over, until the
+ * whole frame carries the subject's colour under its transparency. The
+ * alpha is untouched; only what the mips average changes.
+ */
+async function bleedColour(pipeline, passes = 12) {
+  const { data, info } = await pipeline.png().toBuffer({ resolveWithObject: true });
+  const raw = await sharp(data).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = raw.info;
+  const px = Buffer.from(raw.data);
+  if (info.channels < 4) return sharp(px, { raw: { width: w, height: h, channels: 4 } });
+  // who has colour worth spreading: anything the key kept at all
+  let known = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) known[i] = px[i * 4 + 3] > 8 ? 1 : 0;
+  let any = false;
+  for (let i = 0; i < w * h; i++) if (!known[i]) { any = true; break; }
+  if (!any) return sharp(px, { raw: { width: w, height: h, channels: 4 } });
+  for (let pass = 0; pass < passes; pass++) {
+    const next = Uint8Array.from(known);
+    let grew = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (known[i]) continue;
+        let n = 0;
+        const acc = [0, 0, 0];
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx;
+            const yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            const j = yy * w + xx;
+            if (!known[j]) continue;
+            n++;
+            for (let k = 0; k < 3; k++) acc[k] += px[j * 4 + k];
+          }
+        }
+        if (!n) continue;
+        for (let k = 0; k < 3; k++) px[i * 4 + k] = Math.round(acc[k] / n);
+        next[i] = 1;
+        grew++;
+      }
+    }
+    known = next;
+    if (!grew) break;
+  }
+  return sharp(px, { raw: { width: w, height: h, channels: 4 } });
+}
+
 async function encode(pipeline, out, budget = BUDGET_KB, alphaQuality = 80) {
   // Step quality down until the file fits the budget.
   const ladder = [82, 72, 62, 54, 46];
@@ -1989,7 +2197,10 @@ async function run() {
         );
       }
       if (p.key) srcs = await Promise.all(srcs.map((f) => keyWhite(f, p)));
-      const pipeline = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
+      const cut = Array.isArray(p.raw) ? await RECIPES[p.recipe](srcs, p) : await RECIPES[p.recipe](srcs[0], ext, p);
+      // Every plate with transparency carries its subject's colour under
+      // it, so that minifying one averages leaves with leaves (18ad).
+      const pipeline = p.bleed === false ? cut : await bleedColour(cut.clone(), p.bleed ?? 12);
       const meta = await pipeline.clone().png().toBuffer({ resolveWithObject: true });
       const { kb, quality, over } = await encode(pipeline, out, p.budgetKb, p.alphaQuality);
       console.log(

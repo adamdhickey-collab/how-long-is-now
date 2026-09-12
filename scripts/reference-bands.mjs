@@ -31,6 +31,8 @@ const ORIGIN = [768, 512];
  *  the model kept that edge as painted, so the blend mixes like with
  *  like, and a long one hides the step in tone between the two. */
 const SEAM = 140;
+/** How far above the treeline the far shore's crown may reach. */
+const CROWN = 110;
 
 /**
  * Where the framing trees are, in the painting's pixels. The canopy is
@@ -68,21 +70,163 @@ const TRUNK_REGIONS = [
 
 const cache = new Map();
 
-/** The wide frame: the continuation doubled, the painting set into it at
- *  full resolution, blended over SEAM pixels inside the painting's edge. */
+/**
+ * The frame beyond the painting, from the painting's own paint (18aj).
+ *
+ * It used to be the model's continuation: the whole wide frame drawn as
+ * one edit at half size and doubled, then tone-matched and given noise
+ * to make up the grain it did not have. Adam, on a frame at the widest
+ * of the year: I really don't like the stretch and distort technique —
+ * it over-emphasises itself and feels out of place. He is right, and the
+ * measurement agrees: at the year's widest, thirty per cent of what is
+ * on screen is that continuation, and at the lifetime's blink it is
+ * half. Doubled paint has dots twice the size of the painting's, so the
+ * eye finds the join wherever it falls.
+ *
+ * Nothing is invented now. Every pixel outside the painting is a pixel
+ * of the painting, mirror-folded outward as often as it takes — so the
+ * dots are the painting's own dots at the painting's own size, the light
+ * is the painting's light, and a season's margin is built from that
+ * season's own picture. The fold wanders as it goes, a few hundred
+ * pixels either way on two slow sines, because a straight mirror lines
+ * the painting's bands of tree-shadow up with themselves and lays the
+ * lawn out in stripes. A row to the side keeps its own row exactly: the
+ * horizon is at one height and may not bend.
+ */
+const SHORE_STRIP = 'assets/raw/scene-04/tiles/shore-strip-v1.png';
+/**
+ * The far shore beyond the painting, drawn (18aj). A fold is honest for
+ * grass and water and foliage — a lawn mirrored is a lawn — but the far
+ * shore has a bandshell on it, and folded outward the park acquired a
+ * second one, and a row of the right elm's trunk repeating like posts.
+ * So the shore's own band takes a drawn strip instead: a treeline with a
+ * bank and a line of water, made to repeat end to end and carrying no
+ * landmark at all, laid at the height the painting's own treeline sits
+ * at and scaled to its own depth.
+ */
+function shoreBeyond(big, strip, W, H, ox, oy, pw, ph, lines) {
+  if (!strip || !lines) return 0;
+  const { data: sd, w: sw, h: sh } = strip;
+  // the strip's own band: the rows that are not paper
+  let top = -1, bot = -1;
+  for (let y = 0; y < sh; y++) {
+    let ink = 0;
+    for (let x = 0; x < sw; x += 7) {
+      const o = (y * sw + x) * 4;
+      if (sd[o] < 238 || sd[o + 1] < 238 || sd[o + 2] < 238) { ink++; if (ink > 8) break; }
+    }
+    if (ink > 8) { if (top < 0) top = y; bot = y; }
+  }
+  if (top < 0 || bot <= top) return 0;
+  const sBand = bot - top + 1;
+  // The painting's own band, where it is widest, sets the scale: trees
+  // that keep their proportions rather than being squeezed to fit.
+  let pBand = 0;
+  for (let x = ox; x < ox + pw; x += 16) pBand = Math.max(pBand, lines.waterFar[x] - lines.skyTop[x]);
+  if (pBand < 8) return 0;
+  const scale = sBand / pBand; // strip pixels per wide-frame pixel
+  const fold = (v, span) => { const k = ((v % (2 * span)) + 2 * span) % (2 * span); return k >= span ? 2 * span - 1 - k : k; };
+  const FEATHER = 26;
+  let drawn = 0;
+  for (let x = 0; x < W; x++) {
+    const inside = x >= ox && x < ox + pw;
+    // eased in over the painting's own last columns, so the drawn shore
+    // arrives out of the painted one rather than against it
+    const d = inside ? Math.min(x - ox, ox + pw - 1 - x) : -1;
+    const k = d < 0 ? 1 : d >= 120 ? 0 : 1 - (d / 120) * (d / 120) * (3 - 2 * (d / 120));
+    if (k <= 0) continue;
+    const c = Math.max(0, Math.min(W - 1, x));
+    const t0 = lines.skyTop[c];
+    const t1 = lines.waterFar[c];
+    if (!(t1 > t0)) continue;
+    const sx = fold(Math.round((x - ox) * scale), sw);
+    for (let y = Math.round(t0) - FEATHER; y < Math.round(t1) + FEATHER; y++) {
+      if (y < 0 || y >= H) continue;
+      const sy = Math.round(top + (y - t0) * scale);
+      if (sy < 0 || sy >= sh) continue;
+      // soft at the band's own top and foot, so it sits into the sky and
+      // the water rather than cutting them
+      const edge = Math.min(y - (t0 - FEATHER), (t1 + FEATHER) - y) / FEATHER;
+      const e = Math.min(1, Math.max(0, edge));
+      const w = k * (e * e * (3 - 2 * e));
+      if (w <= 0) continue;
+      const o = (y * W + x) * 4;
+      const so = (sy * sw + sx) * 4;
+      for (let ch = 0; ch < 3; ch++) big[o + ch] = Math.round(big[o + ch] * (1 - w) + sd[so + ch] * w);
+      drawn++;
+    }
+  }
+  return drawn;
+}
+
+function mirrorBeyond(big, painting, W, H, ox, oy) {
+  const pw = painting.w;
+  const ph = painting.h;
+  const fold = (v, span) => {
+    let k = ((v % (2 * span)) + 2 * span) % (2 * span);
+    return k >= span ? 2 * span - 1 - k : k;
+  };
+  const wanderX = (y) => Math.round(190 * Math.sin(y / 233) + 110 * Math.sin(y / 89 + 2.1));
+  const wanderY = (x) => Math.round(150 * Math.sin(x / 271) + 90 * Math.sin(x / 103 + 0.7));
+  // The fold draws only from the middle of the painting, where there is
+  // nothing that could be recognised twice. Folded from the whole width
+  // it brought the right elm's trunk and its shadow out with it, over and
+  // over, and the lawn beside the frame read as a rank of felled logs.
+  // Between these two columns the painting is lawn, water and far trees
+  // and nothing else: both elms and the near bicycle are outside them.
+  const CLEAN = [300, 1300];
+  const span = CLEAN[1] - CLEAN[0];
+  const foldClean = (x) => CLEAN[0] + fold(x, span);
+  // Below the painting's foot the fold draws from the nearest lawn only
+  // (18ak). Folding the whole height brought the rows above the path back
+  // down with it, so the strip under the seat had a second gravel path
+  // running through it — and that strip is the ground the eye is closest
+  // to. These rows are grass and nothing else, at the scale grass has
+  // when it is a pace away.
+  const NEAR_LAWN = [ph - 190, ph];
+  const nearSpan = NEAR_LAWN[1] - NEAR_LAWN[0];
+  for (let y = 0; y < H; y++) {
+    const ownRow = y >= oy && y < oy + ph;
+    const below = y >= oy + ph;
+    for (let x = 0; x < W; x++) {
+      if (ownRow && x >= ox && x < ox + pw) continue;
+      const sy = below
+        ? NEAR_LAWN[0] + fold(y - (oy + ph) + wanderY(x), nearSpan)
+        : fold(y - oy + (ownRow ? 0 : wanderY(x)), ph);
+      const sx = foldClean(x - ox + wanderX(y));
+      const so = (sy * pw + sx) * 4;
+      const o = (y * W + x) * 4;
+      big[o] = painting.data[so];
+      big[o + 1] = painting.data[so + 1];
+      big[o + 2] = painting.data[so + 2];
+      big[o + 3] = 255;
+    }
+  }
+}
+
+/** The wide frame: the painting at full resolution with its own paint
+ *  folded out around it, blended over SEAM pixels inside its edge. */
 async function widen(painting, outpaint) {
   const [W, H] = WIDE;
-  // The continuation may come at the wide frame's own size (the pieces
-  // of scripts/outpaint.mjs) or at half of it (one edit), doubled here.
-  const big = Buffer.from(
-    outpaint.w === W
-      ? outpaint.data
-      : await sharp(Buffer.from(outpaint.data), { raw: { width: outpaint.w, height: outpaint.h, channels: 4 } })
-          .resize(W, H, { kernel: 'lanczos3' })
-          .raw()
-          .toBuffer(),
-  );
   const [ox, oy] = ORIGIN;
+  const big = Buffer.alloc(W * H * 4);
+  // The painting first, so the fold has something to fold.
+  for (let y = 0; y < painting.h; y++)
+    for (let x = 0; x < painting.w; x++) {
+      const so = (y * painting.w + x) * 4;
+      const o = ((y + oy) * W + x + ox) * 4;
+      big[o] = painting.data[so]; big[o + 1] = painting.data[so + 1];
+      big[o + 2] = painting.data[so + 2]; big[o + 3] = 255;
+    }
+  mirrorBeyond(big, painting, W, H, ox, oy);
+  // …and the far shore drawn rather than folded, since a fold would give
+  // the park a second bandshell.
+  {
+    const lines = regionLines ?? (existsSync(LINES) ? JSON.parse(readFileSync(LINES, 'utf8')) : null);
+    const strip = existsSync(SHORE_STRIP) ? await load(SHORE_STRIP) : null;
+    const n = shoreBeyond(big, strip, W, H, ox, oy, painting.w, painting.h, lines);
+    if (n) console.log(`  far shore beyond the painting: ${(n / 1000).toFixed(0)}k px drawn, not folded`);
+  }
   // A continuation made as its own edit, or recoloured to a season
   // (18j), drifts in tone from the painting. Over the centre, where both
   // hold the same picture, a straight-line fit per channel brings the
@@ -129,22 +273,54 @@ async function widen(painting, outpaint) {
       console.log(`  continuation fitted to the painting, ${R} region(s): ${fits.map((fit) => fit.map(([a, b]) => `${a.toFixed(2)}x${b >= 0 ? '+' : ''}${b.toFixed(0)}`).join(' ')).join(' | ')}`);
     }
   }
-  // Below the frame's foot the continuation drew trees — trunks that
-  // rode into the painting's bottom rows through the seam and stood at
-  // the foot of the view (18s). The strip under the seat is the picture
-  // mirrored about its foot instead: the lawn running on, and nothing the
-  // painting does not have. Only its first rows are ever seen.
+  // The painting's own left and right edges (18ag). A fit over a whole
+  // region cannot stop one row from stepping at the join, and the year
+  // pulls back until those edges are inside the frame: what showed was a
+  // pale wedge running out of each bottom corner, the lawn changing tone
+  // along a straight line. Each row is read either side of the edge and
+  // the continuation is nudged by what that row is short of, eased out
+  // over four hundred pixels and smoothed up and down the frame so the
+  // nudge is not a streak.
   {
-    const foot = oy + painting.h;
-    for (let y = foot; y < H; y++) {
-      const sy = Math.max(0, 2 * foot - 1 - y);
-      for (let x = 0; x < W; x++) {
-        const o = (y * W + x) * 4;
-        const inFrame = x >= ox && x < ox + painting.w && sy >= oy;
-        const so = inFrame ? ((sy - oy) * painting.w + x - ox) * 4 : (sy * W + x) * 4;
-        const from = inFrame ? painting.data : big;
-        big[o] = from[so]; big[o + 1] = from[so + 1]; big[o + 2] = from[so + 2];
+    const EASE = 420;
+    const READ = 48;
+    const SMOOTH = 24;
+    for (const side of [-1, 1]) {
+      const edgeX = side < 0 ? ox : ox + painting.w - 1;
+      const diff = new Float32Array(H * 3);
+      for (let y = 0; y < H; y++) {
+        const inn = [0, 0, 0];
+        const out = [0, 0, 0];
+        let n = 0;
+        for (let k = 0; k < READ; k++) {
+          const xi = edgeX - side * k;
+          const xo = edgeX + side * (k + 1);
+          if (xi < 0 || xi >= W || xo < 0 || xo >= W) continue;
+          const oi = (y * W + xi) * 4;
+          const oo = (y * W + xo) * 4;
+          for (let c = 0; c < 3; c++) { inn[c] += big[oi + c]; out[c] += big[oo + c]; }
+          n++;
+        }
+        if (!n) continue;
+        for (let c = 0; c < 3; c++) diff[y * 3 + c] = (inn[c] - out[c]) / n;
       }
+      const sm = new Float32Array(H * 3);
+      for (let c = 0; c < 3; c++) {
+        let acc = 0;
+        for (let k = -SMOOTH; k <= SMOOTH; k++) acc += diff[Math.min(H - 1, Math.max(0, k)) * 3 + c];
+        for (let y = 0; y < H; y++) {
+          sm[y * 3 + c] = acc / (2 * SMOOTH + 1);
+          acc += diff[Math.min(H - 1, y + SMOOTH + 1) * 3 + c] - diff[Math.max(0, y - SMOOTH) * 3 + c];
+        }
+      }
+      for (let y = 0; y < H; y++)
+        for (let k = 1; k <= EASE; k++) {
+          const x = edgeX + side * k;
+          if (x < 0 || x >= W) break;
+          const t = 1 - smooth01(0, EASE, k);
+          const o = (y * W + x) * 4;
+          for (let c = 0; c < 3; c++) big[o + c] = Math.max(0, Math.min(255, Math.round(big[o + c] + sm[y * 3 + c] * t)));
+        }
     }
   }
   const data = Buffer.from(big);
@@ -534,6 +710,72 @@ function morph(src, w, h, r, sign) {
   return out;
 }
 
+/**
+ * A trunk is a column that does not jump sideways (18ag).
+ *
+ * The tree matte is what differs between the painting and the same park
+ * with its trees inpainted away, and where the model repainted the lawn
+ * at a trunk's foot a shade off, the difference is lawn: at the left
+ * elm's flare it took in a lump of sunlit grass forty pixels out into
+ * the frame, which from the seat was a pale haze down the whole left
+ * edge of the park, and under the year's pull-back a wing of grass
+ * hanging off the tree. Colour cannot tell the two apart — the painting
+ * lays the same dots on bark in shade and on grass in shade. Shape can.
+ * Each trunk is walked down its own rows from a row where it is only
+ * trunk: every row keeps the run of matte under the run above it,
+ * allowed to flare a little either side and no more, so a tree ends at
+ * its roots and the lawn stays with the lawn.
+ */
+const TRUNK_COLUMNS = [
+  // x from, x to, the row to read the trunk's width at, the row to stop
+  [0, 300, 240, 800], // the left elm
+  [1330, 1470, 240, 800], // the nearer of the two on the right
+  [1470, 1536, 240, 800], // and the one at the frame's edge
+];
+/** How far a trunk may widen, per row, per side. */
+const FLARE = 0.08;
+/** A dot of sky inside the bark does not cut a trunk in two. */
+const KNIT = 8;
+function columnar(m, w, h, ox, oy) {
+  for (const [cx0, cx1, ySeed, yEnd] of TRUNK_COLUMNS) {
+    let lo = null;
+    let hi = null;
+    for (let y = ySeed; y < yEnd; y++) {
+      const row = y + oy;
+      if (row < 0 || row >= h) break;
+      const runs = [];
+      let start = -1;
+      for (let x = cx0; x <= cx1; x++) {
+        const on = x < cx1 && m[row * w + x + ox] > 0.5;
+        if (on && start < 0) start = x;
+        if (!on && start >= 0) {
+          const last = runs[runs.length - 1];
+          if (last && start - last[1] <= KNIT) last[1] = x;
+          else runs.push([start, x]);
+          start = -1;
+        }
+      }
+      if (!runs.length) { if (lo !== null) break; continue; }
+      let pick = runs[0];
+      if (lo === null) {
+        for (const r of runs) if (r[1] - r[0] > pick[1] - pick[0]) pick = r;
+      } else {
+        let best = -Infinity;
+        for (const r of runs) {
+          const over = Math.min(r[1], hi) - Math.max(r[0], lo);
+          if (over > best) { best = over; pick = r; }
+        }
+        if (best <= 0) break;
+      }
+      const l = lo === null ? pick[0] : Math.max(pick[0], lo - FLARE);
+      const r = hi === null ? pick[1] : Math.min(pick[1], hi + FLARE);
+      for (let x = cx0; x < cx1; x++) if (x < l || x >= r) m[row * w + x + ox] = 0;
+      lo = l;
+      hi = r;
+    }
+  }
+}
+
 /** The two frames, the tree matte, the base with the trees filled from
  *  behind, and the two boundary polylines — computed once per pair. */
 const LINES = 'assets/raw/scene-04/ref/lines.json';
@@ -662,6 +904,13 @@ function matchEdges(data, w, h, ox, oy) {
         const inside = x >= ox && x < ox + 1536 && y >= oy && y < oy + 1024;
         const d = inside ? 0 : Math.max(ox - x, x - (ox + 1535), oy - y, y - (oy + 1023));
         if (!inside && d > 700) continue;
+        // Not the strip below the frame's foot (18ag): that is the
+        // painting mirrored, so it is as grainy as the painting, and
+        // counting it as continuation said the continuation had grain it
+        // does not have — the ground and the water were left smooth
+        // beside a mat of dots, which is what the frame's left and right
+        // edges looked like once the year pulled back past them.
+        if (!inside && y >= oy + 1024) continue;
         const r = regionAtWide(x, y);
         const i = y * w + x, o = i * 4;
         for (let c = 0; c < 3; c++) {
@@ -976,6 +1225,8 @@ async function prepare(files, opts = {}) {
       m = morph(morph(m, w, h, 1, -1), w, h, 1, 1);
       console.log(`  ${dropped} px of pale sky dropped from the matte's edge`);
     }
+    // And the trunks kept to their own width, so no lawn comes with them.
+    columnar(m, w, h, ox, oy);
     // The model's repaint drifts a shade even where it kept the picture:
     // read that drift where both images should agree — just outside the
     // mask — and take it out of the fill.
@@ -1449,7 +1700,43 @@ async function prepare(files, opts = {}) {
     // the sky band's fill was built from this season's own line: rebuild
     skyBelow(skyOnly, base, skyTop, w, h);
   }
-  const prepared = { w, h, ox, oy, quiet, base, skyOnly, matte: m, skyTop, waterNear, waterFar, treesRGB };
+  // ---- the far shore's own crown (18ag).
+  //
+  // The treeline was cut at a line: one row a column, taken where the
+  // sky's key first fails and holds for sixty rows, then run through a
+  // forty-one column median so it would not wander. A median of a
+  // treeline is a plateau. Every crown was levelled off, and the strip
+  // between the real tops and the levelled line was given to the sky
+  // band, which fills below its line with the sky mirrored down — so a
+  // band of milk with the bandshell's ghost in it lay across the frame
+  // where the trees' tops belong, from the seat and at every height
+  // after. The line still does its work below; the top of the shore is
+  // no longer a line at all. Within a hundred rows of it the shore is
+  // as opaque as its own picture is not sky, so the silhouette is the
+  // painted one, dot for dot.
+  const crown = new Float32Array(w * h);
+  {
+    const skyB = (o) => {
+      const r = base[o], g = base[o + 1], b = base[o + 2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 && b >= g - 10 && (mx - mn) / Math.max(1, mx) < 0.5;
+    };
+    const notSky = new Float32Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) notSky[y * w + x] = skyB((y * w + x) * 4) ? 0 : 1;
+    // Two pixels of blur: enough that a single sky dot inside a crown is
+    // not a hole, not so much that the leaves lose their edge.
+    const f = blur(notSky, w, h, 2);
+    for (let x = 0; x < w; x++)
+      for (let y = 0; y < h; y++) {
+        const d = y - skyTop[x];
+        const solid = smooth01(0, 24, d);
+        if (solid >= 1) { crown[y * w + x] = 1; continue; }
+        const key = smooth01(0.16, 0.46, f[y * w + x]) * smooth01(-CROWN, -CROWN + 30, d);
+        crown[y * w + x] = Math.max(solid, key);
+      }
+  }
+  const prepared = { w, h, ox, oy, quiet, base, skyOnly, crown, matte: m, skyTop, waterNear, waterFar, treesRGB };
   cache.set(key, prepared);
   return prepared;
 }
@@ -1472,38 +1759,90 @@ function median(arr, win) {
  * whose clouds read as a symmetric ledge once the far shore parts from
  * the sky as the eye rises.
  */
+/**
+ * The sky behind the far shore (18ag).
+ *
+ * The band runs on under the shore down to the waterline, so that when
+ * the eye rises and the two part, what shows between them is sky. What
+ * it held there was the painting mirrored down from four rows above the
+ * treeline — which is four rows above a line that had been flattened by
+ * a median, so the mirror picked up the crowns it had levelled, and laid
+ * a band of milk with the bandshell's ghost in it right where the trees'
+ * tops belong. The fill now begins a crown's height above the line,
+ * where the sky is only sky: a strip of it mirrored down, then the
+ * column's own colour, read well clear of the haze and smoothed across
+ * a wide neighbourhood so no two columns step, with the painting's grain
+ * carried into it so the fill is not a wash.
+ */
 function skyBelow(out, base, skyTop, w, h) {
-  const col = new Float32Array(w * 3);
+  const startAt = (x) => Math.max(64, Math.round(skyTop[x]) - CROWN);
+  // The column's own sky, as it is going: a straight line through the
+  // clear rows above the crown, per channel, so the fill carries the
+  // paling toward the horizon rather than one flat blue. A flat colour
+  // read high up put a wall of zenith blue behind the treeline.
+  const FIT = 90;
+  const col = new Float32Array(w * 3); // the value at the fill's first row
+  const slope = new Float32Array(w * 3); // and how it moves, per row
   for (let x = 0; x < w; x++) {
-    const top = Math.round(skyTop[x]) - 4;
-    let n = 0;
-    for (let y = Math.max(0, top - 12); y < top; y++) {
-      const o = (y * w + x) * 4;
-      col[x * 3] += base[o]; col[x * 3 + 1] += base[o + 1]; col[x * 3 + 2] += base[o + 2];
-      n++;
+    const top = startAt(x);
+    const y0 = Math.max(0, top - FIT);
+    const n = top - y0;
+    for (let c = 0; c < 3; c++) {
+      let sy = 0, sv = 0, syy = 0, syv = 0;
+      for (let y = y0; y < top; y++) {
+        const v = base[(y * w + x) * 4 + c];
+        sy += y; sv += v; syy += y * y; syv += y * v;
+      }
+      const denom = n * syy - sy * sy;
+      const a = denom ? (n * syv - sy * sv) / denom : 0;
+      const b = (sv - a * sy) / Math.max(1, n);
+      slope[x * 3 + c] = Math.min(0.5, Math.max(-0.5, a));
+      col[x * 3 + c] = a * top + b;
     }
-    if (n) for (let c = 0; c < 3; c++) col[x * 3 + c] /= n;
   }
-  const sm = new Float32Array(w * 3);
-  const R = 24;
-  for (let c = 0; c < 3; c++) for (let x = 0; x < w; x++) {
-    let acc = 0, n = 0;
-    for (let k = -R; k <= R; k++) { const xx = x + k; if (xx >= 0 && xx < w) { acc += col[xx * 3 + c]; n++; } }
-    sm[x * 3 + c] = acc / n;
-  }
-  // Just below the line, a strip of the real sky mirrored down — forty
-  // rows of haze and dots, what the eye is shown when the far shore
-  // parts from the sky as it rises — easing into the flat beyond it.
+  // Smoothed wide: at twenty-four columns the fill stepped from panel to
+  // panel, which is the one thing a sky may not do.
+  const R = 96;
+  const across = (src) => {
+    const sm = new Float32Array(w * 3);
+    for (let c = 0; c < 3; c++) {
+      let acc = 0;
+      for (let k = -R; k <= R; k++) acc += src[Math.min(w - 1, Math.max(0, k)) * 3 + c];
+      for (let x = 0; x < w; x++) {
+        sm[x * 3 + c] = acc / (2 * R + 1);
+        acc += src[Math.min(w - 1, x + R + 1) * 3 + c] - src[Math.max(0, x - R) * 3 + c];
+      }
+    }
+    return sm;
+  };
+  const sm = across(col);
+  const sl = across(slope);
+  // A strip of the real sky mirrored down, easing into the flat beyond
+  // it, and the painting's own grain kept the whole way.
   const STRIP = 28;
   for (let x = 0; x < w; x++) {
-    const top = Math.round(skyTop[x]) - 4;
-    for (let y = Math.max(0, top); y < h; y++) {
+    const top = startAt(x);
+    for (let y = top; y < h; y++) {
       const o = (y * w + x) * 4;
       const d = y - top;
       const sy = Math.max(0, 2 * top - 1 - y);
       const so = (sy * w + x) * 4;
       const k = Math.min(1, Math.max(0, (d - STRIP * 0.6) / (STRIP * 0.4)));
-      for (let c = 0; c < 3; c++) out[o + c] = Math.round(base[so + c] * (1 - k) + sm[x * 3 + c] * k);
+      // the grain at the row the fill draws its colour from: this pixel
+      // less its own column's local mean over a few rows
+      const gy = Math.max(0, top - 8 - (d % 24));
+      let mean = [0, 0, 0];
+      for (let j = -3; j <= 3; j++) {
+        const yy = Math.min(h - 1, Math.max(0, gy + j));
+        const oo = (yy * w + x) * 4;
+        for (let c = 0; c < 3; c++) mean[c] += base[oo + c] / 7;
+      }
+      const go = (gy * w + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const run = sm[x * 3 + c] + sl[x * 3 + c] * Math.min(d, CROWN * 1.6);
+        const flat = run + (base[go + c] - mean[c]);
+        out[o + c] = Math.max(0, Math.min(255, Math.round(base[so + c] * (1 - k) + flat * k)));
+      }
     }
   }
 }
@@ -1674,7 +2013,7 @@ export async function refFarShore(files, opts) {
   // flat, so the two part as the eye rises, and a hard edge three rows
   // below the waterline let the sky band behind them show through as a
   // bright line across the frame at the widest of the pull-back.
-  return frame(p.base, p.w, p.h, (x, y) => edge(y, p.skyTop[x], false) * under(y, p.waterFar[x] + 90, true));
+  return frame(p.base, p.w, p.h, (x, y, i) => p.crown[i] * under(y, p.waterFar[x] + 90, true));
 }
 
 export async function refWater(files, opts) {

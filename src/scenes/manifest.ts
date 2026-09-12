@@ -75,6 +75,23 @@ export interface Plate {
    */
   imageRepeat?: number;
   /**
+   * A picture drawn to tile, laid across the plate's quad this many times
+   * rather than stretched over it once (18aj). The turf at our feet
+   * covers twenty units of ground with one 1536-pixel drawing, so its
+   * dots came out three times the size of the painting's and the foot of
+   * the frame was the one place the world showed it was made of pictures.
+   * Across only: down the quad the perspective does the compressing.
+   */
+  tile?: number | [number, number];
+  /**
+   * A lying plate that is part of the ground rather than a thing on it
+   * (18ak): it draws with the ground, under everyone standing or sitting
+   * on it. The turf at our feet is ordered by its own far edge like any
+   * other lying plate, which put it in front of the nearest people and
+   * cut a man off at the waist.
+   */
+  under?: boolean;
+  /**
    * A plate that lies flat rather than standing: the ground itself, a
    * plane at baseY running from z to z + depth, its image tiled across
    * it both ways, mirrored at every seam. The lawn.
@@ -182,7 +199,12 @@ export interface Lapse {
   dwell: number;
   /** How long their spot is empty after, in the world's seconds. */
   gap: number;
-  /** The dissolve in and out, as a fraction of the dwell. */
+  /**
+   * The dissolve in and out, as a fraction of the dwell. Small: at an
+   * eighth, a third of everyone in the park is half-there at any moment
+   * and the lawn reads as a crowd of ghosts (18af). Someone arriving
+   * should be arriving, not fading up.
+   */
   edge?: number;
   /** The chance a slot is taken, 0–1. */
   density?: number;
@@ -956,7 +978,7 @@ export interface Scene {
      * has to be the holder's own doing. The ending uses it for the three
      * things it notices.
      */
-    reveal?: Record<string, { from: number; to?: number; over?: number }>;
+    reveal?: Record<string, { from: number; to?: number; over?: number } | { from: number; to?: number; over?: number }[]>;
   };
   /** Local progress spent fading the scene's world in and out. */
   fadeIn?: number;
@@ -973,9 +995,11 @@ export interface Scene {
    * of itself (18y): over `over` of the scene, centred on `at`, the world
    * goes to black and comes back. The lifetime uses it to change what it
    * is looking at — the seat's park for the park seen from further back
-   * — without dissolving one painting through another.
+   * — without dissolving one painting through another. More than one may
+   * be declared (18ah): the eighty years blink twice, once to step back
+   * and once to let the elms it is watching grow up.
    */
-  dip?: { at: number; over: number };
+  dip?: { at: number; over: number } | { at: number; over: number }[];
   /**
    * The eye closing at the end (18y), and staying closed: the lids come
    * in from the frame's edges across this stretch of the scene, on the
@@ -1190,7 +1214,7 @@ export const scenes: Scene[] = [
     // minutes, the spot is empty for a minute or two, and the crowd is
     // two thirds full — so the painting's people leave one by one and
     // others take their places as the scroll runs.
-    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5, lapse: { dwell: 150, gap: 100, edge: 0.15, density: 0.65, cap: { lawn: 7, path: 4, water: 4 } } },
+    hold: { of: 'scene-04-year', at: 0, seconds: 600, churn: 1.5, lapse: { dwell: 150, gap: 100, edge: 0.05, density: 0.65, cap: { lawn: 7, path: 4, water: 4 } } },
     camera: {
       from: { y: 2.5, z: 16, lookY: -1.77 },
       to: { y: 2.5, z: 16, lookY: -1.77 },
@@ -1222,18 +1246,36 @@ export const scenes: Scene[] = [
       lens: { scale: 0.6, altitude: 25.5, west: 10 },
       // A day as a time lapse: an hour and a half's stay, an hour's gap;
       // the lawn empties with the light.
-      lapse: { dwell: 5400, gap: 4200, edge: 0.1, density: 0.6, cap: { lawn: 6, path: 4, water: 3 } },
+      lapse: { dwell: 5400, gap: 4200, edge: 0.05, density: 0.6, cap: { lawn: 6, path: 4, water: 3 } },
       // The hours, painted (18aa). Scroll runs the clock from 4:17 in
       // the afternoon round to 4:17 again, so the sun goes down about a
       // sixth of the way in and comes up again past the half. The sky
       // and the lake take their sunset, then their night, and give them
       // back; the deer come down to the water while it is dark and the
       // fireflies are out over the lawn a little longer.
+      // The evening runs under the whole of the dark, and the night sits
+      // on top of it (18ai). Each of these is a painting laid over the
+      // afternoon's, so two of them part-way through at once leaves the
+      // afternoon showing between: at the second the night was going and
+      // the dawn had not come, a quarter of the frame was still August at
+      // four in the afternoon, and the whole park washed out. The evening
+      // now holds from the first loss of the sun to the last of the
+      // sunrise, and the night fades up and down inside it — so whatever
+      // is part-way through, the hour underneath it is never the wrong
+      // one. (The sunrise is the sunset's own painting: a sunrise and a
+      // sunset are the same hour seen from the other side.)
       reveal: {
-        'sky-dusk': { from: 0.12, to: 0.28, over: 0.05 },
-        'water-dusk': { from: 0.12, to: 0.28, over: 0.05 },
-        'sky-night': { from: 0.23, to: 0.57, over: 0.05 },
-        'water-night': { from: 0.23, to: 0.57, over: 0.05 },
+        'sky-dusk': { from: 0.12, to: 0.70, over: 0.05 },
+        'water-dusk': { from: 0.12, to: 0.70, over: 0.05 },
+        // The shore and the lawn turn on the same windows as the sky and
+        // the lake. Everything the day has a painting for changes hour
+        // together, or the world does not change hour at all.
+        'shore-dusk': { from: 0.12, to: 0.70, over: 0.05 },
+        'ground-dusk': { from: 0.12, to: 0.70, over: 0.05 },
+        'sky-night': { from: 0.24, to: 0.57, over: 0.055 },
+        'water-night': { from: 0.24, to: 0.57, over: 0.055 },
+        'shore-night': { from: 0.24, to: 0.57, over: 0.055 },
+        'ground-night': { from: 0.24, to: 0.57, over: 0.055 },
         'night-fireflies': { from: 0.26, to: 0.5, over: 0.06 },
         'night-deer': { from: 0.32, to: 0.47, over: 0.04 },
       },
@@ -1287,8 +1329,11 @@ export const scenes: Scene[] = [
       shadows: { strength: 0.42, lean: 0.24, depth: 0.34, color: 0x24425f },
       // What is only real from the seat fades once the eye is this high,
       // over this much more: above the year's small pull back, so the elms
-      // frame the whole year and go only as the lifetime climbs.
-      seatFade: { until: 4.55, over: 0.3 },
+      // frame the whole year and go only as the lifetime climbs. Shortened
+      // in 18ah: at 0.3 the last of the seat's people were still a few per
+      // cent there as the lifetime's first blink opened again, and a
+      // handful of ghosts stood on a lawn that no longer had them.
+      seatFade: { until: 4.55, over: 0.22 },
       // Sunset: the sky pale violet overhead and apricot at the treeline,
       // the ground warmed; night: deep blue, the ground blue-black.
       light: {
@@ -1309,7 +1354,11 @@ export const scenes: Scene[] = [
         // pixels from the water, and the man raking leaves stood in the
         // lake. Three more, and the nearest pulled back from the frame's
         // foot where a visitor would have been cut off at the waist.
-        lawn: [[210, 900], [640, 905], [1205, 930], [697, 620], [950, 715], [1377, 725], [1418, 545], [1175, 610], [380, 800], [1000, 870], [800, 660], [1250, 520], [460, 660], [1450, 645], [620, 760], [300, 700], [1100, 780], [880, 570]],
+        // ([210, 900] was dropped in 18af: the ground kept a person clear
+        // of the bicycle, but from the seat they still sat in front of it,
+        // and a man and his dog through a bicycle is the sort of thing
+        // you cannot stop seeing.)
+        lawn: [[640, 905], [1205, 930], [697, 620], [950, 715], [1377, 725], [1418, 545], [1175, 610], [380, 800], [1000, 870], [800, 660], [1250, 520], [460, 660], [1450, 645], [620, 760], [300, 700], [1100, 780], [880, 570]],
         path: [[210, 605], [495, 563], [668, 510], [835, 500], [1185, 495], [1355, 445], [1480, 405], [320, 575], [1000, 475], [1110, 462]],
         water: [[275, 363], [572, 312], [727, 337], [1165, 337], [420, 335], [900, 325], [1050, 345], [150, 345]],
       },
@@ -1326,7 +1375,7 @@ export const scenes: Scene[] = [
     // and one line here brings it back.
     // The year as a time lapse: three days' stay, two days' gap, so the
     // August crowd flickers through its window of the year.
-    lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.12, density: 0.85, cap: { lawn: 7, path: 5, water: 3 } },
+    lapse: { dwell: 3 * 86_400, gap: 2 * 86_400, edge: 0.045, density: 0.85, cap: { lawn: 7, path: 5, water: 3 } },
     plates: [
       // The whole-frame layers cut from the painting with its people
       // painted out: the sky and the far shore stand at the back, the
@@ -1372,7 +1421,7 @@ export const scenes: Scene[] = [
       // and never go half-there at the turn of a season.
       { id: 'trunk-left', z: 11, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: -6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-left.webp', AUTUMN: 'plates/scene-04/frame/trunk-left.webp', WINTER: 'plates/scene-04/frame/trunk-left.webp', SPRING: 'plates/scene-04/frame/trunk-left.webp' } },
       { id: 'trunk-right', z: 11, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: 6.9, y: 3.1, z: 11, w: 4.33, h: 6.5 }, width: 0, height: 0, baseY: 0, shade: 0.08, images: { 'LATE SUMMER': 'plates/scene-04/frame/trunk-right.webp', AUTUMN: 'plates/scene-04/frame/trunk-right.webp', WINTER: 'plates/scene-04/frame/trunk-right.webp', SPRING: 'plates/scene-04/frame/trunk-right.webp' } },
-      { id: 'turf', lay: true, z: 16.8, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: 0, y: 0, z: 19.6, w: 20, h: 12.8 }, width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/frame/turf-summer.webp', AUTUMN: 'plates/scene-04/frame/turf-autumn.webp', WINTER: 'plates/scene-04/frame/turf-winter.webp', SPRING: 'plates/scene-04/frame/turf-spring.webp' } },
+      { id: 'turf', lay: true, tile: [7, 2], under: true, z: 16.8, seat: true, beyond: { from: 2.52, over: 0.35 }, world: { x: 0, y: 0, z: 14.4, w: 26, h: 5 }, width: 0, height: 0, baseY: 0, shade: 0.1, images: { 'LATE SUMMER': 'plates/scene-04/frame/turf-summer.webp', AUTUMN: 'plates/scene-04/frame/turf-autumn.webp', WINTER: 'plates/scene-04/frame/turf-winter.webp', SPRING: 'plates/scene-04/frame/turf-spring.webp' } },
       // The lifetime's own picture (18y). The eighty years used to be
       // watched from a camera that climbed out of the painting, and the
       // painting went with it: what is only real from the seat — the
@@ -1399,10 +1448,56 @@ export const scenes: Scene[] = [
           SPRING: 'plates/scene-05/wide-park.webp',
         },
       },
+      // The people of the lifetime's own picture (18ah). The eighty years
+      // used to stop moving at the blink: the appearances that carry the
+      // first half are the year's own people, and the blink takes them
+      // away with the rest of the seat's park, leaving a painting with
+      // nobody in it. These are drawn at the wide picture's own scale and
+      // stand on its near lawn; each is hidden, and the scene watching
+      // the eighty years says when it is there — a moment at a time, and
+      // more rarely as the years run out.
+      { id: 'life-figure-01', z: -59.6, front: true, hidden: true, world: { x: -45.70, y: -21.98, z: -60.4, w: 4.36, h: 7.03 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-01.webp', AUTUMN: 'plates/scene-05/life-figure-01.webp', WINTER: 'plates/scene-05/life-figure-01.webp', SPRING: 'plates/scene-05/life-figure-01.webp' } },
+      { id: 'life-figure-02', z: -59.6, front: true, hidden: true, world: { x: -24.22, y: -27.55, z: -60.4, w: 4.72, h: 7.62 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-02.webp', AUTUMN: 'plates/scene-05/life-figure-02.webp', WINTER: 'plates/scene-05/life-figure-02.webp', SPRING: 'plates/scene-05/life-figure-02.webp' } },
+      { id: 'life-figure-03', z: -59.6, front: true, hidden: true, world: { x: 1.17, y: -23.84, z: -60.4, w: 4.48, h: 7.23 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-03.webp', AUTUMN: 'plates/scene-05/life-figure-03.webp', WINTER: 'plates/scene-05/life-figure-03.webp', SPRING: 'plates/scene-05/life-figure-03.webp' } },
+      { id: 'life-figure-04', z: -59.6, front: true, hidden: true, world: { x: 24.61, y: -29.59, z: -60.4, w: 4.86, h: 7.83 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-04.webp', AUTUMN: 'plates/scene-05/life-figure-04.webp', WINTER: 'plates/scene-05/life-figure-04.webp', SPRING: 'plates/scene-05/life-figure-04.webp' } },
+      { id: 'life-figure-05', z: -59.6, front: true, hidden: true, world: { x: -55.47, y: -33.30, z: -60.4, w: 5.10, h: 8.22 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-05.webp', AUTUMN: 'plates/scene-05/life-figure-05.webp', WINTER: 'plates/scene-05/life-figure-05.webp', SPRING: 'plates/scene-05/life-figure-05.webp' } },
+      { id: 'life-figure-06', z: -59.6, front: true, hidden: true, world: { x: -12.50, y: -37.01, z: -60.4, w: 5.34, h: 8.61 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-06.webp', AUTUMN: 'plates/scene-05/life-figure-06.webp', WINTER: 'plates/scene-05/life-figure-06.webp', SPRING: 'plates/scene-05/life-figure-06.webp' } },
+      { id: 'life-figure-07', z: -59.6, front: true, hidden: true, world: { x: 12.89, y: -35.16, z: -60.4, w: 5.22, h: 8.42 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-07.webp', AUTUMN: 'plates/scene-05/life-figure-07.webp', WINTER: 'plates/scene-05/life-figure-07.webp', SPRING: 'plates/scene-05/life-figure-07.webp' } },
+      { id: 'life-figure-08', z: -59.6, front: true, hidden: true, world: { x: 40.23, y: -24.03, z: -60.4, w: 4.49, h: 7.25 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-08.webp', AUTUMN: 'plates/scene-05/life-figure-08.webp', WINTER: 'plates/scene-05/life-figure-08.webp', SPRING: 'plates/scene-05/life-figure-08.webp' } },
+      { id: 'life-figure-09', z: -59.6, front: true, hidden: true, world: { x: -33.98, y: -42.58, z: -60.4, w: 5.70, h: 9.20 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-09.webp', AUTUMN: 'plates/scene-05/life-figure-09.webp', WINTER: 'plates/scene-05/life-figure-09.webp', SPRING: 'plates/scene-05/life-figure-09.webp' } },
+      { id: 'life-figure-10', z: -59.6, front: true, hidden: true, world: { x: 51.95, y: -36.83, z: -60.4, w: 5.33, h: 8.59 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-10.webp', AUTUMN: 'plates/scene-05/life-figure-10.webp', WINTER: 'plates/scene-05/life-figure-10.webp', SPRING: 'plates/scene-05/life-figure-10.webp' } },
+      { id: 'life-figure-11', z: -59.6, front: true, hidden: true, world: { x: -60.35, y: -18.64, z: -60.4, w: 4.14, h: 6.68 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-11.webp', AUTUMN: 'plates/scene-05/life-figure-11.webp', WINTER: 'plates/scene-05/life-figure-11.webp', SPRING: 'plates/scene-05/life-figure-11.webp' } },
+      { id: 'life-figure-12', z: -59.6, front: true, hidden: true, world: { x: 27.54, y: -44.62, z: -60.4, w: 5.84, h: 9.41 }, width: 0, height: 0, baseY: 0, shade: 0.04, images: { 'LATE SUMMER': 'plates/scene-05/life-figure-12.webp', AUTUMN: 'plates/scene-05/life-figure-12.webp', WINTER: 'plates/scene-05/life-figure-12.webp', SPRING: 'plates/scene-05/life-figure-12.webp' } },
+      // The near elms of the lifetime's own picture, at twenty years and
+      // grown (18ah). They used to be one picture: eighty years passed
+      // and the trees were the same size at the end as at the blink,
+      // which is the one thing a lifetime of a park should not show. Both
+      // are hidden, and the scene that watches the eighty years says when
+      // each of them is there — the change falling inside its second
+      // blink, so that neither tree is ever dissolved through the other.
+      {
+        id: 'wide-elms-young',
+        z: -60,
+        front: true,
+        hidden: true,
+        beyond: { from: 4.62, over: 0.18 },
+        world: { x: 0, y: -13, z: -60, w: 150, h: 100 },
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.06,
+        images: {
+          'LATE SUMMER': 'plates/scene-05/wide-elms-young.webp',
+          AUTUMN: 'plates/scene-05/wide-elms-young.webp',
+          WINTER: 'plates/scene-05/wide-elms-young.webp',
+          SPRING: 'plates/scene-05/wide-elms-young.webp',
+        },
+      },
       {
         id: 'wide-elms',
         z: -60,
         front: true,
+        hidden: true,
         beyond: { from: 4.62, over: 0.18 },
         world: { x: 0, y: -13, z: -60, w: 150, h: 100 },
         width: 0,
@@ -1489,6 +1584,75 @@ export const scenes: Scene[] = [
           SPRING: 'plates/scene-03/water-night.webp',
         },
       },
+      // The far shore and the near ground at the same two hours (18ai).
+      // The day changed only its sky and its lake, so at midnight the
+      // treeline and the lawn were still in full afternoon and the night
+      // was a dark band across the top of a daylight park. Each of these
+      // is laid in the box its daylight plate is laid in and wears that
+      // plate's own matte, so it covers what it stands in for exactly and
+      // the geometry never moves.
+      {
+        id: 'shore-dusk',
+        z: -52,
+        hidden: true,
+        ref: [0, 120, 1536, 200],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/shore-dusk.webp',
+          AUTUMN: 'plates/scene-03/shore-dusk.webp',
+          WINTER: 'plates/scene-03/shore-dusk.webp',
+          SPRING: 'plates/scene-03/shore-dusk.webp',
+        },
+      },
+      {
+        id: 'shore-night',
+        z: -52,
+        hidden: true,
+        ref: [0, 120, 1536, 200],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/shore-night.webp',
+          AUTUMN: 'plates/scene-03/shore-night.webp',
+          WINTER: 'plates/scene-03/shore-night.webp',
+          SPRING: 'plates/scene-03/shore-night.webp',
+        },
+      },
+      {
+        id: 'ground-dusk',
+        z: 4,
+        lay: true,
+        hidden: true,
+        ref: [0, 280, 1536, 744],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/ground-dusk.webp',
+          AUTUMN: 'plates/scene-03/ground-dusk.webp',
+          WINTER: 'plates/scene-03/ground-dusk.webp',
+          SPRING: 'plates/scene-03/ground-dusk.webp',
+        },
+      },
+      {
+        id: 'ground-night',
+        z: 4,
+        lay: true,
+        hidden: true,
+        ref: [0, 280, 1536, 744],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        images: {
+          'LATE SUMMER': 'plates/scene-03/ground-night.webp',
+          AUTUMN: 'plates/scene-03/ground-night.webp',
+          WINTER: 'plates/scene-03/ground-night.webp',
+          SPRING: 'plates/scene-03/ground-night.webp',
+        },
+      },
       {
         id: 'night-deer',
         z: 6,
@@ -1522,6 +1686,69 @@ export const scenes: Scene[] = [
           WINTER: 'plates/scene-03/night-fireflies.webp',
           SPRING: 'plates/scene-03/night-fireflies.webp',
         },
+      },
+      // The four oddballs (18ae), one a season and each a different kind
+      // of strange: a man who has waded into the lake in his suit to
+      // read the paper; a sofa carried across the lawn with the cat
+      // still aboard; someone about to swim in January; and a knight
+      // walking a very small dog in April. Each is there for about a
+      // tenth of the year and then gone, so they are a surprise rather
+      // than furniture, and none of them is in the painting the opening
+      // and the ending hold — the windows all begin after the year has
+      // started to turn.
+      {
+        id: 'odd-summer-bather',
+        // Cut off at the waist by the cutter, so the box's foot is the
+        // waterline and he stands in the lake rather than on it.
+        z: -18,
+        ref: [258, 372, 78, 88],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.08,
+        present: { from: 0.06, to: 0.15, edge: 0.025 },
+        images: { '*': 'plates/scene-04/people/odd-summer-bather.webp' },
+      },
+      {
+        id: 'odd-autumn-sofa',
+        tall: 1.7,
+        z: 14,
+        ref: [520, 560, 280, 160],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.3, to: 0.4, edge: 0.025 },
+        images: { '*': 'plates/scene-04/people/odd-autumn-sofa.webp' },
+      },
+      {
+        id: 'odd-winter-swimmer',
+        // Out on the ice, and wholly above the near bank's waterline:
+        // the bank is drawn after anything further out than it, and a
+        // box that reached below the shore put him behind the lawn.
+        tall: 1.8,
+        z: -14,
+        ref: [975, 332, 104, 114],
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.08,
+        present: { from: 0.55, to: 0.66, edge: 0.025 },
+        images: { '*': 'plates/scene-04/people/odd-winter-swimmer.webp' },
+      },
+      {
+        id: 'odd-spring-knight',
+        tall: 1.85,
+        z: 8,
+        ref: [960, 372, 175, 170],
+        feet: true,
+        width: 0,
+        height: 0,
+        baseY: 0,
+        shade: 0.1,
+        present: { from: 0.8, to: 0.9, edge: 0.025 },
+        images: { '*': 'plates/scene-04/people/odd-spring-knight.webp' },
       },
       // What the ending notices (18y): three things that were always in
       // this park and never looked at. They are not in the painting, so
@@ -1568,7 +1795,7 @@ export const scenes: Scene[] = [
         id: 'notice-beetle',
         z: 14,
         hidden: true,
-        ref: [258, 726, 168, 161],
+        ref: [268, 742, 132, 127],
         width: 0,
         height: 0,
         baseY: 0,
@@ -2982,7 +3209,11 @@ export const scenes: Scene[] = [
           label: 'A MONTH OF DIFFERENT DAYS',
           from: 0.54,
           to: 0.97,
-          scatter: { x: 4, y: 2.4, z: 10, tilt: 30 },
+          // The push is taken as far as the frame will allow at each
+          // pane's own depth (18af), so these are ceilings rather than
+          // distances: raised, since the near panes no longer run off
+          // the picture and the month should still feel enormous.
+          scatter: { x: 7, y: 4, z: 13, tilt: 30 },
           atlas: { image: 'plates/scene-09/days-vivid.webp', cols: 6, rows: 5, count: 30 },
           readings: [
             'NEW CITY · 7:50 · 12 °C · 14,210 STEPS',
@@ -3045,13 +3276,37 @@ export const scenes: Scene[] = [
       years: 80,
       grow: 1.7,
       appearances: { period: 2.4, dwell: 0.3, trace: 1.6, rarer: 3 },
+      // The elms of the lifetime's own picture, young and then grown.
+      // Each arrives in the dark of a blink and the other leaves in the
+      // same dark, so the two pictures never overlap.
+      reveal: {
+        'wide-elms-young': { from: 0.42, to: 0.72, over: 0.01 },
+        'wide-elms': { from: 0.72, to: 1, over: 0.01 },
+        'life-figure-01': [{ from: 0.455, to: 0.471, over: 0.006 }, { from: 0.507, to: 0.523, over: 0.006 }, { from: 0.570, to: 0.586, over: 0.006 }, { from: 0.648, to: 0.664, over: 0.006 }, { from: 0.742, to: 0.758, over: 0.006 }, { from: 0.857, to: 0.873, over: 0.006 }],
+        'life-figure-02': [{ from: 0.467, to: 0.483, over: 0.006 }, { from: 0.525, to: 0.541, over: 0.006 }, { from: 0.596, to: 0.612, over: 0.006 }, { from: 0.682, to: 0.698, over: 0.006 }, { from: 0.787, to: 0.803, over: 0.006 }, { from: 0.916, to: 0.932, over: 0.006 }],
+        'life-figure-03': [{ from: 0.479, to: 0.495, over: 0.006 }, { from: 0.543, to: 0.559, over: 0.006 }, { from: 0.621, to: 0.637, over: 0.006 }, { from: 0.716, to: 0.732, over: 0.006 }, { from: 0.833, to: 0.849, over: 0.006 }],
+        'life-figure-04': [{ from: 0.491, to: 0.507, over: 0.006 }, { from: 0.543, to: 0.559, over: 0.006 }, { from: 0.606, to: 0.622, over: 0.006 }, { from: 0.684, to: 0.700, over: 0.006 }, { from: 0.778, to: 0.794, over: 0.006 }, { from: 0.893, to: 0.909, over: 0.006 }],
+        'life-figure-05': [{ from: 0.459, to: 0.475, over: 0.006 }, { from: 0.517, to: 0.533, over: 0.006 }, { from: 0.588, to: 0.604, over: 0.006 }, { from: 0.674, to: 0.690, over: 0.006 }, { from: 0.779, to: 0.795, over: 0.006 }, { from: 0.908, to: 0.924, over: 0.006 }],
+        'life-figure-06': [{ from: 0.471, to: 0.487, over: 0.006 }, { from: 0.535, to: 0.551, over: 0.006 }, { from: 0.613, to: 0.629, over: 0.006 }, { from: 0.708, to: 0.724, over: 0.006 }, { from: 0.825, to: 0.841, over: 0.006 }],
+        'life-figure-07': [{ from: 0.483, to: 0.499, over: 0.006 }, { from: 0.535, to: 0.551, over: 0.006 }, { from: 0.598, to: 0.614, over: 0.006 }, { from: 0.676, to: 0.692, over: 0.006 }, { from: 0.770, to: 0.786, over: 0.006 }, { from: 0.885, to: 0.901, over: 0.006 }],
+        'life-figure-08': [{ from: 0.495, to: 0.511, over: 0.006 }, { from: 0.553, to: 0.569, over: 0.006 }, { from: 0.624, to: 0.640, over: 0.006 }, { from: 0.710, to: 0.726, over: 0.006 }, { from: 0.815, to: 0.831, over: 0.006 }, { from: 0.944, to: 0.960, over: 0.006 }],
+        'life-figure-09': [{ from: 0.463, to: 0.479, over: 0.006 }, { from: 0.527, to: 0.543, over: 0.006 }, { from: 0.605, to: 0.621, over: 0.006 }, { from: 0.700, to: 0.716, over: 0.006 }, { from: 0.817, to: 0.833, over: 0.006 }, { from: 0.958, to: 0.974, over: 0.006 }],
+        'life-figure-10': [{ from: 0.475, to: 0.491, over: 0.006 }, { from: 0.527, to: 0.543, over: 0.006 }, { from: 0.590, to: 0.606, over: 0.006 }, { from: 0.668, to: 0.684, over: 0.006 }, { from: 0.762, to: 0.778, over: 0.006 }, { from: 0.877, to: 0.893, over: 0.006 }],
+        'life-figure-11': [{ from: 0.487, to: 0.503, over: 0.006 }, { from: 0.545, to: 0.561, over: 0.006 }, { from: 0.616, to: 0.632, over: 0.006 }, { from: 0.702, to: 0.718, over: 0.006 }, { from: 0.807, to: 0.823, over: 0.006 }, { from: 0.936, to: 0.952, over: 0.006 }],
+        'life-figure-12': [{ from: 0.499, to: 0.515, over: 0.006 }, { from: 0.563, to: 0.579, over: 0.006 }, { from: 0.641, to: 0.657, over: 0.006 }, { from: 0.736, to: 0.752, over: 0.006 }, { from: 0.853, to: 0.869, over: 0.006 }],
+      },
     },
     // Halfway through the eighty years the eye closes, and when it opens
     // the park is seen from further back: the seat's elms and lawn have
     // gone and the lifetime's own painting has taken the frame. Both
     // changes happen inside the dark, so no picture is ever dissolved
     // through another.
-    dip: { at: 0.42, over: 0.13 },
+    dip: [
+      { at: 0.42, over: 0.13 },
+      // and again at sixty years, so the elms it is watching can grow up
+      // between one opening of the eye and the next (18ah).
+      { at: 0.72, over: 0.09 },
+    ],
     camera: {
       from: { y: 3.4, z: 19.5, lookY: -1.3 },
       to: { y: 6.5, z: 26, lookY: 1.5 },

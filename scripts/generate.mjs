@@ -23,6 +23,7 @@
  *   node scripts/generate.mjs --wide            the lifetime's stepped-back park
  *   node scripts/generate.mjs --notice          what the ending notices
  *   node scripts/generate.mjs --night           the day's dusk and its night
+ *   node scripts/generate.mjs --odd             the four oddballs, one a season
  *   node scripts/generate.mjs --frame           the boughs, trunks and turf beyond the
  *                                               painting's frame, for the pull-back
  *   node scripts/generate.mjs --people          new people for every season, in the
@@ -35,7 +36,7 @@ import { readFileSync, existsSync, mkdirSync, writeFileSync, readdirSync } from 
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STYLE, layers, seasonLayers, crowdLayers, corridorLayers, memoryLayers } from './park-layers.mjs';
-import { layers as takenApart, peopleLayers, frameLayers, alleeLayers, wideLayers, noticeLayers, nightLayers } from './reference-layers.mjs';
+import { layers as takenApart, peopleLayers, frameLayers, alleeLayers, wideLayers, noticeLayers, nightLayers, oddLayers, mendLayers } from './reference-layers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = resolve(root, 'assets/raw/scene-04/park');
@@ -63,6 +64,8 @@ const allee = args.includes('--allee');
 const wide = args.includes('--wide');
 const notice = args.includes('--notice');
 const night = args.includes('--night');
+const odd = args.includes('--odd');
+const mend = args.includes('--mend');
 const ref = flag('--ref') ? resolve(flag('--ref')) : REF;
 const quality = flag('--quality') ?? 'high';
 
@@ -237,7 +240,7 @@ async function main() {
     console.error(`No reference image at ${ref}`);
     process.exit(1);
   }
-  const pool = night ? nightLayers : notice ? noticeLayers : wide ? wideLayers : allee ? alleeLayers : frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
+  const pool = mend ? mendLayers : odd ? oddLayers : night ? nightLayers : notice ? noticeLayers : wide ? wideLayers : allee ? alleeLayers : frame ? frameLayers : people ? peopleLayers : apart ? takenApart : memory ? memoryLayers : corridor ? corridorLayers : crowd ? crowdLayers : seasons ? seasonLayers : layers;
   const todo = pool.filter((l) => !only || only.includes(l.id));
   if (!todo.length) {
     console.error(`Nothing matches --only ${only?.join(',')}; layers: ${pool.map((l) => l.id).join(', ')}`);

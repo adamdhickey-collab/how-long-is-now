@@ -69,14 +69,18 @@ export interface MemoryScene {
 const paneVertex = `
   attribute float aIndex, aSeed, aAlpha, aKind;
   varying vec2 vUv;
-  varying float vIndex, vSeed, vAlpha, vKind;
+  varying float vIndex, vSeed, vAlpha, vKind, vNear;
   void main() {
     vUv = uv;
     vIndex = aIndex;
     vSeed = aSeed;
     vAlpha = aAlpha;
     vKind = aKind;
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0);
+    vec4 mv = viewMatrix * modelMatrix * instanceMatrix * vec4(position, 1.0);
+    // How near the pane is, as one over its distance: the reading along
+    // its foot is only drawn while it is big enough to be read.
+    vNear = 1.0 / max(0.001, -mv.z);
+    gl_Position = projectionMatrix * mv;
   }`;
 
 const paneFragment = `
@@ -89,7 +93,7 @@ const paneFragment = `
   uniform vec3 uGrid0, uGrid1;
   uniform float uHas0, uHas1;
   varying vec2 vUv;
-  varying float vIndex, vSeed, vAlpha, vKind;
+  varying float vIndex, vSeed, vAlpha, vKind, vNear;
   vec4 tileOf(sampler2D atlas, vec3 grid, float day, vec2 t) {
     float i = mod(day, grid.z);
     float rows = ceil(grid.z / grid.x);
@@ -110,8 +114,13 @@ const paneFragment = `
     // The sheet is not flipped: a row runs top-down from its index.
     float rowV = (vIndex + 1.0 - vUv.y / uStrip) / uRows;
     float inStrip = step(vUv.y, uStrip);
-    float text = texture2D(uSheet, vec2(vUv.x, rowV)).a * inStrip;
-    float rule = hair(vUv.y - uStrip) * 0.5;
+    // A reading too small to read is worse than none: it is a grey
+    // smear with a dark bar under it, and thirty of them at once is what
+    // made a month of different days look like an interface (18af).
+    float readable = smoothstep(0.030, 0.046, vNear);
+    float text = texture2D(uSheet, vec2(vUv.x, rowV)).a * inStrip * readable;
+    float card = inStrip * readable;
+    float rule = hair(vUv.y - uStrip) * 0.5 * readable;
     // The mark: the same window for a month of the same day; one of four
     // shapes, placed by seed, for a month of different days.
     vec2 c = vKind < 0.5 ? vec2(0.0, 0.08) : vec2(fract(vSeed * 7.31) - 0.5, fract(vSeed * 3.17) - 0.5) * 0.35 + vec2(0.0, 0.08);
@@ -133,22 +142,29 @@ const paneFragment = `
       // The day's image fills the pane above the strip, cropped square
       // to the pane's width, seen through the glass.
       float day = mod(vIndex, 30.0);
-      float top = 1.0 - uStrip;
-      vec2 t = vec2(vUv.x, (vUv.y - uStrip) / top);
+      // The day's picture fills the whole pane (18af). It used to stop
+      // above the reading, which was fine while every reading was drawn
+      // and left a dark bar along the foot of every pane too far off to
+      // carry one. The card lies over the picture instead.
+      vec2 t = vUv;
       // The pane is wider than tall: crop the square tile to the pane's
       // shape, keeping its centre.
-      float ratio = top * 1.1 / 1.6;
+      float ratio = 1.1 / 1.6;
       t.y = 0.5 + (t.y - 0.5) * ratio;
       vec4 img = vKind < 0.5 ? tileOf(uAtlas0, uGrid0, day, t) : tileOf(uAtlas1, uGrid1, day, t);
-      float inImg = (1.0 - inStrip) * step(0.015, vUv.x) * step(vUv.x, 0.985) * step(vUv.y, 0.985);
-      vec3 col = mix(mix(uDim, uInk, max(border, text)), img.rgb, inImg * 0.92);
-      float a = max(face, max(border * 0.9, max(text, max(rule, inImg * 0.92)))) * vAlpha;
+      float inImg = step(0.015, vUv.x) * step(vUv.x, 0.985) * step(0.015, vUv.y) * step(vUv.y, 0.985);
+      // The reading sits on a card of the piece's own ink, in the
+      // ground's dark — a label under a picture, rather than a black bar
+      // with type knocked out of it.
+      vec3 body = mix(mix(uDim, uInk, border), img.rgb, inImg * 0.92);
+      vec3 col = mix(body, mix(uInk, uGround, text), card * 0.94);
+      float a = max(face, max(border * 0.9, max(card * 0.94, inImg * 0.92))) * vAlpha;
       gl_FragColor = vec4(col * uBright, a);
       #include <colorspace_fragment>
       return;
     }
-    vec3 col = mix(uDim, uInk, max(border, max(text, mark)));
-    float a = max(face, max(border * 0.9, max(text, max(mark * 0.8, rule)))) * vAlpha;
+    vec3 col = mix(mix(uDim, uInk, max(border, mark)), mix(uInk, uGround, text), card * 0.94);
+    float a = max(face, max(border * 0.9, max(card * 0.94, max(mark * 0.8, rule)))) * vAlpha;
     gl_FragColor = vec4(col * uBright, a);
     #include <colorspace_fragment>
   }`;
@@ -355,6 +371,15 @@ export function createMemoryScene(world: THREE.Scene, def: Scene, reducedMotion:
     const W = window.innerWidth;
     const H = window.innerHeight;
     const dayNow = current ? current.u * days : 0;
+    // Where the eye is now, so a pane's scatter can be measured against
+    // what the eye can actually see from there (18af): a push declared
+    // in world units throws the near panes clean out of the frame while
+    // barely moving the far ones, which is how a month of different days
+    // came to have three of its largest panes half outside the picture
+    // and its labels lying across one another.
+    const camZ = eye.z + eye.pull * smooth(current ? current.u : 0);
+    const halfAt = Math.tan((eye.fov * Math.PI) / 360);
+    const wide = W / Math.max(1, H);
     for (let k = 0; k < total; k++) {
       const mi = Math.floor(k / days);
       const i = k % days;
@@ -370,10 +395,17 @@ export function createMemoryScene(world: THREE.Scene, def: Scene, reducedMotion:
       const sc = current.month.scatter;
       const a = smooth((dayNow - day) / DAY_IN);
       alpha[slot] = a;
+      // The push in z first, then as much push in x and y as the frame
+      // will take at that depth, so every pane stays whole inside the
+      // picture however far the eye has drawn back.
+      const pz = -day * spacing + push[slot * 3 + 2] * sc.z;
+      const dist = Math.max(0.5, camZ - pz);
+      const roomY = Math.max(0, dist * halfAt * 0.82 - pane.height / 2);
+      const roomX = Math.max(0, dist * halfAt * wide * 0.84 - pane.width / 2);
       pos.set(
-        push[slot * 3] * sc.x,
-        push[slot * 3 + 1] * sc.y,
-        -day * spacing + push[slot * 3 + 2] * sc.z,
+        push[slot * 3] * Math.min(sc.x, roomX),
+        push[slot * 3 + 1] * Math.min(sc.y, roomY),
+        pz,
       );
       e.set((tilt[slot * 2] * sc.tilt * Math.PI) / 180, (tilt[slot * 2 + 1] * sc.tilt * Math.PI) / 180, 0);
       q.setFromEuler(e);

@@ -57,8 +57,8 @@ body.is-settled .clock {
 
 .hud {
   position: fixed;
-  left: clamp(1.5rem, 4vw, 4rem);
-  bottom: clamp(1.5rem, 4vw, 4rem);
+  left: var(--inset);
+  bottom: var(--inset);
   z-index: 2;
   user-select: none;
 }
@@ -66,7 +66,8 @@ body.is-settled .clock {
 /* Every text in the world has one rule: a faint halo of the ground
    behind it, the survey's own, so a label survives a bright frame. */
 .hud__scale,
-.hud__hint,
+.hint__line,
+.hint__note,
 .clock,
 .caption {
   text-shadow:
@@ -76,32 +77,130 @@ body.is-settled .clock {
 }
 
 .hud__scale {
+  /* Above the hint's own ground, which reaches up past it so the axis
+     and the label share one wash. */
+  position: relative;
+  z-index: 1;
   font-size: clamp(0.85rem, 1.1vw, 1rem);
+  /* A little more of its own ground than the other texts: it sits just
+     above the invitation, which carries a wash of its own, and a label
+     that reads as the fainter of the two is the wrong way round. */
+  text-shadow:
+    0 0 3px var(--ground),
+    0 0 9px color-mix(in srgb, var(--ground) 90%, transparent),
+    0 0 20px color-mix(in srgb, var(--ground) 70%, transparent);
   font-weight: 500;
   letter-spacing: 0.35em;
   text-transform: uppercase;
 }
 
-.hud__hint {
-  margin-top: 0.75em;
-  font-size: clamp(0.78rem, 0.9vw, 0.85rem);
-  color: var(--ink-dim);
-  letter-spacing: 0.08em;
+/* The invitation, drawn (18ai). It was a dim line of type breathing on a
+   4.4-second loop, which is what decoration does; the thing it has to
+   teach — that this scroll is a clock and not a page — cannot be learned
+   from a sentence that is fading in and out. The type now holds still at
+   full strength and the motion has moved to a gauge beside it, where
+   motion means something: a bead falls the rail, and the rail is marked
+   with the spans waiting below it. */
+.hint {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.85em;
+  margin-top: 0.95em;
   transition: opacity 1.2s ease;
-  /* The one invitation the piece makes breathes, slowly, until it is
-     taken; then it dissolves and does not come back. The breathing
-     waits out the fade, so the hint arrives rather than appears. */
-  animation: hint-breathe 4.4s ease-in-out 1.2s infinite;
+}
+/* Its own ground, so it survives a bright frame: the halo every text
+   carries, opened out to cover two lines and a drawing. */
+.hint::before {
+  content: '';
+  position: absolute;
+  /* Up past the scale label, so the label and the invitation stand on
+     one ground rather than two: the label keeps its own layer above it. */
+  inset: -2.9em -1.9em -1.25em -1.45em;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 32% 56%,
+    color-mix(in srgb, var(--ground) 88%, transparent) 0%,
+    color-mix(in srgb, var(--ground) 68%, transparent) 42%,
+    color-mix(in srgb, var(--ground) 30%, transparent) 68%,
+    transparent 84%
+  );
 }
 /* Before the manifest says it may: the second is sat in first. */
-.hud__hint.is-waiting,
-.hud__hint.is-gone {
-  animation: none;
+.hint.is-waiting,
+.hint.is-gone {
   opacity: 0;
 }
-@keyframes hint-breathe {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
+.hint.is-gone { pointer-events: none; }
+
+.hint__gauge {
+  width: clamp(1.3rem, 1.7vw, 1.55rem);
+  height: auto;
+  overflow: visible;
+  flex: none;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ground) 80%, transparent));
+}
+.hint__rail,
+.hint__tick,
+.hint__arrow {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+}
+.hint__rail { stroke-width: 1.2; opacity: 0.5; }
+/* The spans that are waiting, narrowing as they go. Unlabelled — the
+   piece names each one as it arrives, and a legend here would spend the
+   whole surprise — but the top tick is now, and wears its colour. */
+.hint__tick { stroke-width: 1.3; opacity: 0.45; }
+.hint__tick--now { stroke: var(--now); stroke-width: 1.8; opacity: 0.95; }
+.hint__arrow { stroke-width: 1.6; stroke-linejoin: round; opacity: 0.8; }
+.hint__bead {
+  fill: var(--now);
+  animation: hint-fall 3.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+/* What the bead carries with it: the light of 4:17, leaving. */
+.hint__glow {
+  fill: var(--now);
+  opacity: 0;
+  animation: hint-fall-glow 3.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes hint-fall {
+  0%   { transform: translateY(0);    opacity: 0; }
+  9%   { opacity: 1; }
+  74%  { opacity: 1; }
+  100% { transform: translateY(62px); opacity: 0; }
+}
+@keyframes hint-fall-glow {
+  0%   { transform: translateY(0);    opacity: 0; }
+  9%   { opacity: 0.3; }
+  74%  { opacity: 0.22; }
+  100% { transform: translateY(62px); opacity: 0; }
+}
+
+.hint__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42em;
+}
+.hint__line {
+  font-size: clamp(0.95rem, 1.15vw, 1.12rem);
+  font-weight: 400;
+  letter-spacing: 0.015em;
+  color: var(--ink);
+}
+/* The word the whole piece is about, in the one colour kept for it. */
+.hint__line em {
+  font-style: normal;
+  color: var(--now);
+}
+.hint__note {
+  font-size: clamp(0.6rem, 0.7vw, 0.68rem);
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
 }
 
 .clock {
@@ -174,7 +273,11 @@ body.is-settled .clock {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hud__hint { transition: none; animation: none; }
+  .hint { transition: none; }
+  /* The bead stops where it would be halfway down: the gauge still
+     says which way, without anything moving. */
+  .hint__bead { animation: none; transform: translateY(31px); }
+  .hint__glow { animation: none; opacity: 0.22; transform: translateY(31px); }
   #world, .hud, .clock { transition: none; }
 }
 

@@ -1986,3 +1986,397 @@ October and April are seasons again rather than washes. What is left of
 D-01 is all in the continuation: block texture in the corners above the
 painting where its elm foliage is, a soft far shore around the bandshell,
 and a faint diagonal at the bottom-left where the ground band ends.
+
+### 18ad · the colour under the transparency
+
+Finishing D-01 turned up the thing that had been making the year's
+canopy look broken all along, and it was not in any plate.
+
+A keyed plate's transparent pixels still hold a colour — whatever the
+key threw away, which for the elms' boughs was a dark ground. Nothing
+samples them at full size, because the alpha is zero. Everything samples
+them the moment the plate is minified: a mip level is the average of the
+pixels under it, alpha and colour alike, so a branch a pixel wide over a
+field of dark averages to a dark smudge, and a canopy's worth of them
+arrives as a field of grey rectangles the size of the mip's own texels.
+
+It took isolating every plate at one frame to find it, because the plate
+is clean: its alpha is a crisp mask of branches and its colour, where
+the alpha is anything at all, is bark and leaf. Only the colour under
+the nothing was wrong. The cutter bleeds each subject's colour outward
+under its own transparency now, pass by pass until the whole frame
+carries it, and every keyed plate in the piece was cut again.
+
+Also: the turf's sides are feathered as its far edge already was — it is
+a rectangle of lawn laid over a lawn, and its left edge drew a diagonal
+across the frame wherever the two greens were not the same green.
+
+What is left of D-01 is a pale panel over the trees left of the
+bandshell and some faint tiling above it, both in the far shore's own
+continuation.
+
+### 18ae · four oddballs, one a season
+
+Adam asked for a wild card in each season — something odd or funny, each
+one different, nothing repeating. They are:
+
+- **Late August**: a man of about sixty standing waist-deep in the lake
+  in a full three-piece suit and a bowler hat, reading a broadsheet. He
+  came back from the model standing on dry land, so the cutter takes him
+  off at the waist and the box's foot is the waterline; two joggers pass
+  on the bank in front of him, entirely unbothered.
+- **October**: two people carrying a floral two-seater sofa across the
+  lawn, one at each end, both visibly regretting it, with a large ginger
+  cat riding the middle cushion.
+- **January**: a man in red swimming trunks and rubber sandals, a towel
+  round his shoulders, standing on the ice beside a square hole he has
+  cut, with the blocks stacked beside it and a thermos standing up.
+  Skaters go past him without looking.
+- **April**: a knight in full plate armour walking a very small
+  long-haired dachshund on a red lead.
+
+Each is up for about a tenth of the year and then gone, so they are a
+surprise rather than furniture, and every window begins after the year
+has started to turn — the opening and the ending hold the painting at
+its first instant, and nothing odd belongs in either.
+
+One thing to know about placing a figure out on the lake: the near bank
+is drawn after everything further out than it, so a box that reaches
+below the shoreline puts your figure behind the lawn. The swimmer's
+first placement had him invisible for exactly that reason; he stands
+wholly above the waterline now.
+
+### 18af · working the catalogue
+
+Adam: begin in order and complete all of them. Thirteen more of the
+thirty-four are closed.
+
+**Scene 09, the memory month**, all four. A pane's push was declared in
+world units, which throws the near ones clean out of the frame while
+barely moving the far ones — so the push is taken in what the eye can
+actually see at each pane's own depth, and every pane stays whole inside
+the picture at any pull. The reading along a pane's foot is drawn only
+while the pane is big enough to read it, and it sits on a card of the
+piece's own ink with the text in the ground's dark: a label under a
+picture rather than a black bar with type knocked out of it. And the
+day's picture fills the whole pane now — it used to stop above the
+reading, which left a dark bar along the foot of every pane too far away
+to carry one.
+
+**The ghosts**, which were two entries and one number. The lapse's
+dissolve was an eighth of a visitor's stay at each end, so a third of
+the park was half-there at any moment. It is a twentieth. Someone
+arriving is arriving, not fading up.
+
+**The pile-ups.** The seating knew where the crowd was but nothing about
+what the painting had already put there, so a man and his dog were
+regularly seated through the bicycle; fixtures are in the reckoning now,
+the spacing is a fair bit wider, and the spot in front of the bicycle is
+gone — from the seat, a person there still sat in front of it however
+much ground was between them.
+
+**The day had no dawn**: full day at one end of the night and full day at
+the other. The dusk painting serves for both, since a sunrise and a
+sunset are the same hour seen from the other side, so a holder's reveal
+can now carry more than one window.
+
+Also: the allée's shadows all fell the same way at the same length,
+which reads as a printed pattern rather than a row of trees; the
+remembered fragments' hairline borders and grey faces made every one of
+them look like a dialog box hung in a park; and the beetle's leaf is a
+third smaller. One entry, the guitar player's missing shadow, was not a
+defect at all — he has one, and I misread a small one under a seated
+figure.
+
+Five of the remaining entries want a picture rather than a number, and
+the drawing session hit its limit before they could be made. They are
+written and queued. One thing learned at the cost of ten minutes: in
+that composer, `send-button.click()` through the page always sends and
+the Return key only sometimes does.
+
+## 18ag — the band of milk, and the trunks kept to their own width
+
+Ten catalogue entries were unblocked; this session took the first eight
+of them, and all eight turned out to be three faults wearing different
+clothes.
+
+**The band of milk.** The largest thing wrong with the opening view was
+not on the list under its own name. The far shore was cut at a line —
+one row a column, found where the sky's colour key first fails and holds
+for sixty rows, then run through a forty-one column median so it would
+not wander. A median of a treeline is a plateau: every crown was levelled
+off, and the strip between the real tops and the levelled line was handed
+to the sky band, which fills below its own line with the sky mirrored
+down from four rows above it. Mirrored, that is, from rows the median had
+just declared to be sky and were not. What lay across the frame at the
+height of the trees' tops, in every frame of the first four scenes, was
+smeared sky with the bandshell's ghost in it. It is what D-03, D-04 and
+D-05 were all looking at from three different angles.
+
+The top of the far shore is no longer a line. Within a hundred rows of
+where the line runs, the shore is as opaque as its own picture is not
+sky, so the silhouette is the painted one, dot for dot; and the sky's
+fill now begins a crown's height above that, where the sky is only sky,
+carrying each column's own gradient downward rather than one flat blue
+read from high up.
+
+**A trunk is a column that does not jump sideways.** The pale strip down
+the left edge (D-02) was the left elm's matte. The matte is what differs
+between the painting and the same park with its trees inpainted away, and
+at the trunk's foot the model had repainted the lawn a shade off, so
+forty pixels of sunlit grass came away with the tree and hung out over
+the frame. No colour test can separate them: the painting lays the same
+dots on bark in shade and on grass in shade, and an hour of quantiles
+says so. Shape can. Each trunk is now walked down its own rows from a row
+where it is only trunk, and every row keeps the run of matte under the
+run above it, free to flare a fraction of a pixel either side and no more.
+
+**A lookup cannot take the green out of a lawn.** The pink cast and the
+band of different grass (D-21) were the season bands outside the
+painting. Dressing August's band in January works a channel at a time,
+which lifts the summer lawn until it is pale but leaves its blue and gold
+dots exactly where they were, and where the lookup ran off the end of its
+own table on the continuation's bark it left a streak of magenta. The
+continuation is now pulled to the chroma the season actually has inside
+the painting, and no pixel is allowed far past it. With that gone, D-18
+went with it: what had made the far treeline look a season ahead of the
+near lawn was the continuation holding August in three bands out of four.
+
+Two entries were not defects. The bottom-right lawn (D-06) has the
+painting's own contrast to a fiftieth — the two frames had been compared
+at the same screen position, where the composite has a man and a dog and
+the painting has grass. The reader's sandal (D-07) has a painted edge
+like the rest of her.
+
+One thing was tried and withdrawn. The last of D-21 is that the
+continuation is smooth where the painting is a mat of dots, and once the
+year pulls back past the painting's own edges that smoothness has a
+straight edge running out of each bottom corner. Filling it with the
+painting's own lawn, mirrored outward about a line clear of the elms,
+put the paint at the right scale and the elms' shadow bands in stripes
+where there are no elms. It is worse than the haze. It wants a painted
+wide lawn.
+
+Two more entries were run down to their cause and both want a picture.
+The lifetime's second half (D-32) is the same frame at three sizes: the
+appearances are the year's own people, and the dip takes them with the
+rest of the seat's park, leaving a painting with no people at its own
+scale. And the water on the shore (D-34) reads as a change of material
+because the plate is one — a photographic close-up of a pebble beach,
+in neither the painting's idiom nor its subject. The park's lake meets
+grass. Both are queued, with the wide lawn; seven prompts wait now.
+
+## 18ah — the nine that wanted a picture
+
+The drawing session was capped when 18af needed it and capped again when
+18ag did. It was open this time, and all seven queued prompts came back
+in one chat — about three minutes a picture, the reference attached to
+the first message only, `send-button.click()` every time.
+
+**What was drawn.** The dusk lake, with its own depth in it, so the join
+with the painting's far water is gone (D-12). The night sky, with a city
+glow that is brighter in three places and gone between them instead of a
+ruled line along the treeline (D-13). The deer, with a soft pool of
+their own ground under each of them (D-14). A square of dappled light
+drawn to tile, replacing a band of the painting's near lawn that had a
+direction in it and stretched into stripes down the allée (D-24). The
+two near elms of the lifetime's picture at twenty years (D-31). The
+lake's last few feet running up into a grassy bank, for the second thing
+the ending notices, which had been a photographic pebble beach in
+neither the painting's idiom nor its subject (D-34). And a sheet of
+twelve small people at the wide picture's own scale (D-32).
+
+**The eighty years blink twice now.** The lifetime's elms could not grow
+by scaling — a mature tree made small is not a young one — and they
+could not cross-fade, since two differently shaped trees dissolving
+through one another is the thing this piece does not do. So `dip` takes
+a list: the first blink at thirty-four years steps the eye back to the
+lifetime's own picture with the young elms in it, and a second at sixty
+changes them for the grown ones. Both pictures are hidden plates and the
+lifetime names each on its own progress, so neither is ever half there.
+
+**Twelve people, a moment at a time.** The sheet is taken apart by
+`scripts/split-sheet.mjs` — what is not paper, grown nine pixels so a
+hat and its head are one thing, boxed and written out with a margin —
+and each figure is a plate on the wide picture's near lawn with a list
+of short windows against the scene's progress, the gaps widening by a
+fifth each time so the park empties as the years run out.
+
+**And a ghost the blink was supposed to hide.** With the wide picture
+arriving, the painting's own people stood through the opening of the
+first blink at a few per cent. The lifetime's picture is laid over the
+seat's park rather than swapped for it, which is sound at full strength
+— but a blink takes the whole world's alpha down together, and at two
+thirds of it the cover stopped covering. Everything that does not say
+`front` now goes with the seat, not just what says `seat`.
+
+One entry is still owed a picture: the near lawn beyond the painting's
+own left and right edges (D-21).
+
+## 18ai — the day turns together, and the invitation is drawn
+
+**Only the water had changed.** Adam, on a frame at dusk: the sky and
+everything else look rough and unfinished, and the only thing that has
+actually moved is the lake. He was right, and it was worse than a
+finish problem. The day had paintings for two of its four whole-frame
+bands — the sky and the water — and none for the other two, so through
+the sunset and right through the night the far treeline and the near
+lawn stayed in full August afternoon. What a visitor saw at midnight was
+a daylight park with a dark band across the top of it and a gold stripe
+down the middle of the lake.
+
+The far shore and the near ground are now painted at both hours too. Each
+was drawn against a reference cut from the painting itself — the exact
+rows its own matte covers, on white — so that the cutter drops it into
+the box its daylight plate is laid in and it wears that plate's own
+matte: the silhouette of the treeline and the shape of the lawn stay the
+painting's, and only the hour is the new picture's. The lawn's path took
+two attempts; the first had it on a different line, and a path in the
+wrong place is a path that jumps when the sun goes down. Telling the
+generator where it meets each edge of the frame, in fractions of the
+band, fixed it.
+
+**And the hour underneath is never the wrong one.** Each of these is a
+painting laid over the afternoon's, so two of them part-way through at
+once leaves the afternoon showing between: at the second the night was
+going and the dawn had not come, a quarter of every frame was still four
+in the afternoon, and the whole park washed out. The evening now holds
+from the first loss of the sun to the last of the sunrise, one long
+window, and the night fades up and down inside it.
+
+**The invitation, drawn.** Adam: the scroll prompt in the lower left does
+not pop out enough, and it should illustrate what is actually going on.
+It was a dim line of type breathing on a 4.4-second loop, which is what
+decoration does — and the thing it has to teach, that this scroll is a
+clock and not a page, cannot be learned from a sentence that is fading in
+and out. The type holds still at full strength now, one size up, with the
+word the whole piece is about in the one colour kept for marking now. The
+motion has moved to a gauge beside it, where motion means something: a
+bead falls a rail whose top tick is the span being stood in and whose
+lower ticks are the spans waiting below, and an arrowhead at its foot
+says which way. Under the line, in the HUD's own letterspaced caps, the
+fact itself: the clock moves, not the page. The whole block stands on one
+soft ground of its own so it survives a bright frame, and the scale label
+keeps its layer above that ground rather than being washed out by it.
+Below seven hundred pixels the axis would hang off the screen, so it goes
+and the invitation is two lines of type again — a drag needs less
+explaining than a wheel does.
+
+## 18aj — nothing beyond the painting is invented any more
+
+Adam, on a frame at the widest of the year: *I really don't like the
+stretch and distort technique — it over-emphasises itself and draws too
+much attention to itself and feels really out of place. Do a quick audit
+to see all of the artwork that's going to be needed.*
+
+**The audit.** Every band of the world is cut from a 3072 × 2048 frame in
+which the painting sits at the middle, and everything around it was the
+model's continuation — one outpaint drawn at half size and doubled, then
+tone-matched and given noise to make up the grain it did not have.
+Doubled paint has dots twice the size of the painting's, so the eye finds
+the join wherever it falls. To see how much of it there was, every band
+was drawn with a flat texture: the painting's own rectangle green, the
+continuation magenta. At the seat, none. At the year's widest, **thirty
+per cent of the frame**. At the lifetime's blink, **half**. The turf at
+our feet was worse than any of it: one drawn rectangle of grass stretched
+over twenty units of ground, its dots three times the painting's and its
+colour a third of a season off — the strip along the foot of the frame
+was the one place a visitor could see that the world is made of pictures.
+
+**What replaced it.** Nothing outside the painting is invented now.
+
+- *The margin is the painting's own paint*, mirror-folded outward as far
+  as it needs to go — so the dots are the right size, the light is the
+  right light, and a season's margin is built from that season's own
+  picture with no lookup at all. The fold wanders as it goes, two slow
+  sines, a few hundred pixels either way: a straight mirror lines the
+  painting's bands of tree-shadow up with themselves and lays the lawn
+  out in stripes, which is how the same idea failed in 18ag. A row to the
+  side keeps its own row exactly, so the horizon cannot bend.
+- *The fold draws only from the middle of the painting*, between x 300
+  and x 1300, where there is nothing that could be recognised twice.
+  Folded from the whole width it brought the right elm's trunk and its
+  shadow out with it over and over, and the lawn beside the frame read
+  as a rank of felled logs.
+- *The far shore is drawn, not folded* — a treeline with a bank and a
+  line of water, made to repeat end to end and carrying no landmark at
+  all, laid at the height the painting's own treeline sits at. A fold
+  would have given the park a second bandshell.
+- *The turf is tiled, not stretched.* A lawn drawn to repeat, laid across
+  its quad three times rather than pulled over it once, and graded to
+  each season's own near lawn. Across only: down the quad, perspective
+  does the compressing.
+- *The strip below the frame's foot folds instead of clamping.* Past
+  twice the painting's height the old mirror ran off the top of it and
+  every row below took the same source row, which drew the foot of the
+  frame as vertical streaks.
+
+The grain step now measures a shortfall of nothing where it used to
+measure twenty: there is no grain to make up, because there is no
+smooth continuation left to make it up for.
+
+Three tiles were drawn for this and two are in use — the lawn and the
+shore strip. The water tile and the sky band were drawn and are not
+needed: folded water is water and folded sky is sky, and neither has a
+landmark in it. They are kept for the day's hours, which may want them.
+
+## 18ak — the foot of the frame
+
+Adam: fix the bottom of the frame too. It was three faults stacked.
+
+**The skirt.** A lying plate stops where the last ray from the seat still
+meets the ground; from there to behind the seat it runs a skirt, and the
+skirt held one row of the picture — forty pixels inside the box's foot —
+repeated all the way back. One row of dots drawn toward the viewer is
+vertical stripes, and once the year's camera had backed away those
+stripes were the bottom of the frame. Holding the row was the lesser evil
+while the rows below the painting were the model's continuation, whose
+trunks smeared along the bottom, and while mirroring on brought the
+gravel path back with it. Neither is true any more. The skirt now sweeps
+a tenth of the frame across its own depth, folded on by the texture's
+mirror — not the geometrically exact rate, which under the camera moves
+the picture by almost nothing and is how the smear happened in the first
+place.
+
+**The rows it sweeps into.** The fold below the painting's foot now draws
+from the nearest lawn only, the last hundred and ninety rows, which are
+grass and nothing else. Folding the whole height brought the rows above
+the path back down, so the ground the eye is closest to had a second path
+running through it.
+
+**The turf.** It had three things wrong at once and each one hid the next.
+Its picture was stretched, so its dots were four times the painting's —
+the drawn tile's marks turned out four times the painting's too, which
+only a repeat can fix, and a repeat needs both directions. So the fade at
+its far edge came out of the picture, where a tile cannot carry it, and
+went into the vertices: the quad is subdivided down its depth and eased
+away at the far end, which is where a plate's own edge belongs. Then it
+was placed over the band it actually has to cover — the two hundred rows
+at the foot the ground plate cannot reach — rather than over half the
+lawn. And last, it was ordered by its far edge like any other lying
+plate, which put it in front of the nearest people and cut a man off at
+the waist; a lying plate can now say it is part of the ground, and draw
+with the ground, under whoever is standing on it.
+
+## 18al — the light in the turf
+
+The tile the turf was cut from was drawn to a prompt, and a prompt asking
+for grass gets grass: an even speckle with no light in it, so the foot of
+the frame read as texture rather than as a lawn in the afternoon. The
+painting's lawn is not even at all — it is a blue-green mat with
+scattered elongated patches of yellow-green where the sun comes through
+the elms, most of them lying across the picture rather than up and down
+it.
+
+So the tile was drawn again against the painting itself: a crop of its
+own near lawn at full size, attached beside the style reference, with the
+instruction that the size of the mark matters more than anything else in
+the picture. What came back carries the sun-patches, and because they lie
+across the picture they survive being laid across the quad — a repeat
+continues them rather than cutting them.
+
+Two numbers were tuned by eye at the year's widest, comparing the turf's
+band against the painting's lawn just above it across the join. Seven
+repeats across and two down: fewer and the patches drew out into streaks,
+more and they closed up into an even mat again. The ground nearest the
+eye should have the largest patches in the frame, and now it does.

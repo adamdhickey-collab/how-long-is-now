@@ -436,3 +436,45 @@ export const nightLayers = [
   nightArt('night-deer', 'Two white-tailed deer standing at the edge of a lake at night, seen from the side at some distance, small in the frame and drawn in the dark blues and violets of night with a little pale moonlight along their backs: one with its head down to drink, one standing and looking out. Nothing beneath them and nothing behind them — no water, no grass, no ground, no shadow — only the two deer on flat pure white, in the middle of the frame.'),
   nightArt('night-fireflies', 'Fireflies over long grass on a summer night: two or three dozen small warm-yellow points of light scattered across the frame at different heights, each one a soft glow, a few brighter than the rest, with faint darker-blue grass tips drawn only at the very bottom edge of the frame. Everything else flat pure white, with nothing drawn between the lights.'),
 ];
+
+
+/**
+ * The four oddballs (18ae). One a season, each a different kind of
+ * strange, none of them a variation on another: a man who has waded
+ * into the lake in his suit and is reading the paper; a sofa being
+ * carried across the lawn with the cat still on it; someone about to
+ * swim in January; and a knight walking a very small dog in April.
+ * They are painted in the park's own hand and at the park's own scale,
+ * so the joke is what is happening rather than how it is drawn — you
+ * see the park first and the oddity a second later, which is the whole
+ * point of putting them there.
+ *
+ * Run with `--odd`; they land under assets/raw/scene-04/people.
+ */
+const oddArt = (id, prompt) => ({ id, dir: 'scene-04/people', size: '1024x1024', preamble: PEOPLE_STYLE, prompt });
+
+export const oddLayers = [
+  oddArt('odd-summer-bather', 'A man of about sixty standing in a lake, in water up to his waist, wearing a complete three-piece suit in charcoal wool with a waistcoat and a dark bowler hat, entirely unbothered, holding an open broadsheet newspaper up in front of him with both hands and reading it. Seen from behind and a little to the side, from the bank. Draw the man, his hat and his newspaper only — no water, no ripples, no shore, no horizon, nothing beneath him — on flat pure white, filling most of the frame.'),
+  oddArt('odd-autumn-sofa', 'Two people carrying a full-size sofa across a park, one at each end, shuffling along and clearly regretting it: a young woman in a rust-coloured jumper at the front and a tall man in a green jacket at the back, the sofa a faded floral two-seater held at knee height between them. A large ginger cat sits on the middle cushion, perfectly composed, riding along. Seen from the side. Draw the people, the sofa and the cat only — no grass, no path, no ground, no shadow — on flat pure white, filling most of the frame.'),
+  oddArt('odd-winter-swimmer', 'A man standing on a frozen lake in nothing but red swimming trunks and rubber sandals, a white towel round his shoulders, arms crossed against the cold, looking down at the water with an expression of complete commitment. Beside him a neat square hole cut in the ice with a small heap of ice blocks next to it and a thermos standing upright. Seen from the side, at a distance of a few paces. Draw the man, the towel, the hole, the ice blocks and the thermos only — no snow field, no shore, no sky, no shadow beyond the hole itself — on flat pure white, filling most of the frame.'),
+  oddArt('odd-spring-knight', 'A person in a full suit of polished steel plate armour, visor up, walking calmly along in spring sunshine, holding a slack red lead in one gauntlet. At the end of the lead, a very small long-haired dachshund trots ahead, thoroughly pleased with itself. Seen from the side, both of them walking to the right. Draw the knight and the dog only — no ground, no grass, no path, no shadow — on flat pure white, filling most of the frame.'),
+];
+
+
+/**
+ * Repaints and additions from the audit (18af). Each replaces something
+ * the catalogue found rather than adding anything new: a dusk lake whose
+ * own depth matches the painting's, a night sky whose city glow is not a
+ * ruled line, deer with the ground under them, a dapple that tiles square
+ * so it does not stretch into stripes down the allée, and the lifetime's
+ * elms when they were young, so that eighty years can actually grow them.
+ *
+ * Run with `--mend`; they land where the plate they replace does.
+ */
+export const mendLayers = [
+  { id: 'water-dusk', dir: 'scene-03', size: '1536x1024', preamble: NIGHT_STYLE, prompt: 'A wide band of lake water at sunset seen from the shore, and nothing else: it fills the middle third of the frame from edge to edge and everything above and below it is flat pure white. The water pale and hazy along the top of the band, where it is furthest away, darkening steadily toward the bottom of the band, where it is nearest; a broad path of apricot and gold light lies down the middle of it, widening as it comes toward the viewer. Small quiet ripples, wider and softer at the bottom of the band than at the top. No shore, no sky, no boats, no trees.' },
+  { id: 'sky-night', dir: 'scene-03', size: '1536x1024', preamble: NIGHT_STYLE, prompt: 'A wide band of night sky, and nothing else: it fills the top third of the frame from edge to edge and everything below it is flat pure white. Deep blue-black at the top softening to a dark slate blue lower down, with a scatter of small stars and, at the right, a gibbous moon, small and pale. Along the very bottom of the band a warm glow from a city beyond the trees — but uneven: brighter in two or three places and fading away to nothing between them, its upper edge ragged and diffuse, never a straight line. No land, no water, no trees, no clouds.' },
+  { id: 'night-deer', dir: 'scene-03', size: '1536x1024', preamble: NIGHT_STYLE, prompt: 'Two white-tailed deer standing on grass at the edge of a lake at night, seen from the side at some distance, small in the frame and drawn in the dark blues and violets of night with a little pale moonlight along their backs: one with its head down to drink, one standing and looking out. Under each of them, and only under them, a soft pool of darker ground where their own shadow falls, fading out within a pace. Nothing else at all — no water, no grass beyond those pools, no horizon — only the two deer and their shadows on flat pure white, in the middle of the frame.' },
+  { id: 'allee-dapple-art', dir: 'scene-08/allee', size: '1024x1024', preamble: TURF_STYLE, prompt: 'The light under a row of trees on a summer afternoon, painted as nothing but light: soft irregular patches of warm sun on mown grass with cooler blue-green shade between them, the patches a few paces across, scattered evenly over the whole frame with no direction to them and no edge harder than a leaf\'s. No trunks, no branches, no leaves, no people, no path. The pattern must continue unchanged off all four edges so it tiles end to end and side to side.' },
+  { id: 'wide-elms-young', dir: 'scene-05', size: '1536x1024', preamble: FRAME_STYLE, prompt: 'Two young elms of about twenty years, one at the left and one at the right of the frame, drawn exactly as a pair of great old elms would be but smaller in every way: slender trunks a third the width, rising out through the bottom edge of the frame, their crowns narrow and high and not yet meeting across the middle, so that a wide band of empty frame is left open between them. Late-August leaves in green and yellow-green, in loose clusters with gaps between them. Do not draw the ground: no grass, no earth, no roots, no shadow. Everything the two trees do not cover is flat pure white.' },
+];
